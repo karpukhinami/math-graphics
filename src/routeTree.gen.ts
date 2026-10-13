@@ -11,8 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiExtractDocumentRouteImport } from './routes/api/extract-document'
-import { Route as ApiAiTextRouteImport } from './routes/api/ai/text'
 import { Route as ApiAiImageRouteImport } from './routes/api/ai/image'
+import { Route as ApiAiTextRouteImport } from './routes/api/ai/text'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -24,14 +24,14 @@ const ApiExtractDocumentRoute = ApiExtractDocumentRouteImport.update({
   path: '/api/extract-document',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAiTextRoute = ApiAiTextRouteImport.update({
-  id: '/api/ai/text',
-  path: '/api/ai/text',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiAiImageRoute = ApiAiImageRouteImport.update({
   id: '/api/ai/image',
   path: '/api/ai/image',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAiTextRoute = ApiAiTextRouteImport.update({
+  id: '/api/ai/text',
+  path: '/api/ai/text',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -90,18 +90,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiExtractDocumentRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/ai/text': {
-      id: '/api/ai/text'
-      path: '/api/ai/text'
-      fullPath: '/api/ai/text'
-      preLoaderRoute: typeof ApiAiTextRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/ai/image': {
       id: '/api/ai/image'
       path: '/api/ai/image'
       fullPath: '/api/ai/image'
       preLoaderRoute: typeof ApiAiImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ai/text': {
+      id: '/api/ai/text'
+      path: '/api/ai/text'
+      fullPath: '/api/ai/text'
+      preLoaderRoute: typeof ApiAiTextRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
