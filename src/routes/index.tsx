@@ -18,7 +18,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Конструктор математических чертежей: числовая прямая, координатная плоскость, экспорт в SVG или PNG.",
+          "Конструктор математических чертежей: числовая прямая, координатная плоскость, пространственные фигуры, ИИ-построение и экспорт в SVG или PNG.",
       },
       { property: "og:title", content: "Plotting — конструктор математических чертежей" },
       {
@@ -28,7 +28,6 @@ export const Route = createFileRoute("/")({
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "robots", content: "noindex" },
     ],
   }),
   component: PlottingPage,
