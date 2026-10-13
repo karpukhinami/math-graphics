@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiExtractDocumentRouteImport } from './routes/api/extract-document'
+import { Route as ApiAiTextRouteImport } from './routes/api/ai/text'
+import { Route as ApiAiImageRouteImport } from './routes/api/ai/image'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +24,54 @@ const ApiExtractDocumentRoute = ApiExtractDocumentRouteImport.update({
   path: '/api/extract-document',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAiTextRoute = ApiAiTextRouteImport.update({
+  id: '/api/ai/text',
+  path: '/api/ai/text',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAiImageRoute = ApiAiImageRouteImport.update({
+  id: '/api/ai/image',
+  path: '/api/ai/image',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/extract-document': typeof ApiExtractDocumentRoute
+  '/api/ai/image': typeof ApiAiImageRoute
+  '/api/ai/text': typeof ApiAiTextRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/extract-document': typeof ApiExtractDocumentRoute
+  '/api/ai/image': typeof ApiAiImageRoute
+  '/api/ai/text': typeof ApiAiTextRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/extract-document': typeof ApiExtractDocumentRoute
+  '/api/ai/image': typeof ApiAiImageRoute
+  '/api/ai/text': typeof ApiAiTextRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/extract-document'
+  fullPaths: '/' | '/api/extract-document' | '/api/ai/image' | '/api/ai/text'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/extract-document'
-  id: '__root__' | '/' | '/api/extract-document'
+  to: '/' | '/api/extract-document' | '/api/ai/image' | '/api/ai/text'
+  id:
+    | '__root__'
+    | '/'
+    | '/api/extract-document'
+    | '/api/ai/image'
+    | '/api/ai/text'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiExtractDocumentRoute: typeof ApiExtractDocumentRoute
+  ApiAiImageRoute: typeof ApiAiImageRoute
+  ApiAiTextRoute: typeof ApiAiTextRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +90,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiExtractDocumentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ai/text': {
+      id: '/api/ai/text'
+      path: '/api/ai/text'
+      fullPath: '/api/ai/text'
+      preLoaderRoute: typeof ApiAiTextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ai/image': {
+      id: '/api/ai/image'
+      path: '/api/ai/image'
+      fullPath: '/api/ai/image'
+      preLoaderRoute: typeof ApiAiImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiExtractDocumentRoute: ApiExtractDocumentRoute,
+  ApiAiImageRoute: ApiAiImageRoute,
+  ApiAiTextRoute: ApiAiTextRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
