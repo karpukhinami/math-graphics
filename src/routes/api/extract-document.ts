@@ -63,7 +63,7 @@ async function extractPdfImages(parser: PDFParse): Promise<string[]> {
   return images;
 }
 
-export const Route = createFileRoute("/api/extract-document-text")({
+export const Route = createFileRoute("/api/extract-document")({
   server: {
     handlers: {
       POST: async ({ request }) => {

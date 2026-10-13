@@ -11,10 +11,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ModelPicker } from "@/components/workspace/ModelPicker";
-import { Markdown } from "@/components/workspace/Markdown";
-import { DEFAULT_TEXT_MODEL } from "@/lib/models";
-import { hasSourceMaterials } from "@/lib/source-material";
+import { ModelPicker } from "./ModelPicker";
+import { Markdown } from "@/components/plotting/Markdown";
+import { DEFAULT_TEXT_MODEL } from "@/lib/ai/models";
+import { hasSourceMaterials } from "@/lib/plotting/ai/source-files";
 import { analyzePlotMaterial, generatePlotScene } from "@/lib/plotting/ai/pipeline";
 import type { PlotAiScenario, PlotAnalysisResult } from "@/lib/plotting/ai/types";
 import { usePlotStore } from "@/lib/plotting/store";

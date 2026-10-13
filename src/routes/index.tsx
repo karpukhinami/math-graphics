@@ -11,7 +11,7 @@ import { usePlotStore } from "@/lib/plotting/store";
 import { buildSpaceFaceDepthReport } from "@/lib/plotting/space/space-face-depth-report";
 import type { SpaceFaceDepthReport } from "@/lib/plotting/space/space-face-depth-report";
 
-export const Route = createFileRoute("/plotting")({
+export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Plotting — конструктор математических чертежей" },

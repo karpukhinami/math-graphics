@@ -42,7 +42,7 @@ function fileToDataUrl(file: File): Promise<string> {
 async function extractViaApi(file: File): Promise<ExtractedDocumentPayload> {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch("/api/extract-document-text", { method: "POST", body: form });
+  const res = await fetch("/api/extract-document", { method: "POST", body: form });
   const payload = (await res.json().catch(() => ({}))) as ExtractedDocumentPayload & { error?: string };
   if (!res.ok) {
     throw new Error(payload.error || "Не удалось извлечь содержимое из файла");
@@ -117,4 +117,17 @@ export async function importSourceFiles(
       opts.onError?.(e instanceof Error ? e.message : "Не удалось прочитать файл");
     }
   }
+}
+
+/** Сборка исходного материала для промпта: ручной ввод + загруженные файлы. */
+export function buildSourceTextForPrompt(manualText: string, uploadedSourceText: string): string {
+  return [manualText.trim(), uploadedSourceText.trim()].filter(Boolean).join("\n\n");
+}
+
+export function hasSourceMaterials(
+  manualText: string,
+  uploadedSourceText: string,
+  attachedImages: string[],
+): boolean {
+  return Boolean(manualText.trim() || uploadedSourceText.trim() || attachedImages.length);
 }

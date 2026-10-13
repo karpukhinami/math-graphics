@@ -1,5 +1,5 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TEXT_MODELS, IMAGE_MODELS } from "@/lib/models";
+import { TEXT_MODELS, IMAGE_MODELS } from "@/lib/ai/models";
 
 export function ModelPicker({
   kind,

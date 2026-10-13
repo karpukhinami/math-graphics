@@ -1,4 +1,4 @@
-import beautifyRules from "@/data/prompts/plotting/beautify-image.txt?raw";
+import beautifyRules from "@/lib/plotting/ai/templates/beautify-image.txt?raw";
 import { callImageLLM } from "@/lib/llm-client";
 import { DEFAULT_IMAGE_MODEL } from "@/lib/models";
 import { capturePlotPreviewPng } from "./capture-preview";
