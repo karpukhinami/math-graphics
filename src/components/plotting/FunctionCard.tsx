@@ -26,7 +26,8 @@ const KINDS: Array<{ value: GraphKind; label: string }> = [
   { value: "explicit", label: "явное задание" },
   { value: "implicit", label: "неявное задание" },
   { value: "piecewise", label: "кусочно-аналитическое задание" },
-  { value: "qualitative", label: "задание через набор точек" },
+  { value: "qualitative", label: "гладкая функция через набор точек" },
+  { value: "piecewise-linear", label: "кусочно-линейная функция через набор точек" },
 ];
 
 const ANCHOR_KINDS: Array<{ value: AnchorKind; label: string }> = [
@@ -46,6 +47,7 @@ export function FunctionCard({ graph }: { graph: SceneGraph }) {
   const xName = scene.xAxis.name.trim() || "x";
   const yName = scene.yAxis.name.trim() || "y";
   const math = graph.math;
+  const isPointDefined = math.kind === "qualitative" || math.kind === "piecewise-linear";
 
   // Серые подсказки в пределах построения — реальные значения по оси x.
   // Пока пользователь не ввёл своё значение, они следуют за осью.
@@ -112,7 +114,7 @@ export function FunctionCard({ graph }: { graph: SceneGraph }) {
                   value={math.kind}
                   onValueChange={(value) => updateGraphMath(graph.id, { kind: value as GraphKind })}
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-auto min-h-9 text-left [&>span]:whitespace-normal"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {KINDS.map((kind) => (
                       <SelectItem key={kind.value} value={kind.value}>{kind.label}</SelectItem>
@@ -258,7 +260,7 @@ export function FunctionCard({ graph }: { graph: SceneGraph }) {
 
 
 
-            {math.kind === "qualitative" && (
+            {isPointDefined && (
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">Опорные точки (минимум 2)</Label>
                 {math.anchors.map((anchor, index) => (
@@ -291,7 +293,7 @@ export function FunctionCard({ graph }: { graph: SceneGraph }) {
                         }
                       />
                     </div>
-                    <div className="flex-[1.4] space-y-1">
+                    {math.kind === "qualitative" && <div className="flex-[1.4] space-y-1">
                       <Label className="text-[11px] text-muted-foreground">Тип</Label>
                       <Select
                         value={anchor.kind}
@@ -310,7 +312,7 @@ export function FunctionCard({ graph }: { graph: SceneGraph }) {
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
+                    </div>}
                     {math.anchors.length > 2 && (
                       <Button
                         type="button"
@@ -341,7 +343,7 @@ export function FunctionCard({ graph }: { graph: SceneGraph }) {
                   + Опорная точка
                 </Button>
                 <div className="flex items-center justify-between rounded-md border border-border px-2 py-1.5">
-                  <Label className="text-xs">Гладко продолжать за крайними точками</Label>
+                  <Label className="text-xs">{math.kind === "qualitative" ? "Гладко продолжать за крайними точками" : "Продолжать за крайними точками"}</Label>
                   <Switch
                     checked={math.extendEnds !== false}
                     onCheckedChange={(checked) =>
@@ -349,17 +351,17 @@ export function FunctionCard({ graph }: { graph: SceneGraph }) {
                     }
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">
+                {math.kind === "qualitative" && <p className="text-xs text-muted-foreground">
                   Опорные точки задают форму кривой и сами не рисуются. При продолжении кривая
                   доходит до краёв области, сохраняя наклон и кривизну крайнего участка. Видимые
                   точки добавляются в разделе «Точки».
-                </p>
+                </p>}
               </div>
             )}
 
             <div className="flex items-center gap-2">
               <Label className="shrink-0 text-xs text-muted-foreground">
-                {math.kind === "qualitative" ? "Кривая:" : `Пределы по ${xName}:`}
+                {isPointDefined ? "Кривая:" : `Пределы по ${xName}:`}
               </Label>
               <span className="shrink-0 text-xs text-muted-foreground">от</span>
               <Input

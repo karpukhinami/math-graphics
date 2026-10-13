@@ -171,6 +171,38 @@ export function buildGraph(
       });
       return { segments };
     }
+    case "piecewise-linear": {
+      const anchors = parseAnchors(math);
+      const sorted = [...anchors].sort((a, b) => a.x - b.x);
+      for (let i = 1; i < sorted.length; i++) {
+        if (sorted[i].x === sorted[i - 1].x) {
+          throw new Error("У опорных точек должны быть разные координаты по горизонтальной оси.");
+        }
+      }
+      const extendEnds = math.extendEnds !== false;
+      const first = sorted[0];
+      const last = sorted[sorted.length - 1];
+      const domain = resolveDomain(
+        math,
+        extendEnds ? bounds.xMin : Math.max(first.x, bounds.xMin),
+        extendEnds ? bounds.xMax : Math.min(last.x, bounds.xMax),
+      );
+      const valueAt = (x: number): number => {
+        let i = 0;
+        while (i < sorted.length - 2 && x > sorted[i + 1].x) i++;
+        const a = sorted[i];
+        const b = sorted[i + 1];
+        return a.y + ((b.y - a.y) / (b.x - a.x)) * (x - a.x);
+      };
+      // Точные вершины вместо дискретизации: каждый угол совпадает с заданной точкой.
+      const vertices: Polyline = [
+        [domain.from, valueAt(domain.from)],
+        ...sorted.filter((a) => a.x > domain.from && a.x < domain.to)
+          .map((a): [number, number] => [a.x, a.y]),
+        [domain.to, valueAt(domain.to)],
+      ];
+      return { segments: [vertices], anchors, domain };
+    }
     case "qualitative": {
       const anchors = parseAnchors(math);
       const extendEnds = math.extendEnds !== false;

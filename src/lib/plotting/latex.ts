@@ -59,7 +59,9 @@ export function graphLatex(graph: SceneGraph, xName: string, yName: string): str
       return `${textNode(yName)} = \\begin{cases}${rows.join(" \\\\ ")}\\end{cases}`;
     }
     case "qualitative":
-      return `${textNode(`по ${math.anchors.length} опорным точкам`)}`;
+      return textNode(`гладкая по ${math.anchors.length} опорным точкам`);
+    case "piecewise-linear":
+      return textNode(`кусочно-линейная по ${math.anchors.length} опорным точкам`);
     default:
       return textNode("функция");
   }
