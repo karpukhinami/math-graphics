@@ -56,7 +56,7 @@
     "solvedDataSummary": string,
     "dataSources": string,
     "functions": [
-      { "label": string, "kind": "explicit"|"implicit"|"piecewise"|"qualitative", "expression": string, "equation": string, "notes": string }
+      { "label": string, "kind": "explicit"|"implicit"|"piecewise"|"qualitative"|"piecewise-linear", "expression": string, "equation": string, "notes": string }
     ],
     "linePoints": [],
     "lineSets": [ { "kind": "interval"|"ray"|"freeform", "left": string, "right": string, "leftOp": string, "rightOp": string, "rayOp": string, "rayBoundary": string, "display": string, "position": string, "description": string } ],

@@ -187,7 +187,9 @@ export function graphSummary(graph: SceneGraph, yName: string): string {
     case "piecewise":
       return `кусочная функция, участков: ${math.pieces.length}`;
     case "qualitative":
-      return `по ${math.anchors.length} опорным точкам`;
+      return `гладкая по ${math.anchors.length} опорным точкам`;
+    case "piecewise-linear":
+      return `кусочно-линейная по ${math.anchors.length} опорным точкам`;
     default:
       return "функция";
   }
@@ -215,7 +217,7 @@ export interface AnchorChoice {
 export function sceneAnchorChoices(scene: PlotScene): AnchorChoice[] {
   const result: AnchorChoice[] = [];
   for (const graph of scene.graphs) {
-    if (graph.math.kind !== "qualitative") continue;
+    if (graph.math.kind !== "qualitative" && graph.math.kind !== "piecewise-linear") continue;
     graph.math.anchors.forEach((anchor, anchorIndex) => {
       if (!anchor.x.trim() || !anchor.y.trim()) return;
       try {
@@ -304,7 +306,7 @@ export function buildPoint(point: ScenePoint, scene: PlotScene, bounds: PlotBoun
     const graph = scene.graphs.find((item) => item.id === point.math.graphId);
     if (!graph) throw new Error("Не выбран график.");
     if (!graph.built) throw new Error(`Функция ${graph.index} ещё не построена.`);
-    if (graph.math.kind === "qualitative" && point.math.anchorIndex !== null) {
+    if ((graph.math.kind === "qualitative" || graph.math.kind === "piecewise-linear") && point.math.anchorIndex !== null) {
 
       const anchors = parseAnchors(graph.math);
       const anchor = anchors[point.math.anchorIndex];

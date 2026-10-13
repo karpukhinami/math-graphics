@@ -95,7 +95,7 @@ export interface PlotAppearance {
   projectionColor: string;
 }
 
-export type GraphKind = "explicit" | "implicit" | "piecewise" | "qualitative" | "parametric";
+export type GraphKind = "explicit" | "implicit" | "piecewise" | "qualitative" | "piecewise-linear" | "parametric";
 
 export interface PiecewisePiece {
   expression: string;
@@ -122,9 +122,9 @@ export interface GraphMath {
   equation: string;
   /** Кусочно-аналитическое задание. */
   pieces: PiecewisePiece[];
-  /** Опорные точки качественного графика. */
+  /** Опорные точки гладкой или кусочно-линейной функции. */
   anchors: AnchorPoint[];
-  /** Гладко продолжать качественную кривую за крайние опорные точки. */
+  /** Продолжать за крайние точки: гладко для qualitative, по крайним отрезкам для piecewise-linear. */
   extendEnds?: boolean;
   /** Собственные пределы построения (необязательно). */
   domainFrom: string;
