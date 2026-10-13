@@ -1,0 +1,1161 @@
+import { layoutLabels, measureTextWidth, type LabelRequest, type Obstacle, type Rect } from "../label-layout";
+import {
+  buildSpaceScene,
+  computeFaceOrPlaneSection,
+  computeLineDisplayRange,
+  computePlaneHelperSegments,
+  getPlaneOutsideSupportPoints,
+  planeIntersectionSegmentRange,
+  resolveLineCarrier,
+  type ResolvedSpaceScene,
+} from "./build";
+import { fitSpaceProjection, projectFromLocalCoeffs, sampleRotationEllipse } from "./camera";
+import {
+  projectWorldDisplay,
+  projectWorldOffFigureBody,
+  type DisplayProjectionContext,
+} from "./display-projection";
+import { collectVisibleOverlaySegments, isEdgeCoveredOnScreen } from "./edge-overlay";
+import { collectPlaneFillFragments } from "./plane-subdivision";
+import {
+  buildOcclusionContext,
+  isBodyEdgeVisibleForRender,
+  splitLineByVisibility,
+  splitLineForRender,
+  type OcclusionContext,
+} from "./visibility";
+import { isSchoolExtrusionFigure } from "./figure";
+import { spaceDisplayColor, spacePointLabelColor } from "./space-display-color";
+import { buildSchoolViewObserver, figureBodyCenterWorld } from "./pyramid-view";
+import type { LineSplitSegment, SpaceFigure, SpaceLine, SpacePlane, SpaceSceneData, Vec3 } from "./types";
+import { add, dot, intersectPlanes, len, scale, sub, worldToLocal } from "./vec3";
+
+function round(n: number): string {
+  return String(Number(n.toFixed(2)));
+}
+
+function mergeLineSplitSegments(segments: LineSplitSegment[]): LineSplitSegment[] {
+  if (segments.length < 2) return segments;
+  const out: LineSplitSegment[] = [{ ...segments[0]! }];
+  for (let i = 1; i < segments.length; i += 1) {
+    const cur = segments[i]!;
+    const prev = out[out.length - 1]!;
+    if (cur.visible === prev.visible && len(sub(cur.a, prev.b)) < 1e-6) {
+      prev.b = cur.b;
+    } else {
+      out.push({ ...cur });
+    }
+  }
+  return out;
+}
+
+/** Треугольный наконечник в конце вектора (как стрелка оси на координатной плоскости). */
+function vectorArrowheadPolygon(
+  tipX: number,
+  tipY: number,
+  dirX: number,
+  dirY: number,
+  arrowSize: number,
+): string {
+  const l = Math.hypot(dirX, dirY) || 1;
+  const ux = dirX / l;
+  const uy = dirY / l;
+  const half = arrowSize * 0.225;
+  const bx = tipX - ux * arrowSize;
+  const by = tipY - uy * arrowSize;
+  const x1 = bx - uy * half;
+  const y1 = by + ux * half;
+  const x2 = bx + uy * half;
+  const y2 = by - ux * half;
+  return `${round(tipX)},${round(tipY)} ${round(x1)},${round(y1)} ${round(x2)},${round(y2)}`;
+}
+
+function escapeText(v: string): string {
+  return String(v ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function lineObstacle(x1: number, y1: number, x2: number, y2: number, kind: Obstacle["kind"]): Obstacle {
+  return { kind, points: [[x1, y1], [x2, y2]] };
+}
+
+/** Если отрезок целиком лежит на ребре тела, возвращает видимость этого ребра. */
+function inheritedBodyEdgeVisibility(
+  aWorld: Vec3,
+  bWorld: Vec3,
+  figure: SpaceFigure,
+  resolved: ResolvedSpaceScene,
+  view: SpaceSceneData["view"],
+): boolean | null {
+  let sizeRef = 1;
+  for (const vertex of figure.vertices) {
+    const world = resolved.points.get(vertex.id)?.world;
+    if (world) sizeRef = Math.max(sizeRef, len(world));
+  }
+  const eps = sizeRef * 1e-5;
+  for (const edge of figure.edges) {
+    const edgeA = resolved.points.get(edge.aId)?.world;
+    const edgeB = resolved.points.get(edge.bId)?.world;
+    if (!edgeA || !edgeB) continue;
+    if (pointSegDist(aWorld, edgeA, edgeB) > eps || pointSegDist(bWorld, edgeA, edgeB) > eps) continue;
+    return isBodyEdgeVisibleForRender(edge.id, figure, resolved, view);
+  }
+  return null;
+}
+
+/** Экранное совпадение тоже наследует штрих: иначе наложенная цветная линия визуально инвертирует ребро. */
+function inheritedProjectedBodyEdgeVisibility(
+  aWorld: Vec3,
+  bWorld: Vec3,
+  figure: SpaceFigure,
+  resolved: ResolvedSpaceScene,
+  view: SpaceSceneData["view"],
+  fit: { scale: number; cx: number; cy: number },
+): boolean | null {
+  const a = projectWorld(aWorld, resolved, view, fit, figure);
+  const b = projectWorld(bWorld, resolved, view, fit, figure);
+  const distance = (
+    p: { x: number; y: number },
+    s0: { x: number; y: number },
+    s1: { x: number; y: number },
+  ) => {
+    const dx = s1.x - s0.x;
+    const dy = s1.y - s0.y;
+    const l2 = dx * dx + dy * dy;
+    if (l2 < 1e-12) return Math.hypot(p.x - s0.x, p.y - s0.y);
+    const t = Math.max(0, Math.min(1, ((p.x - s0.x) * dx + (p.y - s0.y) * dy) / l2));
+    return Math.hypot(p.x - (s0.x + t * dx), p.y - (s0.y + t * dy));
+  };
+  for (const edge of figure.edges) {
+    const edgeA = resolved.points.get(edge.aId)?.world;
+    const edgeB = resolved.points.get(edge.bId)?.world;
+    if (!edgeA || !edgeB) continue;
+    const p0 = projectWorld(edgeA, resolved, view, fit, figure);
+    const p1 = projectWorld(edgeB, resolved, view, fit, figure);
+    if (distance(a, p0, p1) > 0.5 || distance(b, p0, p1) > 0.5) continue;
+    return isBodyEdgeVisibleForRender(edge.id, figure, resolved, view);
+  }
+  return null;
+}
+
+/** Рисует отрезок с учётом грани (видимая/скрытая) или окклюзии тела. */
+function drawSegmentWithVisibility(
+  aWorld: Vec3,
+  bWorld: Vec3,
+  figure: SpaceFigure,
+  resolved: ResolvedSpaceScene,
+  view: SpaceSceneData["view"],
+  fit: { scale: number; cx: number; cy: number },
+  occlusion: OcclusionContext,
+  color: string,
+  width: number,
+  hiddenDash: string,
+  parts: string[],
+  obstacles: Obstacle[],
+  strokeOpacity?: number,
+  /** В режиме заливки по глубине скрытые куски не рисуем — пунктир только на линии пересечения. */
+  skipHiddenSegments = false,
+  /** Для границ сечения пирамиды нужна проверка по глубине поверхности, а не по оболочке вершин. */
+  useSurfaceDepth = false,
+  /** Совпадающая с ребром тела граница обязана повторять его штрих. */
+  inheritBodyEdgeStroke = false,
+): void {
+  const dir = sub(bWorld, aWorld);
+  const abLen = len(dir);
+  if (!(abLen > 1e-9)) return;
+  const unit = scale(dir, 1 / abLen);
+  const bodyEdgeVisibility = inheritBodyEdgeStroke
+    ? inheritedBodyEdgeVisibility(aWorld, bWorld, figure, resolved, view) ??
+      inheritedProjectedBodyEdgeVisibility(aWorld, bWorld, figure, resolved, view, fit)
+    : null;
+  const rawSegments =
+    bodyEdgeVisibility !== null
+      ? [{ a: aWorld, b: bWorld, visible: bodyEdgeVisibility }]
+      : useSurfaceDepth
+        ? splitLineByVisibility(aWorld, unit, 0, abLen, figure, resolved, view, occlusion)
+        : splitLineForRender(aWorld, unit, 0, abLen, figure, resolved, view, occlusion);
+  const segments = mergeLineSplitSegments(rawSegments);
+  const opacityAttr =
+    strokeOpacity !== undefined && strokeOpacity < 1
+      ? ` stroke-opacity="${strokeOpacity}"`
+      : "";
+  for (const seg of segments) {
+    if (skipHiddenSegments && !seg.visible) continue;
+    const p1 = projectWorld(seg.a, resolved, view, fit, figure);
+    const p2 = projectWorld(seg.b, resolved, view, fit, figure);
+    const dash = seg.visible ? "" : ` stroke-dasharray="${hiddenDash}"`;
+    parts.push(
+      `<line x1="${round(p1.x)}" y1="${round(p1.y)}" x2="${round(p2.x)}" y2="${round(p2.y)}" stroke="${color}" stroke-width="${width}" stroke-linecap="round"${dash}${opacityAttr}/>`,
+    );
+    obstacles.push(lineObstacle(p1.x, p1.y, p2.x, p2.y, seg.visible ? "curve" : "helper"));
+  }
+}
+
+/** Параметрическая прямая P(t)=origin+t·dir с разбиением на видимые/скрытые участки. */
+function drawCarrierWithVisibility(
+  origin: Vec3,
+  dir: Vec3,
+  t0: number,
+  t1: number,
+  figure: SpaceFigure,
+  resolved: ResolvedSpaceScene,
+  view: SpaceSceneData["view"],
+  fit: { scale: number; cx: number; cy: number },
+  occlusion: OcclusionContext,
+  color: string,
+  width: number,
+  hiddenDash: string,
+  parts: string[],
+  obstacles: Obstacle[],
+): void {
+  const span = t1 - t0;
+  if (!(span > 1e-12)) return;
+
+  drawSegmentWithVisibility(
+    add(origin, scale(dir, t0)),
+    add(origin, scale(dir, t1)),
+    figure,
+    resolved,
+    view,
+    fit,
+    occlusion,
+    color,
+    width,
+    hiddenDash,
+    parts,
+    obstacles,
+  );
+}
+
+function displayCtxFromResolved(resolved: ResolvedSpaceScene): DisplayProjectionContext {
+  return {
+    basis: resolved.basis,
+    projection: resolved.projection,
+    points: resolved.points,
+    figure: resolved.figure,
+  };
+}
+
+function projectWorld(
+  world: Vec3,
+  resolved: ResolvedSpaceScene,
+  view: SpaceSceneData["view"],
+  fit: { scale: number; cx: number; cy: number },
+  figure: SpaceFigure,
+): { x: number; y: number } {
+  const pr = projectWorldDisplay(world, displayCtxFromResolved(resolved), view, figure);
+  return { x: pr.x * fit.scale + fit.cx, y: pr.y * fit.scale + fit.cy };
+}
+
+function projectWorldWithDepth(
+  world: Vec3,
+  resolved: ResolvedSpaceScene,
+  view: SpaceSceneData["view"],
+  fit: { scale: number; cx: number; cy: number },
+  figure: SpaceFigure,
+): { x: number; y: number; depth: number } {
+  const projected = projectWorldDisplay(world, displayCtxFromResolved(resolved), view, figure);
+  return {
+    x: projected.x * fit.scale + fit.cx,
+    y: projected.y * fit.scale + fit.cy,
+    depth: projected.depth,
+  };
+}
+
+function renderLabels(
+  data: SpaceSceneData,
+  figure: SpaceFigure,
+  resolved: ResolvedSpaceScene,
+  obstacles: Obstacle[],
+  fit: { scale: number; cx: number; cy: number },
+  a: SpaceSceneData["appearance"],
+): string {
+  const area: Rect = { x: a.padding, y: a.padding, width: a.width - a.padding * 2, height: a.height - a.padding * 2 };
+  const requests: LabelRequest[] = [];
+
+  for (const vertex of figure.vertices) {
+    const pr = resolved.projected.get(vertex.id);
+    if (!pr) continue;
+    requests.push({
+      id: vertex.id,
+      anchorX: pr.x * fit.scale + fit.cx,
+      anchorY: pr.y * fit.scale + fit.cy,
+      width: measureTextWidth(vertex.label, a.labelFontSize),
+      height: a.labelFontSize * 1.12,
+      gap: a.pointRadius + 16,
+    });
+  }
+
+  for (const point of data.points) {
+    if (!point.style.visible || !point.built) continue;
+    const pr = resolved.projected.get(point.id);
+    if (!pr || !point.label.trim()) continue;
+    requests.push({
+      id: point.id,
+      anchorX: pr.x * fit.scale + fit.cx,
+      anchorY: pr.y * fit.scale + fit.cy,
+      width: measureTextWidth(point.label, a.labelFontSize),
+      height: a.labelFontSize * 1.12,
+      gap: a.pointRadius + 16,
+      placement: point.style.labelPlacement,
+    });
+  }
+
+  return layoutLabels(requests, obstacles, area, { fontSize: a.labelFontSize, allowBackdrop: false })
+    .map((item) => {
+      const color = figure.vertices.some((v) => v.id === item.id)
+        ? a.labelColor
+        : spacePointLabelColor(item.id, data, a.edgeColor, a.labelColor);
+      const text =
+        figure.vertices.find((v) => v.id === item.id)?.label ??
+        data.points.find((p) => p.id === item.id)?.label ??
+        "";
+      return `<text x="${round(item.x)}" y="${round(item.y)}" text-anchor="${item.textAnchor}" font-family="${escapeText(a.labelFontFamily)}" font-size="${a.labelFontSize}" fill="${spaceDisplayColor(color, data.view)}" font-style="italic">${escapeText(text)}</text>`;
+    })
+    .join("");
+}
+
+function renderLineObject(
+  line: SpaceLine,
+  data: SpaceSceneData,
+  figure: SpaceFigure,
+  resolved: ResolvedSpaceScene,
+  fit: { scale: number; cx: number; cy: number },
+  occlusion: OcclusionContext,
+  parts: string[],
+  obstacles: Obstacle[],
+): void {
+  if (!line.style.visible || !line.built) return;
+  const carrier = resolveLineCarrier(line, figure, resolved.points, resolved.planes, data.lines);
+  if (!carrier) return;
+  const def = line.definition;
+  let origin = carrier.origin;
+  let dir = carrier.dir;
+  let t0 = -1;
+  let t1 = 1;
+
+  if (def.kind === "twoPoints") {
+    const a = resolved.points.get(def.aId)?.world;
+    const b = resolved.points.get(def.bId)?.world;
+    if (!a || !b) return;
+    const ab = sub(b, a);
+    const abLen = len(ab);
+    if (!(abLen > 1e-9)) return;
+    origin = a;
+    dir = scale(ab, 1 / abLen);
+    if (line.style.visualKind === "segment") {
+      t0 = 0;
+      t1 = abLen;
+    } else if (line.style.visualKind === "vector") {
+      t0 = 0;
+      const pA = projectWorld(a, resolved, data.view, fit, figure);
+      const pB = projectWorld(b, resolved, data.view, fit, figure);
+      const dx = pB.x - pA.x;
+      const dy = pB.y - pA.y;
+      const screenLen = Math.hypot(dx, dy);
+      const arrow = data.appearance.arrowSize;
+      const trimRatio =
+        screenLen > arrow + 2 ? Math.max(0.05, (screenLen - arrow) / screenLen) : 0.88;
+      t1 = abLen * trimRatio;
+    } else {
+      const range = computeLineDisplayRange(
+        { origin, dir },
+        resolved.points,
+        0,
+        abLen,
+        data.appearance.lineExtension * abLen,
+        figure,
+      );
+      t0 = range.t0;
+      t1 = range.t1;
+    }
+  } else {
+    const clip = planeIntersectionSegmentRange(
+      carrier,
+      def.planeAId,
+      def.planeBId,
+      figure,
+      resolved.points,
+      resolved.planes,
+      resolved.basis,
+    );
+    if (!clip) return;
+    t0 = clip.t0;
+    t1 = clip.t1;
+    if (line.style.visualKind === "line") {
+      const span = Math.max(t1 - t0, 1e-6);
+      const ext = data.appearance.lineExtension * span;
+      t0 -= ext;
+      t1 += ext;
+    }
+  }
+
+  const sw = line.style.width ?? data.appearance.lineWidth;
+  const lineColor = spaceDisplayColor(line.style.color, data.view);
+  drawCarrierWithVisibility(
+    origin,
+    dir,
+    t0,
+    t1,
+    figure,
+    resolved,
+    data.view,
+    fit,
+    occlusion,
+    lineColor,
+    sw,
+    data.appearance.hiddenDash,
+    parts,
+    obstacles,
+  );
+
+  if (line.style.visualKind === "vector" && def.kind === "twoPoints") {
+    const a = resolved.points.get(def.aId)?.world;
+    const b = resolved.points.get(def.bId)?.world;
+    if (a && b) {
+      const pTip = projectWorld(b, resolved, data.view, fit, figure);
+      const pTail = projectWorld(a, resolved, data.view, fit, figure);
+      const poly = vectorArrowheadPolygon(
+        pTip.x,
+        pTip.y,
+        pTip.x - pTail.x,
+        pTip.y - pTail.y,
+        data.appearance.arrowSize,
+      );
+      parts.push(`<polygon points="${poly}" fill="${lineColor}"/>`);
+    }
+  }
+}
+
+function renderPlaneFillPolygon(
+  vertices: Vec3[],
+  color: string,
+  fillOpacity: number,
+  data: SpaceSceneData,
+  figure: SpaceFigure,
+  resolved: ResolvedSpaceScene,
+  fit: { scale: number; cx: number; cy: number },
+  parts: string[],
+): void {
+  if (vertices.length < 3) return;
+  // Фрагмент уже является итоговым многоугольником после всех попарных
+  // пересечений. Нельзя повторно триангулировать его для пирамиды: её
+  // школьная проекция нелинейна вне рёбер тела, поэтому независимо
+  // спроецированные внутренние точки треугольников могут выйти за экранный
+  // контур фрагмента и дать ложные клинья. Заливаем ровно контур его вершин.
+  const screenPts = vertices.map((w) => projectWorld(w, resolved, data.view, fit, figure));
+  const poly = screenPts.map((p) => `${round(p.x)},${round(p.y)}`).join(" ");
+  parts.push(
+    `<polygon points="${poly}" fill="${spaceDisplayColor(color, data.view)}" fill-opacity="${fillOpacity}" stroke="none"/>`,
+  );
+}
+
+function renderPlaneSectionEdges(
+  section: Vec3[],
+  plane: SpacePlane,
+  data: SpaceSceneData,
+  figure: SpaceFigure,
+  resolved: ResolvedSpaceScene,
+  fit: { scale: number; cx: number; cy: number },
+  occlusion: OcclusionContext,
+  parts: string[],
+  obstacles: Obstacle[],
+  fillByDepth = false,
+): void {
+  const edgeWidth = data.appearance.lineWidth;
+  for (let i = 0; i < section.length; i += 1) {
+    const a = section[i]!;
+    const b = section[(i + 1) % section.length]!;
+    drawSegmentWithVisibility(
+      a,
+      b,
+      figure,
+      resolved,
+      data.view,
+      fit,
+      occlusion,
+      spaceDisplayColor(plane.style.color, data.view),
+      edgeWidth,
+      data.appearance.hiddenDash,
+      parts,
+      obstacles,
+      undefined,
+      fillByDepth,
+      isSchoolExtrusionFigure(figure),
+      true,
+    );
+  }
+}
+
+function renderPlaneHelperLines(
+  plane: SpacePlane,
+  section: Vec3[],
+  data: SpaceSceneData,
+  figure: SpaceFigure,
+  resolved: ResolvedSpaceScene,
+  fit: { scale: number; cx: number; cy: number },
+  occlusion: OcclusionContext,
+  parts: string[],
+  obstacles: Obstacle[],
+): void {
+  const planeEq = resolved.planes.get(plane.id);
+  if (!planeEq) return;
+  const edgeWidth = data.appearance.lineWidth;
+  const helperWidth = edgeWidth / 2;
+  const supports = getPlaneOutsideSupportPoints(plane, resolved.points, resolved.basis, figure);
+  for (const support of supports) {
+    const helpers = computePlaneHelperSegments(
+      section,
+      support,
+      planeEq,
+      resolved.basis,
+      figure,
+      resolved.points,
+    );
+    for (const seg of helpers) {
+      drawSegmentWithVisibility(
+        seg.from,
+        seg.to,
+        figure,
+        resolved,
+        data.view,
+        fit,
+        occlusion,
+        spaceDisplayColor(plane.style.color, data.view),
+        helperWidth,
+        data.appearance.hiddenDash,
+        parts,
+        obstacles,
+      );
+    }
+  }
+}
+
+function renderPlaneOutlines(
+  plane: SpacePlane,
+  data: SpaceSceneData,
+  figure: SpaceFigure,
+  resolved: ResolvedSpaceScene,
+  fit: { scale: number; cx: number; cy: number },
+  occlusion: OcclusionContext,
+  parts: string[],
+  obstacles: Obstacle[],
+): void {
+  if (!plane.style.visible || !plane.built) return;
+  const section = computeFaceOrPlaneSection(
+    plane.id,
+    figure,
+    resolved.points,
+    resolved.planes,
+    resolved.basis,
+  );
+  if (!section || section.length < 3) return;
+
+  renderPlaneSectionEdges(section, plane, data, figure, resolved, fit, occlusion, parts, obstacles);
+  renderPlaneHelperLines(plane, section, data, figure, resolved, fit, occlusion, parts, obstacles);
+}
+
+function renderPlane(
+  plane: SpacePlane,
+  data: SpaceSceneData,
+  figure: SpaceFigure,
+  resolved: ResolvedSpaceScene,
+  fit: { scale: number; cx: number; cy: number },
+  occlusion: OcclusionContext,
+  parts: string[],
+  obstacles: Obstacle[],
+): void {
+  if (!plane.style.visible || !plane.built) return;
+  const section = computeFaceOrPlaneSection(
+    plane.id,
+    figure,
+    resolved.points,
+    resolved.planes,
+    resolved.basis,
+  );
+  if (!section || section.length < 3) return;
+
+  renderPlaneFillPolygon(
+    section,
+    spaceDisplayColor(plane.style.color, data.view),
+    data.appearance.planeFillOpacity,
+    data,
+    figure,
+    resolved,
+    fit,
+    parts,
+  );
+  renderPlaneSectionEdges(section, plane, data, figure, resolved, fit, occlusion, parts, obstacles);
+  renderPlaneHelperLines(plane, section, data, figure, resolved, fit, occlusion, parts, obstacles);
+}
+
+function pointSegDist(p: Vec3, a: Vec3, b: Vec3): number {
+  const ab = sub(b, a);
+  const l2 = dot(ab, ab);
+  if (l2 < 1e-18) return len(sub(p, a));
+  const t = Math.max(0, Math.min(1, dot(sub(p, a), ab) / l2));
+  return len(sub(p, add(a, scale(ab, t))));
+}
+
+/**
+ * Рисование плоскостей «художником» от дальних фрагментов к ближним.
+ * Каждый фрагмент заливается и сразу получает свои рёбра: либо часть контура
+ * сечения, либо отрезок пересечения с другой плоскостью (ровно сторона
+ * многоугольника-фрагмента). Ближние фрагменты, нарисованные позже, своей
+ * заливкой приглушают линии, лежащие за ними.
+ */
+function renderPlanesByDepth(
+  data: SpaceSceneData,
+  figure: SpaceFigure,
+  resolved: ResolvedSpaceScene,
+  fit: { scale: number; cx: number; cy: number },
+  occlusion: OcclusionContext,
+  parts: string[],
+  obstacles: Obstacle[],
+): void {
+  const visiblePlanes = data.planes.filter((p) => p.built && p.style.visible);
+  const planeById = new Map(visiblePlanes.map((p) => [p.id, p]));
+  const sections = new Map<string, Vec3[]>();
+  let sizeRef = 0;
+  for (const plane of visiblePlanes) {
+    const section = computeFaceOrPlaneSection(
+      plane.id,
+      figure,
+      resolved.points,
+      resolved.planes,
+      resolved.basis,
+    );
+    if (section && section.length >= 3) {
+      sections.set(plane.id, section);
+      for (const v of section) sizeRef = Math.max(sizeRef, len(sub(v, section[0]!)));
+    }
+  }
+  const eps = Math.max(1e-6, sizeRef * 1e-5);
+  const onBoundary = (a: Vec3, b: Vec3, section: Vec3[]) => {
+    for (let i = 0; i < section.length; i += 1) {
+      const s0 = section[i]!;
+      const s1 = section[(i + 1) % section.length]!;
+      if (pointSegDist(a, s0, s1) < eps && pointSegDist(b, s0, s1) < eps) return true;
+    }
+    return false;
+  };
+
+  const fragments = collectPlaneFillFragments(data, figure, resolved, (world) =>
+    projectWorldWithDepth(world, resolved, data.view, fit, figure),
+  );
+  const width = data.appearance.lineWidth;
+  const drawnBoundary = new Set<string>();
+  const key = (a: Vec3, b: Vec3) => {
+    const pa = projectWorld(a, resolved, data.view, fit, figure);
+    const pb = projectWorld(b, resolved, data.view, fit, figure);
+    const s1 = `${Math.round(pa.x * 2)},${Math.round(pa.y * 2)}`;
+    const s2 = `${Math.round(pb.x * 2)},${Math.round(pb.y * 2)}`;
+    return s1 < s2 ? `${s1}|${s2}` : `${s2}|${s1}`;
+  };
+
+  for (const fragment of fragments) {
+    const plane = planeById.get(fragment.planeId);
+    if (!plane) continue;
+    renderPlaneFillPolygon(
+      fragment.vertices,
+      spaceDisplayColor(fragment.color, data.view),
+      data.appearance.planeFillOpacity,
+      data,
+      figure,
+      resolved,
+      fit,
+      parts,
+    );
+    const section = sections.get(plane.id);
+    const vs = fragment.vertices;
+    for (let i = 0; i < vs.length; i += 1) {
+      const a = vs[i]!;
+      const b = vs[(i + 1) % vs.length]!;
+      if (len(sub(b, a)) < eps) continue;
+      if (section && onBoundary(a, b, section)) {
+        const k = `${plane.id}:${key(a, b)}`;
+        if (drawnBoundary.has(k)) continue;
+        drawnBoundary.add(k);
+        drawSegmentWithVisibility(
+          a,
+          b,
+          figure,
+          resolved,
+          data.view,
+          fit,
+          occlusion,
+          spaceDisplayColor(plane.style.color, data.view),
+          width,
+          data.appearance.hiddenDash,
+          parts,
+          obstacles,
+          undefined,
+          false,
+          isSchoolExtrusionFigure(figure),
+          true,
+        );
+        continue;
+      }
+    }
+  }
+
+  for (const plane of visiblePlanes) {
+    const section = sections.get(plane.id);
+    if (!section) continue;
+    renderPlaneHelperLines(plane, section, data, figure, resolved, fit, occlusion, parts, obstacles);
+  }
+}
+
+function renderAutomaticPlaneIntersections(
+  data: SpaceSceneData,
+  figure: SpaceFigure,
+  resolved: ResolvedSpaceScene,
+  fit: { scale: number; cx: number; cy: number },
+  parts: string[],
+  obstacles: Obstacle[],
+): void {
+  if (!data.view.showPlaneIntersections) return;
+  const visiblePlanes = data.planes.filter((plane) => plane.built && plane.style.visible);
+  const eps = 1e-9;
+  const width = data.appearance.lineWidth;
+  // Для каждой пары используем только две точки пересечения её носителя с
+  // гранями тела. Видимость и совпадения с другими линиями не анализируются.
+  for (let i = 0; i < visiblePlanes.length; i += 1) {
+    const first = visiblePlanes[i]!;
+    const firstEq = resolved.planes.get(first.id);
+    if (!firstEq) continue;
+    for (let j = i + 1; j < visiblePlanes.length; j += 1) {
+      const second = visiblePlanes[j]!;
+      const secondEq = resolved.planes.get(second.id);
+      if (!secondEq) continue;
+      const carrier = intersectPlanes(firstEq, secondEq);
+      if (!carrier) continue;
+      const range = planeIntersectionSegmentRange(
+        carrier,
+        first.id,
+        second.id,
+        figure,
+        resolved.points,
+        resolved.planes,
+        resolved.basis,
+      );
+      if (!range || range.t1 - range.t0 <= eps) continue;
+      const a = add(carrier.origin, scale(carrier.dir, range.t0));
+      const b = add(carrier.origin, scale(carrier.dir, range.t1));
+      const pa = projectWorld(a, resolved, data.view, fit, figure);
+      const pb = projectWorld(b, resolved, data.view, fit, figure);
+      parts.push(
+        `<line x1="${round(pa.x)}" y1="${round(pa.y)}" x2="${round(pb.x)}" y2="${round(pb.y)}" stroke="${spaceDisplayColor(first.style.color, data.view)}" stroke-width="${width}" stroke-dasharray="${data.appearance.hiddenDash}" stroke-linecap="round"/>`,
+      );
+      obstacles.push(lineObstacle(pa.x, pa.y, pb.x, pb.y, "helper"));
+    }
+  }
+}
+
+type ProjectedDepthPoint = { x: number; y: number; depth: number };
+
+function pointInScreenPolygon(point: { x: number; y: number }, polygon: ProjectedDepthPoint[]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
+    const a = polygon[i]!;
+    const b = polygon[j]!;
+    if (a.y > point.y !== b.y > point.y) {
+      const boundaryX = ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y) + a.x;
+      if (point.x < boundaryX) inside = !inside;
+    }
+  }
+  return inside;
+}
+
+function depthInScreenPolygon(
+  point: { x: number; y: number },
+  polygon: ProjectedDepthPoint[],
+): number | null {
+  const origin = polygon[0];
+  if (!origin) return null;
+  for (let i = 1; i + 1 < polygon.length; i += 1) {
+    const b = polygon[i]!;
+    const c = polygon[i + 1]!;
+    const denominator = (b.y - c.y) * (origin.x - c.x) + (c.x - b.x) * (origin.y - c.y);
+    if (Math.abs(denominator) < 1e-9) continue;
+    const wa = ((b.y - c.y) * (point.x - c.x) + (c.x - b.x) * (point.y - c.y)) / denominator;
+    const wb = ((c.y - origin.y) * (point.x - c.x) + (origin.x - c.x) * (point.y - c.y)) / denominator;
+    const wc = 1 - wa - wb;
+    if (wa < -1e-7 || wb < -1e-7 || wc < -1e-7) continue;
+    return wa * origin.depth + wb * b.depth + wc * c.depth;
+  }
+  return null;
+}
+
+function screenSegmentIntersectionParameter(
+  a: ProjectedDepthPoint,
+  b: ProjectedDepthPoint,
+  c: ProjectedDepthPoint,
+  d: ProjectedDepthPoint,
+): number | null {
+  const abx = b.x - a.x;
+  const aby = b.y - a.y;
+  const cdx = d.x - c.x;
+  const cdy = d.y - c.y;
+  const denominator = abx * cdy - aby * cdx;
+  if (Math.abs(denominator) < 1e-9) return null;
+  const acx = c.x - a.x;
+  const acy = c.y - a.y;
+  const t = (acx * cdy - acy * cdx) / denominator;
+  const u = (acx * aby - acy * abx) / denominator;
+  return t > 1e-7 && t < 1 - 1e-7 && u >= -1e-7 && u <= 1 + 1e-7 ? t : null;
+}
+
+/**
+ * Возвращает поверх заливок только те части рёбер тела, которые действительно
+ * находятся ближе секущих плоскостей в той же экранной точке. Остальные части
+ * остаются под заливкой и поэтому корректно приглушаются ею.
+ */
+function renderBodyEdgesInFrontOfPlanes(
+  data: SpaceSceneData,
+  figure: SpaceFigure,
+  resolved: ResolvedSpaceScene,
+  fit: { scale: number; cx: number; cy: number },
+  parts: string[],
+): void {
+  const planeSections = data.planes
+    .filter((plane) => plane.built && plane.style.visible)
+    .map((plane) => {
+      const world = computeFaceOrPlaneSection(
+        plane.id,
+        figure,
+        resolved.points,
+        resolved.planes,
+        resolved.basis,
+      );
+      const equation = resolved.planes.get(plane.id);
+      return world && world.length >= 3 && equation
+        ? { world, equation, screen: world.map((point) => projectWorldWithDepth(point, resolved, data.view, fit, figure)) }
+        : null;
+    })
+    .filter(Boolean) as Array<{ world: Vec3[]; equation: { normal: Vec3; d: number }; screen: ProjectedDepthPoint[] }>;
+  if (!planeSections.length) return;
+
+  for (const edge of figure.edges) {
+    const aWorld = resolved.points.get(edge.aId)?.world;
+    const bWorld = resolved.points.get(edge.bId)?.world;
+    if (!aWorld || !bWorld) continue;
+    const a = projectWorldWithDepth(aWorld, resolved, data.view, fit, figure);
+    const b = projectWorldWithDepth(bWorld, resolved, data.view, fit, figure);
+    const breakpoints = [0, 1];
+
+    for (const section of planeSections) {
+      for (let i = 0; i < section.screen.length; i += 1) {
+        const t = screenSegmentIntersectionParameter(
+          a,
+          b,
+          section.screen[i]!,
+          section.screen[(i + 1) % section.screen.length]!,
+        );
+        if (t !== null) breakpoints.push(t);
+      }
+      const da = dot(section.equation.normal, aWorld) + section.equation.d;
+      const db = dot(section.equation.normal, bWorld) + section.equation.d;
+      if (Math.abs(da - db) > 1e-9) {
+        const t = da / (da - db);
+        if (t > 1e-7 && t < 1 - 1e-7) breakpoints.push(t);
+      }
+    }
+
+    breakpoints.sort((x, y) => x - y);
+    const unique = breakpoints.filter((value, index) => index === 0 || value - breakpoints[index - 1]! > 1e-7);
+    const visible = isBodyEdgeVisibleForRender(edge.id, figure, resolved, data.view);
+    const dash = visible ? "" : ` stroke-dasharray="${data.appearance.hiddenDash}"`;
+    if (visible) {
+      parts.push(
+        `<line x1="${round(a.x)}" y1="${round(a.y)}" x2="${round(b.x)}" y2="${round(b.y)}" stroke="${data.appearance.edgeColor}" stroke-width="${data.appearance.edgeWidth}" stroke-linecap="round"/>`,
+      );
+      continue;
+    }
+    for (let i = 0; i + 1 < unique.length; i += 1) {
+      const t0 = unique[i]!;
+      const t1 = unique[i + 1]!;
+      const tm = (t0 + t1) * 0.5;
+      const sample = {
+        x: a.x + (b.x - a.x) * tm,
+        y: a.y + (b.y - a.y) * tm,
+      };
+      let nearestPlaneDepth: number | null = null;
+      for (const section of planeSections) {
+        if (!pointInScreenPolygon(sample, section.screen)) continue;
+        const depth = depthInScreenPolygon(sample, section.screen);
+        if (depth !== null && (nearestPlaneDepth === null || depth < nearestPlaneDepth)) nearestPlaneDepth = depth;
+      }
+      const edgeDepth = a.depth + (b.depth - a.depth) * tm;
+      if (nearestPlaneDepth === null || edgeDepth >= nearestPlaneDepth - 1e-6) continue;
+      const p0 = { x: a.x + (b.x - a.x) * t0, y: a.y + (b.y - a.y) * t0 };
+      const p1 = { x: a.x + (b.x - a.x) * t1, y: a.y + (b.y - a.y) * t1 };
+      parts.push(
+        `<line x1="${round(p0.x)}" y1="${round(p0.y)}" x2="${round(p1.x)}" y2="${round(p1.y)}" stroke="${data.appearance.edgeColor}" stroke-width="${data.appearance.edgeWidth}" stroke-linecap="round"${dash}/>` ,
+      );
+    }
+  }
+}
+
+/** Отладочные лучи: от центра (и вершины пирамиды) через экран к проекции «глаза». */
+function renderViewConvergenceRays(
+  data: SpaceSceneData,
+  figure: SpaceFigure,
+  resolved: ResolvedSpaceScene,
+  fit: { scale: number; cx: number; cy: number },
+  width: number,
+  height: number,
+  parts: string[],
+): void {
+  const observer = buildSchoolViewObserver(figure, resolved, resolved.projection);
+  const centerWorld = figureBodyCenterWorld(figure, resolved);
+  const anchors: Vec3[] = [centerWorld];
+  if (isSchoolExtrusionFigure(figure)) {
+    const apex = figure.vertices.find((v) => v.id.startsWith("pyr-v-apex"));
+    const aw = apex ? resolved.points.get(apex.id)?.world : null;
+    if (aw) anchors.push(aw);
+  }
+
+  const displayCtx = displayCtxFromResolved(resolved);
+  /**
+   * «Глаз» — фиксированный читатель чертежа: его экранное положение не должно
+   * зависеть от поворота основания (yaw) и не должно определяться через
+   * геометрию самой фигуры (эллипс основания/вершину) — это оказалось
+   * ненадёжно дважды подряд:
+   *  1) общая аффинная формула (u,v,w)→(x,y,z) для точки типа (4,4,1) не имеет
+   *     однозначного «вперёд» (эллипс подогнан произвольно) — стреляла в
+   *     произвольную сторону, вплоть до «за кадр»;
+   *  2) луч «вершина S → центр основания», продолженный наружу, ВЫРОЖДАЕТСЯ
+   *     в почти нулевой вектор для пирамид с вершиной над центром основания
+   *     (частый случай): экранная «база» апекса (без учёта высоты) совпадает
+   *     с центром эллипса основания, а центроид ЧЁТНОГО числа вершин основания
+   *     на эллипсе — тоже центр эллипса, так что «S → центр» — вектор длины
+   *     ~0, и вся точка сваливалась внутрь фигуры.
+   * Поэтому здесь просто фиксированная точка у нижнего края холста, по центру:
+   * подгонка сцены (`fitSpaceProjection`) и так кладёт фигуру по центру
+   * по ширине и основанием ближе к низу, так что «низ холста» надёжно
+   * означает «к зрителю/вперёд» для любой фигуры, без зависимости от yaw,
+   * формы основания или положения вершины.
+   */
+  let pEye: { x: number; y: number };
+  if (isSchoolExtrusionFigure(figure)) {
+    pEye = { x: width / 2, y: height * 0.94 };
+  } else {
+    const prEye = projectWorldOffFigureBody(
+      observer.eye,
+      { ...displayCtx, projection: { ...displayCtx.projection, yawRad: 0 } },
+      data.view,
+      figure,
+    );
+    pEye = { x: prEye.x * fit.scale + fit.cx, y: prEye.y * fit.scale + fit.cy };
+  }
+  const rayLen = Math.max(width, height) * 1.4;
+  const stroke =
+    'stroke="#B91C1C" stroke-width="1.25" stroke-dasharray="10 7" stroke-linecap="round" stroke-opacity="0.9"';
+
+  for (const anchorWorld of anchors) {
+    const p0 = projectWorld(anchorWorld, resolved, data.view, fit, figure);
+    const dx = pEye.x - p0.x;
+    const dy = pEye.y - p0.y;
+    const l = Math.hypot(dx, dy) || 1;
+    const ux = dx / l;
+    const uy = dy / l;
+    parts.push(
+      `<line x1="${round(p0.x)}" y1="${round(p0.y)}" x2="${round(p0.x + ux * rayLen)}" y2="${round(p0.y + uy * rayLen)}" fill="none" ${stroke}/>`,
+    );
+  }
+
+  const eye = observer.eye;
+  const eyeLabel = isSchoolExtrusionFigure(figure)
+    ? `к зрителю (глаз ≈ (${round(eye.x)}, ${round(eye.y)}, ${round(eye.z)}))`
+    : `глаз (${round(eye.x)}, ${round(eye.y)}, ${round(eye.z)})`;
+  parts.push(
+    `<circle cx="${round(pEye.x)}" cy="${round(pEye.y)}" r="5" fill="none" stroke="#B91C1C" stroke-width="1.25"/>`,
+    `<circle cx="${round(pEye.x)}" cy="${round(pEye.y)}" r="2" fill="#B91C1C"/>`,
+    `<text x="${round(pEye.x + 7)}" y="${round(pEye.y - 8)}" font-size="10" fill="#B91C1C" font-family="sans-serif">${eyeLabel}</text>`,
+  );
+}
+
+function collectFitPoints(
+  data: SpaceSceneData,
+  figure: SpaceFigure,
+  resolved: ResolvedSpaceScene,
+): Array<{ x: number; y: number }> {
+  const pts: Array<{ x: number; y: number }> = [];
+  for (const v of figure.vertices) {
+    const pr = resolved.projected.get(v.id);
+    if (pr) pts.push({ x: pr.x, y: pr.y });
+  }
+  for (const point of data.points) {
+    if (!point.built) continue;
+    const pr = resolved.projected.get(point.id);
+    if (pr) pts.push({ x: pr.x, y: pr.y });
+  }
+  const ellipse = sampleRotationEllipse(resolved.projection);
+  for (const p of ellipse) {
+    pts.push({ x: p.x * data.view.scale, y: -p.y * data.view.scale });
+  }
+
+  for (const line of data.lines) {
+    if (!line.built) continue;
+    const carrier = resolveLineCarrier(line, figure, resolved.points, resolved.planes, data.lines);
+    if (!carrier) continue;
+    const def = line.definition;
+    let t0 = -1;
+    let t1 = 1;
+    if (def.kind === "twoPoints") {
+      const a = resolved.points.get(def.aId)?.world;
+      const b = resolved.points.get(def.bId)?.world;
+      if (!a || !b) continue;
+      const abLen = len(sub(b, a));
+      t0 = 0;
+      t1 = abLen;
+    } else {
+      const clip = planeIntersectionSegmentRange(
+        carrier,
+        def.planeAId,
+        def.planeBId,
+        figure,
+        resolved.points,
+        resolved.planes,
+        resolved.basis,
+      );
+      if (!clip) continue;
+      t0 = clip.t0;
+      t1 = clip.t1;
+      if (line.style.visualKind === "line" && !isSchoolExtrusionFigure(figure)) {
+        const span = Math.max(t1 - t0, 1e-6);
+        const ext = data.appearance.lineExtension * span;
+        t0 -= ext;
+        t1 += ext;
+      }
+    }
+    let fitT0 = t0;
+    let fitT1 = t1;
+    if (def.kind === "twoPoints") {
+      const a = resolved.points.get(def.aId)?.world;
+      const b = resolved.points.get(def.bId)?.world;
+      if (a && b) {
+        fitT0 = 0;
+        fitT1 = len(sub(b, a));
+      }
+    }
+    const local0 = worldToLocal(add(carrier.origin, scale(carrier.dir, fitT0)), resolved.basis);
+    const local1 = worldToLocal(add(carrier.origin, scale(carrier.dir, fitT1)), resolved.basis);
+    if (local0) {
+      const pr = projectFromLocalCoeffs(
+        local0,
+        add(carrier.origin, scale(carrier.dir, fitT0)),
+        data.view,
+        resolved.projection,
+        figure,
+      );
+      pts.push({ x: pr.x, y: pr.y });
+    }
+    if (local1) {
+      const pr = projectFromLocalCoeffs(
+        local1,
+        add(carrier.origin, scale(carrier.dir, fitT1)),
+        data.view,
+        resolved.projection,
+        figure,
+      );
+      pts.push({ x: pr.x, y: pr.y });
+    }
+  }
+  return pts;
+}
+
+export function renderSpaceSvg(data: SpaceSceneData): string | null {
+  if (!data.figure) return null;
+  const resolved = buildSpaceScene(data);
+  const figure = resolved.figure ?? data.figure;
+  const a = data.appearance;
+
+  const hasFixedFit =
+    data.view.fitScale != null && data.view.fitCx != null && data.view.fitCy != null;
+  const fit = hasFixedFit
+    ? { scale: data.view.fitScale!, cx: data.view.fitCx!, cy: data.view.fitCy! }
+    : fitSpaceProjection(
+        collectFitPoints(data, figure, resolved),
+        a.width,
+        a.height,
+        a.padding,
+      );
+
+  const parts: string[] = [];
+  const obstacles: Obstacle[] = [];
+  const occlusion = buildOcclusionContext(figure, resolved, data.view);
+  const projectWorldForFit = (world: Vec3) => projectWorld(world, resolved, data.view, fit, figure);
+  const overlaySegments = collectVisibleOverlaySegments(
+    data,
+    figure,
+    resolved,
+    data.view,
+    fit,
+    occlusion,
+    projectWorldForFit,
+  );
+
+  if (data.view.showRotationEllipse) {
+    const ellipsePts = sampleRotationEllipse(resolved.projection);
+    const d = ellipsePts
+      .map((p) => {
+        const sx = p.x * data.view.scale * fit.scale + fit.cx;
+        const sy = -p.y * data.view.scale * fit.scale + fit.cy;
+        return `${round(sx)},${round(sy)}`;
+      })
+      .join(" ");
+    parts.push(
+      `<polyline points="${d}" fill="none" stroke="#9CA3AF" stroke-width="${Math.max(1, a.edgeWidth / 2)}" stroke-dasharray="6 4" stroke-linecap="round"/>`,
+    );
+  }
+
+  for (const edge of figure.edges) {
+    const wa = resolved.points.get(edge.aId)?.world;
+    const wb = resolved.points.get(edge.bId)?.world;
+    if (!wa || !wb) continue;
+    const p1 = projectWorld(wa, resolved, data.view, fit, figure);
+    const p2 = projectWorld(wb, resolved, data.view, fit, figure);
+    if (isEdgeCoveredOnScreen({ a: p1, b: p2 }, overlaySegments)) continue;
+    const visible = isBodyEdgeVisibleForRender(edge.id, figure, resolved, data.view);
+    const dash = visible ? "" : ` stroke-dasharray="${a.hiddenDash}"`;
+    parts.push(
+      `<line x1="${round(p1.x)}" y1="${round(p1.y)}" x2="${round(p2.x)}" y2="${round(p2.y)}" stroke="${a.edgeColor}" stroke-width="${a.edgeWidth}" stroke-linecap="round"${dash}/>`,
+    );
+    obstacles.push(lineObstacle(p1.x, p1.y, p2.x, p2.y, visible ? "curve" : "axis"));
+  }
+
+  renderPlanesByDepth(data, figure, resolved, fit, occlusion, parts, obstacles);
+  renderAutomaticPlaneIntersections(data, figure, resolved, fit, parts, obstacles);
+  renderBodyEdgesInFrontOfPlanes(data, figure, resolved, fit, parts);
+
+  for (const line of data.lines) {
+    renderLineObject(line, data, figure, resolved, fit, occlusion, parts, obstacles);
+  }
+
+  for (const point of data.points) {
+    if (!point.style.visible || !point.built) continue;
+    const pr = resolved.projected.get(point.id);
+    if (!pr) continue;
+    const px = pr.x * fit.scale + fit.cx;
+    const py = pr.y * fit.scale + fit.cy;
+    parts.push(
+      `<circle cx="${round(px)}" cy="${round(py)}" r="${a.pointRadius}" fill="${spaceDisplayColor(point.style.color, data.view)}" stroke="${spaceDisplayColor(point.style.color, data.view)}" stroke-width="2"/>`,
+    );
+  }
+
+  if (data.view.showViewConvergenceRays) {
+    renderViewConvergenceRays(data, figure, resolved, fit, a.width, a.height, parts);
+  }
+
+  parts.push(`<g>${renderLabels(data, figure, resolved, obstacles, fit, a)}</g>`);
+
+  const w = round(a.width);
+  const h = round(a.height);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="#FFFFFF"/>${parts.join("")}</svg>`;
+}
+
+export { buildSpaceScene };

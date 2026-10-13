@@ -1,0 +1,96 @@
+/** Сборка промптов режима ИИ-рисования из отдельных файлов. */
+import sharedSourceRules from "@/data/prompts/plotting/shared-source-rules.txt?raw";
+import analyzeDraw from "@/data/prompts/plotting/analyze-draw.txt?raw";
+import analyzeReproduce from "@/data/prompts/plotting/analyze-reproduce.txt?raw";
+import analyzeAnalog from "@/data/prompts/plotting/analyze-analog.txt?raw";
+import generateScene from "@/data/prompts/plotting/generate-scene.txt?raw";
+import generateAnalog from "@/data/prompts/plotting/generate-analog.txt?raw";
+import schemaPlaneRaw from "@/data/prompts/plotting/schema-plane.txt?raw";
+import schemaLineRaw from "@/data/prompts/plotting/schema-line.txt?raw";
+import schemaSpaceAiRaw from "@/data/prompts/plotting/schema-space-ai.txt?raw";
+import spaceFiguresGuide from "@/data/prompts/plotting/space-figures-guide.txt?raw";
+import spaceConstructionsGuide from "@/data/prompts/plotting/space-constructions-guide.txt?raw";
+import lineSetsRules from "@/data/prompts/plotting/line-sets-rules.txt?raw";
+import colorGroupsRules from "@/data/prompts/plotting/color-groups.txt?raw";
+import type { PlotAiScenario, PlotAnalysisResult, PlotSceneType } from "./types";
+
+const schemaLine = schemaLineRaw
+  .replaceAll("{{LINE_SETS_RULES}}", lineSetsRules)
+  .replaceAll("{{COLOR_GROUPS_RULES}}", colorGroupsRules);
+
+const schemaPlane = schemaPlaneRaw.replaceAll("{{COLOR_GROUPS_RULES}}", colorGroupsRules);
+
+const schemaSpace = schemaSpaceAiRaw
+  .replaceAll("{{SPACE_FIGURES_GUIDE}}", spaceFiguresGuide)
+  .replaceAll("{{SPACE_CONSTRUCTIONS_GUIDE}}", spaceConstructionsGuide);
+
+function injectShared(template: string, sourceText: string): string {
+  const shared = sharedSourceRules.replaceAll("{{SOURCE_TEXT}}", sourceText || "(материал не передан)");
+  return template.replaceAll("{{SHARED_SOURCE_RULES}}", shared);
+}
+
+export function buildAnalyzePrompt(opts: {
+  scenario: PlotAiScenario;
+  sourceText: string;
+}): string {
+  const { scenario, sourceText } = opts;
+  let template: string;
+  switch (scenario) {
+    case "draw":
+      template = analyzeDraw;
+      break;
+    case "reproduce":
+      template = analyzeReproduce;
+      break;
+    case "analog":
+      template = analyzeAnalog;
+      break;
+  }
+  return injectShared(template, sourceText);
+}
+
+export function buildGeneratePrompt(opts: {
+  scenario: PlotAiScenario;
+  sourceText: string;
+  analysis: PlotAnalysisResult;
+  userRefinements: string;
+  sceneType: PlotSceneType;
+}): string {
+  const { scenario, sourceText, analysis, userRefinements, sceneType } = opts;
+  const schema =
+    sceneType === "line" ? schemaLine : sceneType === "space" ? schemaSpace : schemaPlane;
+  const space = sceneType === "line" ? "line" : sceneType === "space" ? "space" : "plane";
+  const analysisJson = JSON.stringify(analysis, null, 2);
+  const refinements = userRefinements.trim() || "(нет — используй только анализ)";
+
+  const template = scenario === "analog" ? generateAnalog : generateScene;
+  return injectShared(template, sourceText)
+    .replaceAll("{{ANALYSIS_JSON}}", analysisJson)
+    .replaceAll("{{USER_REFINEMENTS}}", refinements)
+    .replaceAll("{{SCENE_SCHEMA}}", schema)
+    .replaceAll("{{SCENE_TYPE_SPACE}}", space);
+}
+
+export function buildGenerateRetrySuffix(validationErrors: string[]): string {
+  return `
+
+ПРЕДЫДУЩИЙ ОТВЕТ СОДЕРЖАЛ НЕКОРРЕКТНЫЙ JSON-СЦЕНЫ.
+Ошибки проверки:
+${validationErrors.map((e) => `- ${e}`).join("\n")}
+
+Верни исправленный JSON, полностью соответствующий схеме и пригодный для рендерера. Только JSON, без пояснений.`;
+}
+
+export function analysisSchemaHint(): string {
+  return `JSON с полями: canDraw (boolean), sceneType ("plane"|"line"|"space" если canDraw), analysisText (string), stageData (object).`;
+}
+
+export function generateSchemaHint(scenario: PlotAiScenario, sceneType?: PlotSceneType): string {
+  const sceneHint =
+    sceneType === "space"
+      ? '{ "version": 1, "space": "space", "space3d": { shapeKind, baseVerticesInput, figureConstraints, view?, points?, lines?, planes? } }'
+      : "PlotScene; цвета — colorGroup 1–6 в style";
+  return scenario === "analog"
+    ? `{ "newTaskText": string, "scene": ${sceneHint} }`
+    : `{ "scene": ${sceneHint} }`;
+}

@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: smart-infographics-generator
+    runtime: node
+    buildCommand: NODE_OPTIONS='--max-old-space-size=4096' bun install && bun run build
+    startCommand: bash render-start.sh
+    envVars:
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=4096
+      - key: NODE_VERSION
+        value: "20"
+      - key: NODE_ENV
+        value: production
+      - key: NITRO_PRESET
+        value: render_com
