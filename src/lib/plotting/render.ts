@@ -191,7 +191,12 @@ function finishGeometry(
   };
 }
 
-/** Режим «одинаковая размерность осей» — существующее поведение без изменений. */
+/**
+ * Режим «одинаковая размерность осей»: полотно всегда имеет заданный размер
+ * (appearance.width × appearance.height), а чертёж вписывается в него с одним
+ * масштабом по обеим осям и центрируется. Большая сторона чертежа занимает всё
+ * доступное место, меньшая остаётся уже полотна — график не растягивается.
+ */
 function resolveGeometryEqual(scene: PlotScene, bounds: AxisBounds): PlotGeometry {
   const appearance = scene.appearance;
   const { xMin, xMax, yMin, yMax } = bounds;
@@ -204,20 +209,25 @@ function resolveGeometryEqual(scene: PlotScene, bounds: AxisBounds): PlotGeometr
 
   const { padLeft, padRight, padTop, padBottom } = computeGutters(scene, bounds, xStep, yStep, appearance);
 
-  // Сетка всегда квадратная: масштаб один для обеих осей, более длинная ось
-  // занимает всё доступное место, а картинка становится прямоугольной.
+  // Сетка всегда квадратная: масштаб один для обеих осей, ограничивающая сторона
+  // занимает всё доступное место, вторая — столько, сколько позволяет тот же масштаб.
   const availWidth = Math.max(10, appearance.width - padLeft - padRight);
   const availHeight = Math.max(10, appearance.height - padTop - padBottom);
   const scale = Math.min(availWidth / (xMax - xMin), availHeight / (yMax - yMin));
   const areaWidth = scale * (xMax - xMin);
   const areaHeight = scale * (yMax - yMin);
 
-  const left = padLeft;
+  // Размер картинки не зависит от формы чертежа; чертёж (вместе с полями под подписи)
+  // центрируется на полотне.
+  const canvasWidth = appearance.width;
+  const canvasHeight = appearance.height;
+  const offsetX = Math.max(0, (canvasWidth - (padLeft + areaWidth + padRight)) / 2);
+  const offsetY = Math.max(0, (canvasHeight - (padTop + areaHeight + padBottom)) / 2);
+
+  const left = offsetX + padLeft;
   const right = left + areaWidth;
-  const top = padTop;
+  const top = offsetY + padTop;
   const bottom = top + areaHeight;
-  const canvasWidth = padLeft + areaWidth + padRight;
-  const canvasHeight = padTop + areaHeight + padBottom;
 
   return finishGeometry(
     bounds,
