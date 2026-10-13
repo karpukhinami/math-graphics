@@ -1,6 +1,6 @@
 import beautifyRules from "@/lib/plotting/ai/templates/beautify-image.txt?raw";
 import { callImage } from "@/lib/ai/client";
-import { DEFAULT_IMAGE_MODEL } from "@/lib/models";
+import { DEFAULT_IMAGE_MODEL } from "@/lib/ai/models";
 import { capturePlotPreviewPng } from "./capture-preview";
 
 export function buildPlotBeautifyPrompt(userWishes: string): string {
