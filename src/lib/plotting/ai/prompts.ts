@@ -4,6 +4,8 @@ import analyzeDraw from "@/lib/plotting/ai/templates/analyze-draw.txt?raw";
 import analyzeReproduce from "@/lib/plotting/ai/templates/analyze-reproduce.txt?raw";
 import analyzeAnalog from "@/lib/plotting/ai/templates/analyze-analog.txt?raw";
 import generateScene from "@/lib/plotting/ai/templates/generate-scene.txt?raw";
+import generateDrawPlane from "@/lib/plotting/ai/templates/generate-draw-plane.txt?raw";
+import generateDrawLine from "@/lib/plotting/ai/templates/generate-draw-line.txt?raw";
 import generateAnalog from "@/lib/plotting/ai/templates/generate-analog.txt?raw";
 import schemaPlaneRaw from "@/lib/plotting/ai/templates/schema-plane.txt?raw";
 import schemaLineRaw from "@/lib/plotting/ai/templates/schema-line.txt?raw";
@@ -71,6 +73,47 @@ export function buildGeneratePrompt(opts: {
     .replaceAll("{{SCENE_TYPE_SPACE}}", space);
 }
 
+/** Сценарий «draw»: ветки с урезанными схемами существуют только для прямой и плоскости. */
+export type PlotDrawBranchType = Exclude<PlotSceneType, "space">;
+
+export function isDrawBranchType(sceneType: PlotSceneType): sceneType is PlotDrawBranchType {
+  return sceneType === "line" || sceneType === "plane";
+}
+
+/**
+ * Промпт второго этапа «draw» для прямой или плоскости.
+ * Получает только итог анализа (drawPlan) и пожелания пользователя — без рассуждений и без исходника.
+ */
+export function buildDrawScenePrompt(opts: {
+  sceneType: PlotDrawBranchType;
+  drawPlan: string;
+  userRefinements: string;
+}): string {
+  const template = opts.sceneType === "line" ? generateDrawLine : generateDrawPlane;
+  const refinements = opts.userRefinements.trim() || "(нет — используй только план построения)";
+  const plan = opts.drawPlan.trim();
+  // Функции-заменители: символы «$» в плане и пожеланиях (LaTeX) не должны читаться как шаблоны replace.
+  return template
+    .replaceAll("{{DRAW_PLAN}}", () => plan)
+    .replaceAll("{{USER_REFINEMENTS}}", () => refinements);
+}
+
+export function buildDrawRetrySuffix(validationErrors: string[]): string {
+  return `
+
+ПРЕДЫДУЩИЙ ОТВЕТ СОДЕРЖАЛ ОШИБКИ.
+Ошибки проверки:
+${validationErrors.map((e) => `- ${e}`).join("\n")}
+
+Верни исправленный JSON, строго по схеме из задания и в соответствии с планом построения. Только JSON, без пояснений.`;
+}
+
+export function drawSchemaHint(sceneType: PlotDrawBranchType): string {
+  return sceneType === "line"
+    ? '{ axis?: { min?, max?, name? }, ticks?: "none"|"all", rows: [ { sets: [ { type: "interval"|"ray"|"set", … } ], points: [ { x, label?, open? } ] } ] }'
+    : '{ axes: { xMin, xMax, yMin, yMax }, graphs: [ { id, type: "explicit"|"implicit"|"piecewise"|"points", … } ], points: [ { type: "coords"|"onGraph"|"intersection"|"graphPoint", … } ] }';
+}
+
 export function buildGenerateRetrySuffix(validationErrors: string[]): string {
   return `
 
@@ -81,7 +124,10 @@ ${validationErrors.map((e) => `- ${e}`).join("\n")}
 Верни исправленный JSON, полностью соответствующий схеме и пригодный для рендерера. Только JSON, без пояснений.`;
 }
 
-export function analysisSchemaHint(): string {
+export function analysisSchemaHint(scenario: PlotAiScenario = "draw"): string {
+  if (scenario === "draw") {
+    return `JSON с полями: reasoning (string — рассуждения), canDraw (boolean), sceneType ("plane"|"line"|"space" если canDraw), drawPlan (string — явный вывод, что именно построить, если canDraw), stageData (object, заполняется только для "space").`;
+  }
   return `JSON с полями: canDraw (boolean), sceneType ("plane"|"line"|"space" если canDraw), analysisText (string), stageData (object).`;
 }
 

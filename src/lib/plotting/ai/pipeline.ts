@@ -3,10 +3,17 @@ import { buildSourceTextForPrompt } from "./source-files";
 import {
   analysisSchemaHint,
   buildAnalyzePrompt,
+  buildDrawRetrySuffix,
+  buildDrawScenePrompt,
   buildGeneratePrompt,
   buildGenerateRetrySuffix,
+  drawSchemaHint,
   generateSchemaHint,
+  isDrawBranchType,
+  type PlotDrawBranchType,
 } from "./prompts";
+import { expandLineDraft } from "./draft-line";
+import { expandPlaneDraft } from "./draft-plane";
 import type {
   PlotAiScenario,
   PlotAnalysisResult,
@@ -39,10 +46,75 @@ export async function analyzePlotMaterial(opts: {
     model: opts.model,
     prompt,
     label: `plot-analyze-${opts.scenario}`,
-    schemaHint: analysisSchemaHint(),
+    schemaHint: analysisSchemaHint(opts.scenario),
     images,
-    parse: validatePlotAnalysisJson,
+    // «draw»: без явного вывода «что строить» (drawPlan) анализ не принимается.
+    parse: (value) =>
+      validatePlotAnalysisJson(value, { requireDrawPlan: opts.scenario === "draw" }),
   });
+}
+
+/**
+ * Второй этап «draw» для прямой и плоскости: отдельный промпт и урезанная схема на каждую ветку.
+ * Вход — только итог анализа (drawPlan); ответ модели дополняется кодом до полной сцены.
+ */
+async function generateDrawBranchScene(opts: {
+  model: string;
+  sceneType: PlotDrawBranchType;
+  drawPlan: string;
+  userRefinements: string;
+}): Promise<PlotGenerateSceneResult> {
+  const basePrompt = buildDrawScenePrompt({
+    sceneType: opts.sceneType,
+    drawPlan: opts.drawPlan,
+    userRefinements: opts.userRefinements,
+  });
+  const schemaHint = drawSchemaHint(opts.sceneType);
+
+  const attempt = async (extraSuffix = "") => {
+    const draft = await callTextForJson({
+      model: opts.model,
+      prompt: basePrompt + extraSuffix,
+      label: `plot-generate-draw-${opts.sceneType}`,
+      schemaHint,
+      parse: (v) => v,
+    });
+    return validateDrawDraft(draft, opts.sceneType);
+  };
+
+  let result = await attempt();
+  if (!result.valid) {
+    result = await attempt(buildDrawRetrySuffix(result.errors));
+  }
+  if (!result.valid) {
+    throw new Error(`Не удалось получить корректную сцену:\n${result.errors.join("\n")}`);
+  }
+  return { scene: result.scene };
+}
+
+/** Урезанный ответ модели → полная сцена → проверка тем же валидатором, что и раньше. */
+function validateDrawDraft(
+  draft: unknown,
+  sceneType: PlotDrawBranchType,
+): { valid: true; errors: []; scene: unknown } | { valid: false; errors: string[] } {
+  try {
+    const expanded = sceneType === "line" ? expandLineDraft(draft) : expandPlaneDraft(draft);
+    // Ошибки содержимого черновика — сразу в повторный запрос, без построения.
+    if (expanded.errors.length || expanded.scene == null) {
+      return {
+        valid: false,
+        errors: expanded.errors.length ? expanded.errors : ["Ответ не содержит чертежа"],
+      };
+    }
+    const { valid, errors } = validatePlotSceneJson({ scene: expanded.scene }, sceneType);
+    if (!valid) return { valid: false, errors };
+    return { valid: true, errors: [], scene: expanded.scene };
+  } catch (e) {
+    return {
+      valid: false,
+      errors: [e instanceof Error ? e.message : "Некорректный формат ответа"],
+    };
+  }
 }
 
 export async function generatePlotScene(opts: {
@@ -57,6 +129,16 @@ export async function generatePlotScene(opts: {
   const sceneType = opts.analysis.sceneType;
   if (!sceneType) {
     throw new Error("Анализ не содержит sceneType");
+  }
+
+  // Прямая и плоскость: своя ветка, на вход — только итог анализа. Пространство — прежний путь.
+  if (opts.scenario === "draw" && isDrawBranchType(sceneType)) {
+    return generateDrawBranchScene({
+      model: opts.model,
+      sceneType,
+      drawPlan: opts.analysis.drawPlan?.trim() || opts.analysis.analysisText,
+      userRefinements: opts.userRefinements,
+    });
   }
 
   const sourceText = buildSourceTextForPrompt(opts.manualText, opts.uploadedSourceText);

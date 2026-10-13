@@ -20,7 +20,11 @@ export function normalizeLineAxisRows<T extends {
 }>(line: T): T {
   const sets = line.sets ?? [];
   const rowCount = line.axisRowCount ?? 1;
-  const usedRows = new Set(sets.map((s) => s.axisRow ?? 0));
+  // Ряды занимают и множества, и отдельные точки: иначе несколько прямых только с точками схлопнутся в одну.
+  const usedRows = new Set([
+    ...sets.map((s) => s.axisRow ?? 0),
+    ...(line.points ?? []).map((p) => p.axisRow ?? 0),
+  ]);
 
   const shouldCollapse =
     rowCount > 1 && (usedRows.size <= 1 || (usedRows.has(1) && !usedRows.has(0)));

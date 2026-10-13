@@ -16,7 +16,25 @@ import {
 } from "./sanitize-input";
 import { expandAiSpaceScene } from "../space/import-ai-space";
 import { createSpacePlotScene } from "../scene";
-import type { AxisSpec, GridSpec, PlotScene } from "../types";
+import type { AxisSpec, GridSpec, PlotScene, PointSolution } from "../types";
+
+/**
+ * Подписи отдельных решений точки (например, A и B для двух точек пересечения).
+ * Количество решений заранее неизвестно, поэтому подписи кладутся как индивидуальный стиль
+ * решений: buildPoint переносит `style` по номеру решения из предыдущего `built`
+ * и затем заменяет координаты на найденные.
+ */
+function solutionLabelStubs(labels: unknown): PointSolution[] | null {
+  if (!Array.isArray(labels) || !labels.length) return null;
+  return labels.map((label) => ({
+    x: 0,
+    y: 0,
+    displayX: "",
+    displayY: "",
+    show: true,
+    style: { label: typeof label === "string" ? label : "" },
+  }));
+}
 
 export function mergeAiScene(raw: unknown): PlotScene {
   const cleaned = stripAiSceneMeta(raw);
@@ -127,18 +145,19 @@ export function mergeAiScene(raw: unknown): PlotScene {
       };
     }),
     points: (input.points ?? []).map((point, position) => {
-      const index = point.index ?? position + 1;
+      const { solutionLabels, ...pointRest } = point as typeof point & { solutionLabels?: unknown };
+      const index = pointRest.index ?? position + 1;
       const defaults = createPoint(index);
       return {
         ...defaults,
-        ...point,
+        ...pointRest,
         index,
-        math: { ...defaults.math, ...point.math },
+        math: { ...defaults.math, ...pointRest.math },
         style: {
           ...defaults.style,
-          ...normalizeAiPointStyle(point.style as unknown as Record<string, unknown>, defaults.style, index),
+          ...normalizeAiPointStyle(pointRest.style as unknown as Record<string, unknown>, defaults.style, index),
         },
-        built: null,
+        built: solutionLabelStubs(solutionLabels),
         dirty: true,
         error: null,
       };

@@ -17,15 +17,38 @@ function parseSceneType(value: unknown): PlotSceneType {
   throw new Error('Поле sceneType должно быть "plane", "line" или "space"');
 }
 
-export function validatePlotAnalysisJson(value: unknown): PlotAnalysisResult {
+/** Модель может вернуть план списком строк — склеиваем в текст. */
+function planToString(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .join("\n");
+  }
+  return typeof value === "string" ? value.trim() : "";
+}
+
+export interface ValidateAnalysisOptions {
+  /** Сценарий «draw»: без явного вывода «что построить» ответ анализа не принимается. */
+  requireDrawPlan?: boolean;
+}
+
+export function validatePlotAnalysisJson(
+  value: unknown,
+  options: ValidateAnalysisOptions = {},
+): PlotAnalysisResult {
   const root = asObject(value, "корень");
   const canDraw = Boolean(root.canDraw);
-  const analysisText = asString(root.analysisText ?? root.analysis ?? "", "analysisText");
+  // `reasoning` — имя поля в сценарии «draw»; `analysisText` остаётся для остальных сценариев.
+  const analysisText = asString(root.reasoning ?? root.analysisText ?? root.analysis ?? "", "reasoning");
+  const drawPlan = planToString(root.drawPlan);
 
   if (!canDraw) {
     return {
       canDraw: false,
       analysisText: analysisText || "Построить изображение средствами инструмента нельзя.",
+      drawPlan: drawPlan || undefined,
       stageData: {},
     };
   }
@@ -33,5 +56,17 @@ export function validatePlotAnalysisJson(value: unknown): PlotAnalysisResult {
   const sceneType = parseSceneType(root.sceneType);
   const stageData = asObject(root.stageData ?? {}, "stageData");
 
-  return { canDraw: true, sceneType, analysisText, stageData };
+  if (options.requireDrawPlan && drawPlan.length < 10) {
+    throw new Error(
+      'Поле drawPlan обязательно: сформулируй явный итог анализа — что именно нужно построить, со всеми данными',
+    );
+  }
+
+  return {
+    canDraw: true,
+    sceneType,
+    analysisText,
+    drawPlan: drawPlan || undefined,
+    stageData,
+  };
 }

@@ -1,0 +1,426 @@
+/**
+ * Урезанная схема координатной плоскости → полная JSON-сцена.
+ *
+ * Модель задаёт только содержание: пределы осей, графики и точки (в том числе точки,
+ * зависящие от графиков). Цвета, толщины, сетка, форма области, шаги и прочие
+ * технические значения подставляются здесь.
+ */
+import { evaluateNumber } from "../math-expr";
+import {
+  enumKey,
+  flag,
+  isRecord,
+  niceStep,
+  niceStepPi,
+  refKey,
+  text,
+  unwrapDraft,
+  type DraftExpansion,
+  type Rec,
+} from "./draft-common";
+
+type GraphType = "explicit" | "implicit" | "piecewise" | "points";
+
+interface GraphRef {
+  id: string;
+  /** Как график назван в черновике. */
+  ref: string;
+  type: GraphType;
+  anchorCount: number;
+}
+
+const GRAPH_TYPE_ALIASES: Record<string, GraphType> = {
+  explicit: "explicit",
+  function: "explicit",
+  implicit: "implicit",
+  equation: "implicit",
+  piecewise: "piecewise",
+  points: "points",
+  throughpoints: "points",
+  qualitative: "points",
+  smooth: "points",
+  piecewiselinear: "points",
+  polyline: "points",
+};
+
+type PointType = "coords" | "onGraph" | "intersection" | "graphPoint";
+
+const POINT_TYPE_ALIASES: Record<string, PointType> = {
+  coords: "coords",
+  plane: "coords",
+  xy: "coords",
+  ongraph: "onGraph",
+  graph: "onGraph",
+  intersection: "intersection",
+  intersect: "intersection",
+  graphpoint: "graphPoint",
+  anchor: "graphPoint",
+  vertex: "graphPoint",
+};
+
+const ASPECT_RATIO_LIMIT = 3;
+const MAX_PALETTE_GROUP = 6;
+
+function inferGraphType(graph: Rec): GraphType | null {
+  const declared = enumKey(graph.type ?? graph.kind);
+  if (declared) return GRAPH_TYPE_ALIASES[declared] ?? null;
+  if ("expression" in graph) return "explicit";
+  if ("equation" in graph) return "implicit";
+  if ("pieces" in graph) return "piecewise";
+  if ("through" in graph || "points" in graph) return "points";
+  return null;
+}
+
+function inferPointType(point: Rec): PointType | null {
+  const declared = enumKey(point.type ?? point.mode ?? point.at);
+  if (declared) return POINT_TYPE_ALIASES[declared] ?? null;
+  if ("graphs" in point) return "intersection";
+  if ("graph" in point && "index" in point) return "graphPoint";
+  if ("graph" in point) return "onGraph";
+  if ("x" in point && "y" in point) return "coords";
+  return null;
+}
+
+/** y = f(x) → f(x): модель иногда пишет левую часть. */
+function stripYEquals(expression: string, yName: string): string {
+  const escaped = yName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`^\\s*(?:${escaped}|f\\s*\\(\\s*x\\s*\\))\\s*=(?!=)\\s*`);
+  return expression.replace(pattern, "").trim();
+}
+
+function parseNumber(raw: string): number | null {
+  try {
+    return evaluateNumber(raw);
+  } catch {
+    return null;
+  }
+}
+
+function axisBound(
+  axes: Rec,
+  key: string,
+  errors: string[],
+): { raw: string; value: number } | null {
+  const raw = text(axes[key]);
+  if (!raw) {
+    errors.push(`axes.${key}: не задан предел оси`);
+    return null;
+  }
+  const value = parseNumber(raw);
+  if (value === null) {
+    errors.push(`axes.${key}: «${raw}» не является числом`);
+    return null;
+  }
+  return { raw, value };
+}
+
+function labelFormat(value: unknown): "number" | "fraction" | "pi" {
+  const key = enumKey(value);
+  return key === "pi" || key === "fraction" ? key : "number";
+}
+
+function readAnchors(graph: Rec, where: string, errors: string[]) {
+  const list = graph.through ?? graph.points;
+  if (!Array.isArray(list) || list.length < 2) {
+    errors.push(`${where}: для графика по точкам нужно минимум 2 точки в through`);
+    return [];
+  }
+  const anchors: Array<{ x: string; y: string; kind: "plain" | "min" | "max" }> = [];
+  list.forEach((item, i) => {
+    let x = "";
+    let y = "";
+    let extremum = "";
+    if (Array.isArray(item)) {
+      x = text(item[0]);
+      y = text(item[1]);
+    } else if (isRecord(item)) {
+      x = text(item.x);
+      y = text(item.y);
+      extremum = enumKey(item.extremum ?? item.kind);
+    }
+    if (!x || !y) {
+      errors.push(`${where}: точка ${i + 1} графика должна иметь обе координаты x и y`);
+      return;
+    }
+    anchors.push({ x, y, kind: extremum === "min" || extremum === "max" ? extremum : "plain" });
+  });
+  return anchors;
+}
+
+export function expandPlaneDraft(raw: unknown): DraftExpansion {
+  const errors: string[] = [];
+  const root = unwrapDraft(raw, ["axes", "axis", "graphs", "points"]);
+  if (!root) return { scene: null, errors: ["Ответ должен быть JSON-объектом"] };
+
+  // ── Оси ────────────────────────────────────────────────────────────────
+  const axes = isRecord(root.axes) ? root.axes : isRecord(root.axis) ? root.axis : {};
+  const xMin = axisBound(axes, "xMin", errors);
+  const xMax = axisBound(axes, "xMax", errors);
+  const yMin = axisBound(axes, "yMin", errors);
+  const yMax = axisBound(axes, "yMax", errors);
+  if (xMin && xMax && !(xMax.value > xMin.value)) errors.push("axes: xMax должен быть больше xMin");
+  if (yMin && yMax && !(yMax.value > yMin.value)) errors.push("axes: yMax должен быть больше yMin");
+
+  const xName = text(axes.xName) || "x";
+  const yName = text(axes.yName) || "y";
+  const xFormat = labelFormat(axes.xLabelFormat);
+  const yFormat = labelFormat(axes.yLabelFormat);
+
+  const axesOk = Boolean(xMin && xMax && yMin && yMax);
+  const xSpan = axesOk ? xMax!.value - xMin!.value : 0;
+  const ySpan = axesOk ? yMax!.value - yMin!.value : 0;
+  const xStep =
+    text(axes.xStep) ||
+    (axesOk
+      ? xFormat === "pi"
+        ? niceStepPi(xMin!.value, xMax!.value)
+        : niceStep(xMin!.value, xMax!.value)
+      : "1");
+  const yStep =
+    text(axes.yStep) ||
+    (axesOk
+      ? yFormat === "pi"
+        ? niceStepPi(yMin!.value, yMax!.value)
+        : niceStep(yMin!.value, yMax!.value)
+      : "1");
+  // Квадратная сетка, пока масштабы осей сопоставимы; иначе независимые шкалы.
+  const ratio = axesOk && ySpan > 0 ? xSpan / ySpan : 1;
+  const equalScale = ratio <= ASPECT_RATIO_LIMIT && ratio >= 1 / ASPECT_RATIO_LIMIT;
+
+  // ── Графики ────────────────────────────────────────────────────────────
+  const graphsRaw = Array.isArray(root.graphs) ? root.graphs : [];
+  const graphRefs: GraphRef[] = [];
+  const graphs: unknown[] = [];
+
+  graphsRaw.forEach((item, i) => {
+    const n = i + 1;
+    const where = `График ${n}`;
+    if (!isRecord(item)) {
+      errors.push(`${where}: должен быть объектом`);
+      return;
+    }
+    const type = inferGraphType(item);
+    if (!type) {
+      errors.push(
+        `${where}: не удалось определить тип; допустимо explicit | implicit | piecewise | points`,
+      );
+      return;
+    }
+
+    const id = `ai-graph-${n}`;
+    const ref = refKey(item.id) || `g${n}`;
+    const math: Rec = {
+      kind: "explicit",
+      expression: "",
+      equation: "",
+      domainFrom: text((isRecord(item.domain) ? item.domain.from : undefined) ?? item.domainFrom),
+      domainTo: text((isRecord(item.domain) ? item.domain.to : undefined) ?? item.domainTo),
+    };
+    let anchorCount = 0;
+
+    if (type === "explicit") {
+      const expression = stripYEquals(text(item.expression), yName);
+      if (!expression) errors.push(`${where}: для explicit нужно поле expression (правая часть y = …)`);
+      if (expression.includes("=")) {
+        errors.push(`${where}: в expression должна быть только правая часть без знака «=»`);
+      }
+      math.kind = "explicit";
+      math.expression = expression;
+    } else if (type === "implicit") {
+      const equation = text(item.equation);
+      if (!equation.includes("=")) errors.push(`${where}: для implicit нужно поле equation со знаком «=»`);
+      math.kind = "implicit";
+      math.equation = equation;
+    } else if (type === "piecewise") {
+      const pieces = Array.isArray(item.pieces) ? item.pieces : [];
+      if (!pieces.length) errors.push(`${where}: для piecewise нужен массив pieces`);
+      math.kind = "piecewise";
+      math.pieces = pieces.filter(isRecord).map((piece) => ({
+        expression: stripYEquals(text(piece.expression), yName),
+        from: text(piece.from),
+        to: text(piece.to),
+        includeFrom: flag(piece.includeFrom, true),
+        includeTo: flag(piece.includeTo, false),
+      }));
+    } else {
+      const anchors = readAnchors(item, where, errors);
+      anchorCount = anchors.length;
+      const connect = enumKey(item.connect ?? item.type ?? item.kind);
+      const segments = connect === "segments" || connect === "piecewiselinear" || connect === "polyline";
+      math.kind = segments ? "piecewise-linear" : "qualitative";
+      math.anchors = anchors;
+      math.extendEnds = flag(item.extendEnds, false);
+    }
+
+    graphRefs.push({ id, ref, type, anchorCount });
+    graphs.push({
+      id,
+      index: n,
+      math,
+      style: {
+        colorGroup: ((n - 1) % MAX_PALETTE_GROUP) + 1,
+        width: null,
+        label: text(item.label),
+        visible: true,
+      },
+    });
+  });
+
+  function findGraph(value: unknown, where: string): GraphRef | null {
+    const key = refKey(value);
+    // Ссылка — id из черновика ("g1") либо порядковый номер графика (1, 2, …).
+    const found = key
+      ? (graphRefs.find((g) => g.ref === key) ??
+        graphRefs.find((g) => g.id === `ai-graph-${Number(key)}`))
+      : undefined;
+    if (!found) {
+      const known = graphRefs.map((g) => g.ref).join(", ") || "графиков нет";
+      errors.push(`${where}: график «${key}» не найден (доступны: ${known})`);
+      return null;
+    }
+    return found;
+  }
+
+  // ── Точки ──────────────────────────────────────────────────────────────
+  const pointsRaw = Array.isArray(root.points) ? root.points : [];
+  const points: unknown[] = [];
+
+  pointsRaw.forEach((item, i) => {
+    const n = i + 1;
+    const where = `Точка ${n}`;
+    if (!isRecord(item)) {
+      errors.push(`${where}: должна быть объектом`);
+      return;
+    }
+    const type = inferPointType(item);
+    if (!type) {
+      errors.push(
+        `${where}: не удалось определить тип; допустимо coords | onGraph | intersection | graphPoint`,
+      );
+      return;
+    }
+
+    const math: Rec = {
+      mode: "plane",
+      x: "",
+      y: "",
+      graphId: null,
+      graphIdB: null,
+      anchorIndex: null,
+    };
+    let solutionLabels: string[] | undefined;
+
+    if (type === "coords") {
+      const x = text(item.x);
+      const y = text(item.y);
+      if (!x || !y) errors.push(`${where}: для coords нужны обе координаты x и y`);
+      math.mode = "plane";
+      math.x = x;
+      math.y = y;
+      const vx = parseNumber(x);
+      const vy = parseNumber(y);
+      if (vx !== null && xMin && xMax && (vx < xMin.value || vx > xMax.value)) {
+        errors.push(`${where}: x=${x} вне пределов оси (${xMin.raw}…${xMax.raw}) — расширь оси`);
+      }
+      if (vy !== null && yMin && yMax && (vy < yMin.value || vy > yMax.value)) {
+        errors.push(`${where}: y=${y} вне пределов оси (${yMin.raw}…${yMax.raw}) — расширь оси`);
+      }
+    } else if (type === "onGraph") {
+      const graph = findGraph(item.graph, where);
+      const x = text(item.x);
+      if (!x) errors.push(`${where}: для onGraph нужна координата x`);
+      math.mode = "onGraph";
+      math.x = x;
+      math.graphId = graph?.id ?? null;
+    } else if (type === "intersection") {
+      const pair = Array.isArray(item.graphs) ? item.graphs : [item.graphA ?? item.graph, item.graphB];
+      const first = findGraph(pair[0], where);
+      const second = findGraph(pair[1], where);
+      if (first && second && first.id === second.id) {
+        errors.push(`${where}: для intersection нужны два разных графика`);
+      }
+      math.mode = "intersection";
+      math.graphId = first?.id ?? null;
+      math.graphIdB = second?.id ?? null;
+      if (Array.isArray(item.labels)) {
+        solutionLabels = item.labels.map((label) => text(label));
+      }
+    } else {
+      const graph = findGraph(item.graph, where);
+      const index = Number(item.index);
+      if (graph && graph.type !== "points") {
+        errors.push(`${where}: graphPoint работает только с графиком типа points`);
+      } else if (graph && !(Number.isInteger(index) && index >= 1 && index <= graph.anchorCount)) {
+        errors.push(
+          `${where}: index должен быть номером точки графика от 1 до ${graph.anchorCount}`,
+        );
+      }
+      math.mode = "anchor";
+      math.graphId = graph?.id ?? null;
+      math.anchorIndex = Number.isInteger(index) ? index - 1 : null;
+    }
+
+    const label = text(item.label);
+    const dropX = flag(item.dropToXAxis, false);
+    const dropY = flag(item.dropToYAxis, false);
+    const labelOnAxes = flag(item.labelOnAxes, false);
+    // Подпись «A» либо значения на осях уже называют точку — координаты рядом не дублируем.
+    const showCoords = flag(item.showCoords, !label && !(labelOnAxes && (dropX || dropY)));
+
+    const rawPoint: Rec = {
+      index: n,
+      math,
+      style: {
+        open: flag(item.open, false),
+        label,
+        showCoords,
+        visible: true,
+        projectX: dropX,
+        projectY: dropY,
+        labelProjectionX: dropX && labelOnAxes,
+        labelProjectionY: dropY && labelOnAxes,
+      },
+    };
+    if (solutionLabels) rawPoint.solutionLabels = solutionLabels;
+    points.push(rawPoint);
+  });
+
+  if (!graphs.length && !points.length) {
+    errors.push("Черновик пуст: нет ни одного графика или точки");
+  }
+
+  const scene = {
+    version: 1,
+    space: "plane",
+    axisScaleMode: equalScale ? "equal" : "independent",
+    plotAspectRatio: "4:3",
+    xAxis: {
+      name: xName,
+      unit: "",
+      min: xMin?.raw ?? "",
+      max: xMax?.raw ?? "",
+      gridStep: xStep,
+      labelStep: "",
+      labelFormat: xFormat,
+      markRule: "all",
+      selectedMarks: "",
+    },
+    yAxis: {
+      name: yName,
+      unit: "",
+      min: yMin?.raw ?? "",
+      max: yMax?.raw ?? "",
+      gridStep: yStep,
+      labelStep: "",
+      labelFormat: yFormat,
+      markRule: "all",
+      selectedMarks: "",
+    },
+    grid: { visible: flag(root.grid, true) },
+    graphs,
+    points,
+    tangents: [],
+  };
+
+  return { scene, errors };
+}

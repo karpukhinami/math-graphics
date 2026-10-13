@@ -199,7 +199,27 @@ export function PlotAiPanel() {
             <CardTitle className="text-base">Результат анализа</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Markdown>{analysis.analysisText}</Markdown>
+            {analysis.drawPlan ? (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Что будет построено</p>
+                  {/* Обычный текст, не Markdown: в записи math.js «*» и «^» иначе станут разметкой. */}
+                  <pre className="whitespace-pre-wrap font-sans text-sm">{analysis.drawPlan}</pre>
+                </div>
+                <Collapsible>
+                  <CollapsibleTrigger asChild>
+                    <Button type="button" variant="ghost" size="sm" className="px-0 text-xs">
+                      Ход рассуждений
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-2">
+                    <Markdown>{analysis.analysisText}</Markdown>
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+            ) : (
+              <Markdown>{analysis.analysisText}</Markdown>
+            )}
             {analysis.canDraw && analysis.sceneType && (
               <p className="text-xs text-muted-foreground">
                 Тип сцены:{" "}

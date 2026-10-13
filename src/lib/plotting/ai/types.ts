@@ -7,10 +7,19 @@ export type PlotSceneType = "plane" | "line" | "space";
 
 export interface PlotAnalysisResult {
   canDraw: boolean;
+  /** Тип сцены, определённый на первом этапе; от него зависит ветка второго этапа. */
   sceneType?: PlotSceneType;
-  /** Markdown + LaTeX для пользователя. */
+  /**
+   * Рассуждения модели (Markdown + LaTeX). Показываются пользователю и нужны для отладки;
+   * в сценарии «draw» на второй этап не передаются.
+   */
   analysisText: string;
-  /** Структурированные данные для второго этапа. */
+  /**
+   * Итог анализа: однозначная инструкция, что именно нужно построить (со всеми данными).
+   * Сценарий «draw»: единственный вход второго этапа для прямой и плоскости.
+   */
+  drawPlan?: string;
+  /** Структурированные данные (для space и сценариев reproduce/analog). */
   stageData: Record<string, unknown>;
 }
 
