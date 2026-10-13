@@ -9,240 +9,73 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WorkspaceRouteImport } from './routes/workspace'
-import { Route as View_allRouteImport } from './routes/view_all'
-import { Route as StylesRouteImport } from './routes/styles'
-import { Route as PromptsRouteImport } from './routes/prompts'
-import { Route as PlottingRouteImport } from './routes/plotting'
-import { Route as DesignProfilesRouteImport } from './routes/design-profiles'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiLlmRouteImport } from './routes/api/llm'
-import { Route as ApiGenerateImageRouteImport } from './routes/api/generate-image'
-import { Route as ApiExtractDocumentTextRouteImport } from './routes/api/extract-document-text'
-import { Route as ApiArchiveStatusRouteImport } from './routes/api/archive-status'
-import { Route as ApiArchiveImageRouteImport } from './routes/api/archive-image'
-import { Route as ApiArchiveFeedbackRouteImport } from './routes/api/archive-feedback'
+import { Route as ApiExtractDocumentRouteImport } from './routes/api/extract-document'
+import { Route as ApiAiTextRouteImport } from './routes/api/ai/text'
+import { Route as ApiAiImageRouteImport } from './routes/api/ai/image'
 
-const WorkspaceRoute = WorkspaceRouteImport.update({
-  id: '/workspace',
-  path: '/workspace',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const View_allRoute = View_allRouteImport.update({
-  id: '/view_all',
-  path: '/view_all',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StylesRoute = StylesRouteImport.update({
-  id: '/styles',
-  path: '/styles',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PromptsRoute = PromptsRouteImport.update({
-  id: '/prompts',
-  path: '/prompts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PlottingRoute = PlottingRouteImport.update({
-  id: '/plotting',
-  path: '/plotting',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DesignProfilesRoute = DesignProfilesRouteImport.update({
-  id: '/design-profiles',
-  path: '/design-profiles',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiLlmRoute = ApiLlmRouteImport.update({
-  id: '/api/llm',
-  path: '/api/llm',
+const ApiExtractDocumentRoute = ApiExtractDocumentRouteImport.update({
+  id: '/api/extract-document',
+  path: '/api/extract-document',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiGenerateImageRoute = ApiGenerateImageRouteImport.update({
-  id: '/api/generate-image',
-  path: '/api/generate-image',
+const ApiAiTextRoute = ApiAiTextRouteImport.update({
+  id: '/api/ai/text',
+  path: '/api/ai/text',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiExtractDocumentTextRoute = ApiExtractDocumentTextRouteImport.update({
-  id: '/api/extract-document-text',
-  path: '/api/extract-document-text',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiArchiveStatusRoute = ApiArchiveStatusRouteImport.update({
-  id: '/api/archive-status',
-  path: '/api/archive-status',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiArchiveImageRoute = ApiArchiveImageRouteImport.update({
-  id: '/api/archive-image',
-  path: '/api/archive-image',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiArchiveFeedbackRoute = ApiArchiveFeedbackRouteImport.update({
-  id: '/api/archive-feedback',
-  path: '/api/archive-feedback',
+const ApiAiImageRoute = ApiAiImageRouteImport.update({
+  id: '/api/ai/image',
+  path: '/api/ai/image',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/design-profiles': typeof DesignProfilesRoute
-  '/plotting': typeof PlottingRoute
-  '/prompts': typeof PromptsRoute
-  '/styles': typeof StylesRoute
-  '/view_all': typeof View_allRoute
-  '/workspace': typeof WorkspaceRoute
-  '/api/archive-feedback': typeof ApiArchiveFeedbackRoute
-  '/api/archive-image': typeof ApiArchiveImageRoute
-  '/api/archive-status': typeof ApiArchiveStatusRoute
-  '/api/extract-document-text': typeof ApiExtractDocumentTextRoute
-  '/api/generate-image': typeof ApiGenerateImageRoute
-  '/api/llm': typeof ApiLlmRoute
+  '/api/extract-document': typeof ApiExtractDocumentRoute
+  '/api/ai/image': typeof ApiAiImageRoute
+  '/api/ai/text': typeof ApiAiTextRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/design-profiles': typeof DesignProfilesRoute
-  '/plotting': typeof PlottingRoute
-  '/prompts': typeof PromptsRoute
-  '/styles': typeof StylesRoute
-  '/view_all': typeof View_allRoute
-  '/workspace': typeof WorkspaceRoute
-  '/api/archive-feedback': typeof ApiArchiveFeedbackRoute
-  '/api/archive-image': typeof ApiArchiveImageRoute
-  '/api/archive-status': typeof ApiArchiveStatusRoute
-  '/api/extract-document-text': typeof ApiExtractDocumentTextRoute
-  '/api/generate-image': typeof ApiGenerateImageRoute
-  '/api/llm': typeof ApiLlmRoute
+  '/api/extract-document': typeof ApiExtractDocumentRoute
+  '/api/ai/image': typeof ApiAiImageRoute
+  '/api/ai/text': typeof ApiAiTextRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/design-profiles': typeof DesignProfilesRoute
-  '/plotting': typeof PlottingRoute
-  '/prompts': typeof PromptsRoute
-  '/styles': typeof StylesRoute
-  '/view_all': typeof View_allRoute
-  '/workspace': typeof WorkspaceRoute
-  '/api/archive-feedback': typeof ApiArchiveFeedbackRoute
-  '/api/archive-image': typeof ApiArchiveImageRoute
-  '/api/archive-status': typeof ApiArchiveStatusRoute
-  '/api/extract-document-text': typeof ApiExtractDocumentTextRoute
-  '/api/generate-image': typeof ApiGenerateImageRoute
-  '/api/llm': typeof ApiLlmRoute
+  '/api/extract-document': typeof ApiExtractDocumentRoute
+  '/api/ai/image': typeof ApiAiImageRoute
+  '/api/ai/text': typeof ApiAiTextRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/design-profiles'
-    | '/plotting'
-    | '/prompts'
-    | '/styles'
-    | '/view_all'
-    | '/workspace'
-    | '/api/archive-feedback'
-    | '/api/archive-image'
-    | '/api/archive-status'
-    | '/api/extract-document-text'
-    | '/api/generate-image'
-    | '/api/llm'
+  fullPaths: '/' | '/api/extract-document' | '/api/ai/image' | '/api/ai/text'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/design-profiles'
-    | '/plotting'
-    | '/prompts'
-    | '/styles'
-    | '/view_all'
-    | '/workspace'
-    | '/api/archive-feedback'
-    | '/api/archive-image'
-    | '/api/archive-status'
-    | '/api/extract-document-text'
-    | '/api/generate-image'
-    | '/api/llm'
+  to: '/' | '/api/extract-document' | '/api/ai/image' | '/api/ai/text'
   id:
     | '__root__'
     | '/'
-    | '/design-profiles'
-    | '/plotting'
-    | '/prompts'
-    | '/styles'
-    | '/view_all'
-    | '/workspace'
-    | '/api/archive-feedback'
-    | '/api/archive-image'
-    | '/api/archive-status'
-    | '/api/extract-document-text'
-    | '/api/generate-image'
-    | '/api/llm'
+    | '/api/extract-document'
+    | '/api/ai/image'
+    | '/api/ai/text'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  DesignProfilesRoute: typeof DesignProfilesRoute
-  PlottingRoute: typeof PlottingRoute
-  PromptsRoute: typeof PromptsRoute
-  StylesRoute: typeof StylesRoute
-  View_allRoute: typeof View_allRoute
-  WorkspaceRoute: typeof WorkspaceRoute
-  ApiArchiveFeedbackRoute: typeof ApiArchiveFeedbackRoute
-  ApiArchiveImageRoute: typeof ApiArchiveImageRoute
-  ApiArchiveStatusRoute: typeof ApiArchiveStatusRoute
-  ApiExtractDocumentTextRoute: typeof ApiExtractDocumentTextRoute
-  ApiGenerateImageRoute: typeof ApiGenerateImageRoute
-  ApiLlmRoute: typeof ApiLlmRoute
+  ApiExtractDocumentRoute: typeof ApiExtractDocumentRoute
+  ApiAiImageRoute: typeof ApiAiImageRoute
+  ApiAiTextRoute: typeof ApiAiTextRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/workspace': {
-      id: '/workspace'
-      path: '/workspace'
-      fullPath: '/workspace'
-      preLoaderRoute: typeof WorkspaceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/view_all': {
-      id: '/view_all'
-      path: '/view_all'
-      fullPath: '/view_all'
-      preLoaderRoute: typeof View_allRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/styles': {
-      id: '/styles'
-      path: '/styles'
-      fullPath: '/styles'
-      preLoaderRoute: typeof StylesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/prompts': {
-      id: '/prompts'
-      path: '/prompts'
-      fullPath: '/prompts'
-      preLoaderRoute: typeof PromptsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/plotting': {
-      id: '/plotting'
-      path: '/plotting'
-      fullPath: '/plotting'
-      preLoaderRoute: typeof PlottingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/design-profiles': {
-      id: '/design-profiles'
-      path: '/design-profiles'
-      fullPath: '/design-profiles'
-      preLoaderRoute: typeof DesignProfilesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -250,46 +83,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/llm': {
-      id: '/api/llm'
-      path: '/api/llm'
-      fullPath: '/api/llm'
-      preLoaderRoute: typeof ApiLlmRouteImport
+    '/api/extract-document': {
+      id: '/api/extract-document'
+      path: '/api/extract-document'
+      fullPath: '/api/extract-document'
+      preLoaderRoute: typeof ApiExtractDocumentRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/generate-image': {
-      id: '/api/generate-image'
-      path: '/api/generate-image'
-      fullPath: '/api/generate-image'
-      preLoaderRoute: typeof ApiGenerateImageRouteImport
+    '/api/ai/text': {
+      id: '/api/ai/text'
+      path: '/api/ai/text'
+      fullPath: '/api/ai/text'
+      preLoaderRoute: typeof ApiAiTextRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/extract-document-text': {
-      id: '/api/extract-document-text'
-      path: '/api/extract-document-text'
-      fullPath: '/api/extract-document-text'
-      preLoaderRoute: typeof ApiExtractDocumentTextRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/archive-status': {
-      id: '/api/archive-status'
-      path: '/api/archive-status'
-      fullPath: '/api/archive-status'
-      preLoaderRoute: typeof ApiArchiveStatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/archive-image': {
-      id: '/api/archive-image'
-      path: '/api/archive-image'
-      fullPath: '/api/archive-image'
-      preLoaderRoute: typeof ApiArchiveImageRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/archive-feedback': {
-      id: '/api/archive-feedback'
-      path: '/api/archive-feedback'
-      fullPath: '/api/archive-feedback'
-      preLoaderRoute: typeof ApiArchiveFeedbackRouteImport
+    '/api/ai/image': {
+      id: '/api/ai/image'
+      path: '/api/ai/image'
+      fullPath: '/api/ai/image'
+      preLoaderRoute: typeof ApiAiImageRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -297,18 +109,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  DesignProfilesRoute: DesignProfilesRoute,
-  PlottingRoute: PlottingRoute,
-  PromptsRoute: PromptsRoute,
-  StylesRoute: StylesRoute,
-  View_allRoute: View_allRoute,
-  WorkspaceRoute: WorkspaceRoute,
-  ApiArchiveFeedbackRoute: ApiArchiveFeedbackRoute,
-  ApiArchiveImageRoute: ApiArchiveImageRoute,
-  ApiArchiveStatusRoute: ApiArchiveStatusRoute,
-  ApiExtractDocumentTextRoute: ApiExtractDocumentTextRoute,
-  ApiGenerateImageRoute: ApiGenerateImageRoute,
-  ApiLlmRoute: ApiLlmRoute,
+  ApiExtractDocumentRoute: ApiExtractDocumentRoute,
+  ApiAiImageRoute: ApiAiImageRoute,
+  ApiAiTextRoute: ApiAiTextRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

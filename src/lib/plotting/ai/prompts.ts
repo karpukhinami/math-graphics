@@ -1,17 +1,17 @@
 /** Сборка промптов режима ИИ-рисования из отдельных файлов. */
-import sharedSourceRules from "@/data/prompts/plotting/shared-source-rules.txt?raw";
-import analyzeDraw from "@/data/prompts/plotting/analyze-draw.txt?raw";
-import analyzeReproduce from "@/data/prompts/plotting/analyze-reproduce.txt?raw";
-import analyzeAnalog from "@/data/prompts/plotting/analyze-analog.txt?raw";
-import generateScene from "@/data/prompts/plotting/generate-scene.txt?raw";
-import generateAnalog from "@/data/prompts/plotting/generate-analog.txt?raw";
-import schemaPlaneRaw from "@/data/prompts/plotting/schema-plane.txt?raw";
-import schemaLineRaw from "@/data/prompts/plotting/schema-line.txt?raw";
-import schemaSpaceAiRaw from "@/data/prompts/plotting/schema-space-ai.txt?raw";
-import spaceFiguresGuide from "@/data/prompts/plotting/space-figures-guide.txt?raw";
-import spaceConstructionsGuide from "@/data/prompts/plotting/space-constructions-guide.txt?raw";
-import lineSetsRules from "@/data/prompts/plotting/line-sets-rules.txt?raw";
-import colorGroupsRules from "@/data/prompts/plotting/color-groups.txt?raw";
+import sharedSourceRules from "@/lib/plotting/ai/templates/shared-source-rules.txt?raw";
+import analyzeDraw from "@/lib/plotting/ai/templates/analyze-draw.txt?raw";
+import analyzeReproduce from "@/lib/plotting/ai/templates/analyze-reproduce.txt?raw";
+import analyzeAnalog from "@/lib/plotting/ai/templates/analyze-analog.txt?raw";
+import generateScene from "@/lib/plotting/ai/templates/generate-scene.txt?raw";
+import generateAnalog from "@/lib/plotting/ai/templates/generate-analog.txt?raw";
+import schemaPlaneRaw from "@/lib/plotting/ai/templates/schema-plane.txt?raw";
+import schemaLineRaw from "@/lib/plotting/ai/templates/schema-line.txt?raw";
+import schemaSpaceAiRaw from "@/lib/plotting/ai/templates/schema-space-ai.txt?raw";
+import spaceFiguresGuide from "@/lib/plotting/ai/templates/space-figures-guide.txt?raw";
+import spaceConstructionsGuide from "@/lib/plotting/ai/templates/space-constructions-guide.txt?raw";
+import lineSetsRules from "@/lib/plotting/ai/templates/line-sets-rules.txt?raw";
+import colorGroupsRules from "@/lib/plotting/ai/templates/color-groups.txt?raw";
 import type { PlotAiScenario, PlotAnalysisResult, PlotSceneType } from "./types";
 
 const schemaLine = schemaLineRaw

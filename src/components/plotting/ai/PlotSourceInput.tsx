@@ -9,7 +9,7 @@ import {
   importSourceFiles,
   SOURCE_FILE_ACCEPT,
   classifySourceFile,
-} from "@/lib/source-file-import";
+} from "@/lib/plotting/ai/source-files";
 import { cn } from "@/lib/utils";
 
 export interface PlotSourceState {

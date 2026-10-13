@@ -1,6 +1,6 @@
-import beautifyRules from "@/data/prompts/plotting/beautify-image.txt?raw";
-import { callImageLLM } from "@/lib/llm-client";
-import { DEFAULT_IMAGE_MODEL } from "@/lib/models";
+import beautifyRules from "@/lib/plotting/ai/templates/beautify-image.txt?raw";
+import { callImage } from "@/lib/ai/client";
+import { DEFAULT_IMAGE_MODEL } from "@/lib/ai/models";
 import { capturePlotPreviewPng } from "./capture-preview";
 
 export function buildPlotBeautifyPrompt(userWishes: string): string {
@@ -13,7 +13,7 @@ export async function generatePlotBeautifiedImage(opts: {
   userWishes: string;
 }): Promise<string> {
   const png = await capturePlotPreviewPng(opts.previewEl);
-  return callImageLLM({
+  return callImage({
     model: DEFAULT_IMAGE_MODEL,
     prompt: buildPlotBeautifyPrompt(opts.userWishes),
     images: [png],

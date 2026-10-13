@@ -1,6 +1,5 @@
-import { callTextLLM } from "@/lib/llm-client";
-import { callTextLLMForJson } from "@/lib/llm-json";
-import { buildSourceTextForPrompt } from "@/lib/source-material";
+import { callTextForJson } from "@/lib/ai/client";
+import { buildSourceTextForPrompt } from "./source-files";
 import {
   analysisSchemaHint,
   buildAnalyzePrompt,
@@ -36,7 +35,7 @@ export async function analyzePlotMaterial(opts: {
   });
   const images = opts.attachedImages.length ? opts.attachedImages : undefined;
 
-  return callTextLLMForJson({
+  return callTextForJson({
     model: opts.model,
     prompt,
     label: `plot-analyze-${opts.scenario}`,
@@ -44,21 +43,6 @@ export async function analyzePlotMaterial(opts: {
     images,
     parse: validatePlotAnalysisJson,
   });
-}
-
-async function requestGenerateJson(opts: {
-  model: string;
-  prompt: string;
-  scenario: PlotAiScenario;
-  images?: string[];
-}): Promise<unknown> {
-  const raw = await callTextLLM({
-    model: opts.model,
-    prompt: opts.prompt,
-    images: opts.images,
-  });
-  const { extractJson } = await import("@/lib/json-repair");
-  return extractJson<unknown>(raw);
 }
 
 export async function generatePlotScene(opts: {
@@ -87,23 +71,14 @@ export async function generatePlotScene(opts: {
   const schemaHint = generateSchemaHint(opts.scenario, sceneType);
 
   async function runOnce(extraSuffix = ""): Promise<unknown> {
-    try {
-      return await callTextLLMForJson({
-        model: opts.model,
-        prompt: basePrompt + extraSuffix,
-        label: `plot-generate-${opts.scenario}`,
-        schemaHint,
-        images,
-        parse: (v) => v,
-      });
-    } catch {
-      return requestGenerateJson({
-        model: opts.model,
-        prompt: basePrompt + extraSuffix,
-        scenario: opts.scenario,
-        images,
-      });
-    }
+    return callTextForJson({
+      model: opts.model,
+      prompt: basePrompt + extraSuffix,
+      label: `plot-generate-${opts.scenario}`,
+      schemaHint,
+      images,
+      parse: (v) => v,
+    });
   }
 
   let parsed = await runOnce();
