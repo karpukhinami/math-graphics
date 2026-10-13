@@ -33,7 +33,6 @@ export function PointCard({ point }: { point: ScenePoint }) {
   const editableY = math.mode === "plane";
 
   const coordsText = solution ? `(${solution.displayX}; ${solution.displayY})` : "не построена";
-
   return (
     <Card className="border-border">
       <CardContent className="p-2.5">

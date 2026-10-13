@@ -5,11 +5,12 @@
  * зависящие от графиков). Цвета, толщины, сетка, форма области, шаги и прочие
  * технические значения подставляются здесь.
  */
-import { evaluateNumber } from "../math-expr";
+import { compileExpression, evaluateNumber } from "../math-expr";
 import {
   enumKey,
   flag,
   isRecord,
+  MIN_GRID_CELLS,
   niceStep,
   niceStepPi,
   refKey,
@@ -147,6 +148,80 @@ function readAnchors(graph: Rec, where: string, errors: string[]) {
   return anchors;
 }
 
+interface ExplicitGraph {
+  id: string;
+  ref: string;
+  fn: (x: number) => number;
+  from: number | null;
+  to: number | null;
+}
+
+function compileExplicit(expression: string): ((x: number) => number) | null {
+  try {
+    const fn = compileExpression(expression, ["x"]);
+    return (x) => fn({ x });
+  } catch {
+    return null;
+  }
+}
+
+function graphValue(graph: ExplicitGraph, x: number): number {
+  if (graph.from !== null && x < graph.from) return NaN;
+  if (graph.to !== null && x > graph.to) return NaN;
+  return graph.fn(x);
+}
+
+/**
+ * Если точка (x, y) лежит ровно на двух явных графиках и эти графики пересекаются
+ * внутри осей ровно один раз — возвращает эту пару. Иначе null (в т.ч. когда внутри
+ * осей несколько пересечений: тогда инструмент отметил бы лишние точки).
+ */
+function findSoleCrossing(
+  graphs: ExplicitGraph[],
+  x: number,
+  y: number,
+  [xMin, xMax, yMin, yMax]: [number, number, number, number],
+): [ExplicitGraph, ExplicitGraph] | null {
+  const tolerance = 5e-3 * Math.max(1, Math.abs(y));
+  const onGraph = graphs.filter((g) => Math.abs(graphValue(g, x) - y) <= tolerance);
+  if (onGraph.length !== 2) return null;
+  const [a, b] = onGraph;
+
+  const steps = 2000;
+  let crossings = 0;
+  let prev = NaN;
+  for (let i = 0; i <= steps; i += 1) {
+    const sx = xMin + ((xMax - xMin) * i) / steps;
+    const fa = graphValue(a, sx);
+    const diff = fa - graphValue(b, sx);
+    // Нулевая разность в узле считается один раз; смена знака между узлами — тоже.
+    const crossed =
+      Number.isFinite(diff) && (diff === 0 || (Number.isFinite(prev) && prev * diff < 0));
+    if (crossed && fa >= yMin && fa <= yMax) crossings += 1;
+    prev = diff;
+  }
+  return crossings === 1 ? [a, b] : null;
+}
+
+/**
+ * Шаг оси: заданный моделью берётся, только если он даёт не меньше MIN_GRID_CELLS клеток;
+ * иначе (и если шаг не задан) подбирается автоматически.
+ */
+function pickStep(
+  requested: string,
+  min: number,
+  max: number,
+  format: "number" | "fraction" | "pi",
+): string {
+  if (requested) {
+    const value = parseNumber(requested);
+    if (value !== null && value > 0 && (max - min) / value >= MIN_GRID_CELLS - 1e-9) {
+      return requested;
+    }
+  }
+  return format === "pi" ? niceStepPi(min, max) : niceStep(min, max);
+}
+
 export function expandPlaneDraft(raw: unknown): DraftExpansion {
   const errors: string[] = [];
   const root = unwrapDraft(raw, ["axes", "axis", "graphs", "points"]);
@@ -169,20 +244,8 @@ export function expandPlaneDraft(raw: unknown): DraftExpansion {
   const axesOk = Boolean(xMin && xMax && yMin && yMax);
   const xSpan = axesOk ? xMax!.value - xMin!.value : 0;
   const ySpan = axesOk ? yMax!.value - yMin!.value : 0;
-  const xStep =
-    text(axes.xStep) ||
-    (axesOk
-      ? xFormat === "pi"
-        ? niceStepPi(xMin!.value, xMax!.value)
-        : niceStep(xMin!.value, xMax!.value)
-      : "1");
-  const yStep =
-    text(axes.yStep) ||
-    (axesOk
-      ? yFormat === "pi"
-        ? niceStepPi(yMin!.value, yMax!.value)
-        : niceStep(yMin!.value, yMax!.value)
-      : "1");
+  const xStep = axesOk ? pickStep(text(axes.xStep), xMin!.value, xMax!.value, xFormat) : "1";
+  const yStep = axesOk ? pickStep(text(axes.yStep), yMin!.value, yMax!.value, yFormat) : "1";
   // Квадратная сетка, пока масштабы осей сопоставимы; иначе независимые шкалы.
   const ratio = axesOk && ySpan > 0 ? xSpan / ySpan : 1;
   const equalScale = ratio <= ASPECT_RATIO_LIMIT && ratio >= 1 / ASPECT_RATIO_LIMIT;
@@ -190,6 +253,7 @@ export function expandPlaneDraft(raw: unknown): DraftExpansion {
   // ── Графики ────────────────────────────────────────────────────────────
   const graphsRaw = Array.isArray(root.graphs) ? root.graphs : [];
   const graphRefs: GraphRef[] = [];
+  const explicitGraphs: ExplicitGraph[] = [];
   const graphs: unknown[] = [];
 
   graphsRaw.forEach((item, i) => {
@@ -250,6 +314,19 @@ export function expandPlaneDraft(raw: unknown): DraftExpansion {
       math.kind = segments ? "piecewise-linear" : "qualitative";
       math.anchors = anchors;
       math.extendEnds = flag(item.extendEnds, false);
+    }
+
+    if (type === "explicit" && !errors.some((e) => e.startsWith(`${where}:`))) {
+      const fn = compileExplicit(String(math.expression));
+      if (fn) {
+        explicitGraphs.push({
+          id,
+          ref,
+          fn,
+          from: parseNumber(String(math.domainFrom)),
+          to: parseNumber(String(math.domainTo)),
+        });
+      }
     }
 
     graphRefs.push({ id, ref, type, anchorCount });
@@ -319,11 +396,25 @@ export function expandPlaneDraft(raw: unknown): DraftExpansion {
       math.y = y;
       const vx = parseNumber(x);
       const vy = parseNumber(y);
-      if (vx !== null && xMin && xMax && (vx < xMin.value || vx > xMax.value)) {
-        errors.push(`${where}: x=${x} вне пределов оси (${xMin.raw}…${xMax.raw}) — расширь оси`);
-      }
-      if (vy !== null && yMin && yMax && (vy < yMin.value || vy > yMax.value)) {
-        errors.push(`${where}: y=${y} вне пределов оси (${yMin.raw}…${yMax.raw}) — расширь оси`);
+      // Страховка: модель задала координатами единственную точку пересечения двух графиков.
+      // Заменяем её зависимостью — тогда точка остаётся точной и следует за графиками.
+      const crossing =
+        vx !== null && vy !== null && axesOk
+          ? findSoleCrossing(explicitGraphs, vx, vy, [xMin!.value, xMax!.value, yMin!.value, yMax!.value])
+          : null;
+      if (crossing) {
+        math.mode = "intersection";
+        math.x = "";
+        math.y = "";
+        math.graphId = crossing[0].id;
+        math.graphIdB = crossing[1].id;
+      } else {
+        if (vx !== null && xMin && xMax && (vx < xMin.value || vx > xMax.value)) {
+          errors.push(`${where}: x=${x} вне пределов оси (${xMin.raw}…${xMax.raw}) — расширь оси`);
+        }
+        if (vy !== null && yMin && yMax && (vy < yMin.value || vy > yMax.value)) {
+          errors.push(`${where}: y=${y} вне пределов оси (${yMin.raw}…${yMax.raw}) — расширь оси`);
+        }
       }
     } else if (type === "onGraph") {
       const graph = findGraph(item.graph, where);

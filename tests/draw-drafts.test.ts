@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { niceStep, niceStepPi } from "../src/lib/plotting/ai/draft-common";
 import { expandLineDraft } from "../src/lib/plotting/ai/draft-line";
 import { expandPlaneDraft } from "../src/lib/plotting/ai/draft-plane";
 import { mergeAiScene } from "../src/lib/plotting/ai/merge-scene";
@@ -56,6 +57,60 @@ describe("plane draft → scene", () => {
     );
     const labels = scenePoints(built).map((p) => p.label);
     expect(labels.filter((l) => l === "A" || l === "B")).toHaveLength(2);
+  });
+
+  test("a point given by coordinates that is the only crossing of two graphs becomes an intersection", () => {
+    const draft = {
+      axes: { xMin: "-0.5", xMax: "1.5", yMin: "-0.5", yMax: "2.5" },
+      graphs: [
+        { id: "g1", type: "explicit", expression: "4*sqrt(x)" },
+        { id: "g2", type: "explicit", expression: "(1/4)*x + 1" },
+      ],
+      points: [
+        {
+          type: "coords",
+          x: "124 - 32 * sqrt(15)",
+          y: "32 - 8 * sqrt(15)",
+        },
+      ],
+    };
+    const { scene, errors } = expandPlaneDraft(draft);
+    expect(errors).toEqual([]);
+    const s = scene as Record<string, any>;
+    expect(s.points[0].math.mode).toBe("intersection");
+    expect(s.points[0].math.graphId).toBe(s.graphs[0].id);
+    expect(s.points[0].math.graphIdB).toBe(s.graphs[1].id);
+
+    // Свободная точка, не лежащая на пересечении, остаётся точкой по координатам.
+    const free = expandPlaneDraft({
+      ...draft,
+      points: [{ type: "coords", x: "1", y: "1" }],
+    });
+    expect((free.scene as Record<string, any>).points[0].math.mode).toBe("plane");
+  });
+
+  test("grid always has at least 6 cells per axis", () => {
+    const cells = (min: number, max: number) => (max - min) / Number(niceStep(min, max));
+    for (const [min, max] of [
+      [0, 24.1],
+      [-0.5, 1.5],
+      [-3, 6],
+      [0, 29],
+      [0, 7],
+      [-100, 100],
+    ]) {
+      expect(cells(min, max)).toBeGreaterThanOrEqual(6 - 1e-9);
+      expect(cells(min, max)).toBeLessThanOrEqual(15);
+    }
+    expect(niceStep(0, 24.1)).toBe("2");
+    expect(niceStepPi(0, 25 * Math.PI)).toBe("2*pi");
+
+    // Слишком крупный шаг от модели заменяется автоматическим; разумный — сохраняется.
+    const axes = { xMin: "-2", xMax: "2", yMin: "-2", yMax: "2" };
+    const big = expandPlaneDraft({ axes: { ...axes, xStep: "2" }, graphs: [], points: [{ type: "coords", x: "0", y: "0" }] });
+    expect((big.scene as Record<string, any>).xAxis.gridStep).toBe("0.5");
+    const ok = expandPlaneDraft({ axes: { ...axes, xStep: "0.5" }, graphs: [], points: [{ type: "coords", x: "0", y: "0" }] });
+    expect((ok.scene as Record<string, any>).xAxis.gridStep).toBe("0.5");
   });
 
   test("reports unknown graph references and points outside the axes", () => {
