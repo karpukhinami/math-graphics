@@ -1,5 +1,57 @@
 /** Серверный вызов OpenRouter chat/completions. Только для обработчиков /api/ai/*. */
 
+import process from "node:process";
+
+/** Имена не зашиты в `process.env.X`: сборщик не подставляет пустое значение на этапе билда. */
+const OPENROUTER_KEY_NAMES = ["OPENROUTER_API_KEY", "OPENROUTER_KEY", "OPEN_ROUTER_API_KEY"] as const;
+
+/** Копия ключа из Cloudflare bindings, если `process.env` недоступен для записи. */
+let bindingKey: string | undefined;
+
+function nonEmptyString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function readProcessEnv(name: string): string | undefined {
+  try {
+    return nonEmptyString(Reflect.get(process.env, name));
+  } catch {
+    return undefined;
+  }
+}
+
+/** Ключ OpenRouter из окружения Node. На Render секрет уже лежит в `process.env`. */
+export function getOpenRouterKey(): string | undefined {
+  for (const name of OPENROUTER_KEY_NAMES) {
+    const value = readProcessEnv(name);
+    if (value) return value;
+  }
+  return bindingKey;
+}
+
+/**
+ * Lovable отдаёт секреты в `env` worker’а, а не в `process.env`.
+ * На Render ключ уже в окружении Node — вызов ничего не меняет.
+ */
+export function hydrateOpenRouterEnvFromBindings(env: unknown): void {
+  if (!env || typeof env !== "object") return;
+  if (getOpenRouterKey()) return;
+
+  for (const name of OPENROUTER_KEY_NAMES) {
+    const value = nonEmptyString(Reflect.get(env, name));
+    if (!value) continue;
+    bindingKey = value;
+    try {
+      Reflect.set(process.env, "OPENROUTER_API_KEY", value);
+    } catch {
+      // process.env может быть неизменяемым на worker; bindingKey уже сохранён.
+    }
+    return;
+  }
+}
+
 export interface AiRequestBody {
   model: string;
   prompt: string;
@@ -50,7 +102,7 @@ export async function openRouterChat(
   body: AiRequestBody,
   extra: Record<string, unknown> = {},
 ): Promise<{ message: OpenRouterMessage; finishReason?: string }> {
-  const key = process.env.OPENROUTER_API_KEY;
+  const key = getOpenRouterKey();
   if (!key) throw new AiError("Не настроен ключ OPENROUTER_API_KEY", 500);
 
   const messages = [

@@ -13,3 +13,6 @@ services:
         value: production
       - key: NITRO_PRESET
         value: render_com
+      # Значение задаётся в Dashboard Render, не в git.
+      - key: OPENROUTER_API_KEY
+        sync: false
