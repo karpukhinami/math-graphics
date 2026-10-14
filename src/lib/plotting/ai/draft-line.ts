@@ -11,7 +11,6 @@ import {
   enumKey,
   flag,
   isRecord,
-  niceStep,
   text,
   unwrapDraft,
   type DraftExpansion,
@@ -268,7 +267,6 @@ export function expandLineDraft(
     errors.push("axis: max должен быть больше min");
   }
 
-  const axisOk = min !== null && max !== null && max > min;
   // Шаг шкалы по умолчанию всегда 1; другое значение — только по явному запросу (axis.step).
   const step = text(axisRaw.step) || "1";
 
