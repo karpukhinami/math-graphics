@@ -6,6 +6,9 @@ import analyzeAnalog from "@/lib/plotting/ai/templates/analyze-analog.txt?raw";
 import generateScene from "@/lib/plotting/ai/templates/generate-scene.txt?raw";
 import generateDrawPlane from "@/lib/plotting/ai/templates/generate-draw-plane.txt?raw";
 import generateDrawLine from "@/lib/plotting/ai/templates/generate-draw-line.txt?raw";
+import taskAnalyze from "@/lib/plotting/ai/templates/task-analyze.txt?raw";
+import taskGeneratePlane from "@/lib/plotting/ai/templates/task-generate-plane.txt?raw";
+import taskGenerateLine from "@/lib/plotting/ai/templates/task-generate-line.txt?raw";
 import generateAnalog from "@/lib/plotting/ai/templates/generate-analog.txt?raw";
 import schemaPlaneRaw from "@/lib/plotting/ai/templates/schema-plane.txt?raw";
 import schemaLineRaw from "@/lib/plotting/ai/templates/schema-line.txt?raw";
@@ -34,8 +37,16 @@ function injectShared(template: string, sourceText: string): string {
 export function buildAnalyzePrompt(opts: {
   scenario: PlotAiScenario;
   sourceText: string;
+  userRefinements?: string;
 }): string {
   const { scenario, sourceText } = opts;
+  if (scenario === "task") {
+    const refinements = opts.userRefinements?.trim() || "(нет)";
+    const source = sourceText.trim() || "(текста задания нет)";
+    return taskAnalyze
+      .replaceAll("{{SOURCE_TEXT}}", () => source)
+      .replaceAll("{{USER_REFINEMENTS}}", () => refinements);
+  }
   let template: string;
   switch (scenario) {
     case "draw":
@@ -88,8 +99,13 @@ export function buildDrawScenePrompt(opts: {
   sceneType: PlotDrawBranchType;
   drawPlan: string;
   userRefinements: string;
+  /** «task» — шаблоны редактора заданий (пожелания уже учтены в плане первого этапа). */
+  variant?: "draw" | "task";
 }): string {
-  const template = opts.sceneType === "line" ? generateDrawLine : generateDrawPlane;
+  const template =
+    opts.variant === "task"
+      ? opts.sceneType === "line" ? taskGenerateLine : taskGeneratePlane
+      : opts.sceneType === "line" ? generateDrawLine : generateDrawPlane;
   const refinements = opts.userRefinements.trim() || "(нет — используй только план построения)";
   const plan = opts.drawPlan.trim();
   // Функции-заменители: символы «$» в плане и пожеланиях (LaTeX) не должны читаться как шаблоны replace.
@@ -125,7 +141,7 @@ ${validationErrors.map((e) => `- ${e}`).join("\n")}
 }
 
 export function analysisSchemaHint(scenario: PlotAiScenario = "draw"): string {
-  if (scenario === "draw") {
+  if (scenario === "draw" || scenario === "task") {
     return `JSON с полями: reasoning (string — рассуждения), canDraw (boolean), sceneType ("plane"|"line"|"space" если canDraw), drawPlan (string — явный вывод, что именно построить, если canDraw), stageData (object, заполняется только для "space").`;
   }
   return `JSON с полями: canDraw (boolean), sceneType ("plane"|"line"|"space" если canDraw), analysisText (string), stageData (object).`;

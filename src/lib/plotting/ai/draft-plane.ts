@@ -86,7 +86,8 @@ function inferPointType(point: Rec): PointType | null {
 function stripYEquals(expression: string, yName: string): string {
   const escaped = yName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const pattern = new RegExp(`^\\s*(?:${escaped}|f\\s*\\(\\s*x\\s*\\))\\s*=(?!=)\\s*`);
-  return expression.replace(pattern, "").trim();
+  // Хвостовые знаки препинания («x^2.») mathjs читает как обращение к свойству.
+  return expression.replace(pattern, "").trim().replace(/[\s.,;:]+$/, "");
 }
 
 function parseNumber(raw: string): number | null {
@@ -222,7 +223,12 @@ function pickStep(
   return format === "pi" ? niceStepPi(min, max) : niceStep(min, max);
 }
 
-export function expandPlaneDraft(raw: unknown): DraftExpansion {
+export interface DraftOptions {
+  /** Редактор заданий: координаты точек по умолчанию не показываются. */
+  minimalLabels?: boolean;
+}
+
+export function expandPlaneDraft(raw: unknown, options: DraftOptions = {}): DraftExpansion {
   const errors: string[] = [];
   const root = unwrapDraft(raw, ["axes", "axis", "graphs", "points"]);
   if (!root) return { scene: null, errors: ["Ответ должен быть JSON-объектом"] };
@@ -456,7 +462,10 @@ export function expandPlaneDraft(raw: unknown): DraftExpansion {
     const dropY = flag(item.dropToYAxis, false);
     const labelOnAxes = flag(item.labelOnAxes, false);
     // Подпись «A» либо значения на осях уже называют точку — координаты рядом не дублируем.
-    const showCoords = flag(item.showCoords, !label && !(labelOnAxes && (dropX || dropY)));
+    const showCoords = flag(
+      item.showCoords,
+      !options.minimalLabels && !label && !(labelOnAxes && (dropX || dropY)),
+    );
 
     const rawPoint: Rec = {
       index: n,

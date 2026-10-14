@@ -137,7 +137,7 @@ function WorkspacePage() {
       setInputMode(action === "manual" ? "manual" : "ai");
       setAiInitial(
         action === "ai-draw"
-          ? { initialScenario: "draw", initialText: taskText, textLabel: isTask ? "Текст задания" : "Текст" }
+          ? { initialScenario: "task", initialText: taskText, textLabel: isTask ? "Текст задания" : "Текст" }
           : action === "ai-reproduce"
             ? { initialScenario: "reproduce" }
             : action === "ai-analog" ? { initialScenario: "analog" } : undefined,

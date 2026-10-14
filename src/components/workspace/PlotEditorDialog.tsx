@@ -45,7 +45,7 @@ export function PlotEditorDialog({
     onInsert({
       src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
       scene: structuredClone(scene),
-      text: aiInitial?.initialScenario === "draw" ? text : undefined,
+      text: aiInitial?.initialScenario === "task" ? text : undefined,
       newTaskText,
     });
     onOpenChange(false);

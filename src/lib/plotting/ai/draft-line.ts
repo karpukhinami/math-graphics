@@ -133,7 +133,10 @@ function buildSetMath(item: Rec, where: string, errors: string[]): SetBuild | nu
   return null;
 }
 
-export function expandLineDraft(raw: unknown): DraftExpansion {
+export function expandLineDraft(
+  raw: unknown,
+  options: { minimalLabels?: boolean } = {},
+): DraftExpansion {
   const errors: string[] = [];
   const root = unwrapDraft(raw, ["axis", "rows", "sets", "points"]);
   if (!root) return { scene: null, errors: ["Ответ должен быть JSON-объектом"] };
@@ -233,7 +236,7 @@ export function expandLineDraft(raw: unknown): DraftExpansion {
           open: flag(pointItem.open, false),
           label,
           showLabel: true,
-          showCoords: flag(pointItem.showCoords, !label),
+          showCoords: flag(pointItem.showCoords, !options.minimalLabels && !label),
           visible: true,
           perpendicular: flag(pointItem.perpendicular, false),
         },

@@ -258,3 +258,18 @@ describe("analysis result", () => {
     ).toBe(false);
   });
 });
+
+import { expandPlaneDraft as expandPlaneTask } from "../src/lib/plotting/ai/draft-plane";
+import { expandLineDraft as expandLineTask } from "../src/lib/plotting/ai/draft-line";
+import { test as t2, expect as e2 } from "bun:test";
+
+t2("редактор заданий: точки без подписи не показывают координаты", () => {
+  const { scene } = expandPlaneTask(
+    { axes: { xMin: "-5", xMax: "5", yMin: "-5", yMax: "5" }, graphs: [{ id: "g1", type: "explicit", expression: "x." }], points: [{ type: "onGraph", graph: "g1", x: "1" }] },
+    { minimalLabels: true },
+  ) as { scene: any };
+  e2(scene.points[0].style.showCoords).toBe(false);
+  e2(scene.graphs[0].math.expression).toBe("x");
+  const line = expandLineTask({ rows: [{ sets: [], points: [{ x: "2" }] }] }, { minimalLabels: true }) as { scene: any };
+  e2(line.scene.line.points[0].style.showCoords).toBe(false);
+});
