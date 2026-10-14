@@ -1,6 +1,9 @@
 {
   "text": [
     {
+      "id": "openai/gpt-6-luna"
+    },
+    {
       "id": "google/gemini-3.1-flash-lite"
     },
     {

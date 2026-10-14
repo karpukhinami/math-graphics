@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/collapsible";
 import { ModelPicker } from "./ModelPicker";
 import { Markdown } from "@/components/plotting/Markdown";
-import { DEFAULT_TEXT_MODEL } from "@/lib/ai/models";
+import { DEFAULT_REPRODUCE_MODEL, DEFAULT_TEXT_MODEL } from "@/lib/ai/models";
 import { hasSourceMaterials } from "@/lib/plotting/ai/source-files";
 import { analyzePlotMaterial, generatePlotScene } from "@/lib/plotting/ai/pipeline";
 import type { PlotAiScenario, PlotAnalysisResult } from "@/lib/plotting/ai/types";
@@ -49,7 +49,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
   const importAiScene = usePlotStore((s) => s.importAiScene);
 
   const source = usePlotSourceState(initialText ?? "");
-  const [model, setModel] = useState(DEFAULT_TEXT_MODEL);
+  const [model, setModel] = useState(initialScenario === "reproduce" ? DEFAULT_REPRODUCE_MODEL : DEFAULT_TEXT_MODEL);
   const [scenario, setScenario] = useState<PlotAiScenario>(initialScenario ?? "draw");
   const [analysis, setAnalysis] = useState<PlotAnalysisResult | null>(null);
   const [userRefinements, setUserRefinements] = useState(initialRefinements ?? "");
@@ -108,7 +108,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
         manualText,
         uploadedSourceText: source.state.uploadedSourceText,
         attachedImages,
-        userRefinements: scenario === "task" ? userRefinements : undefined,
+        userRefinements: scenario === "task" || scenario === "reproduce" ? userRefinements : undefined,
       });
       setAnalysis(result);
       if (!result.canDraw) {
@@ -162,6 +162,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
             value={scenario}
             onValueChange={(v) => {
               setScenario(v as PlotAiScenario);
+              if (v === "reproduce") setModel(DEFAULT_REPRODUCE_MODEL);
               setAnalysis(null);
               setSceneBuilt(false);
             }}
@@ -189,7 +190,14 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
             <div className="space-y-2"><Label htmlFor="plot-wishes">Дополнительные пожелания</Label>
               <Textarea id="plot-wishes" rows={3} value={userRefinements} onChange={(e) => { setUserRefinements(e.target.value); if (scenario === "task") invalidate(); else setSceneBuilt(false); }} />
             </div>
-          </> : <SourceImageInput images={attachedImages} onChange={(urls) => { source.removeImage(0); if (urls.length) source.addImages(urls); invalidate(); }} />}
+          </> : <>
+            <SourceImageInput images={attachedImages} onChange={(urls) => { source.removeImage(0); if (urls.length) source.addImages(urls); invalidate(); }} />
+            <div className="space-y-2"><Label htmlFor="plot-reproduce-wishes">Уточнения</Label>
+              <Textarea id="plot-reproduce-wishes" rows={3} value={userRefinements}
+                placeholder="Например: точки A(1; 2) и B(-3; 0); ожидаемая функция y = x^2 - 2x"
+                onChange={(e) => { setUserRefinements(e.target.value); invalidate(); }} />
+            </div>
+          </>}
         </fieldset>
       ) : <Card>
         <CardHeader className="pb-3">
