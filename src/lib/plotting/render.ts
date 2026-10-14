@@ -347,6 +347,54 @@ function textBoundingRect(
   return { x: left, y: top, width, height };
 }
 
+function rectsOverlap(a: Rect, b: Rect): boolean {
+  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+}
+
+/** Прямоугольники названий осей (те же координаты, что и при отрисовке). */
+function axisNameRects(geometry: PlotGeometry, scene: PlotScene, a: PlotAppearance): Rect[] {
+  const xNameY = Math.min(geometry.canvasHeight - 4, geometry.xAxisY + a.labelFontSize + 4);
+  const yNameRaw = geometry.yAxisX - 12;
+  const yNameX = yNameRaw < a.labelFontSize * 0.6 ? geometry.yAxisX + 12 : yNameRaw;
+  const yNameAnchor = yNameRaw < a.labelFontSize * 0.6 ? "start" : "end";
+  return [
+    textBoundingRect(geometry.axisEndX - 10, xNameY, axisLabelText(scene.xAxis), a.labelFontSize, "end"),
+    textBoundingRect(yNameX, geometry.axisEndY + a.labelFontSize + 4, axisLabelText(scene.yAxis), a.labelFontSize, yNameAnchor),
+  ];
+}
+
+function xMarkLabelRect(geometry: PlotGeometry, scene: PlotScene, a: PlotAppearance, value: number): Rect {
+  const isZero = Math.abs(value) < 1e-12;
+  const x = geometry.sx(value);
+  const offsetX = isZero ? x - a.tickSize - 7 : x;
+  const baseline = geometry.xAxisY + a.tickSize + a.labelFontSize + 3;
+  return textBoundingRect(offsetX, baseline, displayNumber(value, scene.xAxis.labelFormat), a.labelFontSize, isZero ? "end" : "middle");
+}
+
+function yMarkLabelRect(geometry: PlotGeometry, scene: PlotScene, a: PlotAppearance, value: number): Rect {
+  const y = geometry.sy(value);
+  return textBoundingRect(geometry.yAxisX - a.tickSize - 7, y + a.labelFontSize * 0.35, displayNumber(value, scene.yAxis.labelFormat), a.labelFontSize, "end");
+}
+
+/**
+ * Значения засечек, которые можно подписать: подпись, пересекающая название
+ * любой оси, не выводится (сама засечка остаётся).
+ */
+export function labeledMarks(
+  geometry: PlotGeometry,
+  scene: PlotScene,
+  a: PlotAppearance,
+  xMarks: number[],
+  yMarks: number[],
+): { x: number[]; y: number[] } {
+  const names = axisNameRects(geometry, scene, a);
+  const free = (rect: Rect) => !names.some((name) => rectsOverlap(rect, name));
+  return {
+    x: xMarks.filter((value) => free(xMarkLabelRect(geometry, scene, a, value))),
+    y: yMarks.filter((value) => free(yMarkLabelRect(geometry, scene, a, value))),
+  };
+}
+
 function pointCaptionText(point: RenderPoint): string {
   const parts: string[] = [];
   if (point.label) parts.push(point.label);
@@ -699,6 +747,9 @@ export function renderPlotSvg(
   const tickStyle = `stroke="${a.axisColor}" stroke-width="${a.tickWidth}" stroke-linecap="round"`;
   const xMarks = markValues(scene.xAxis, geometry.xMin, geometry.xMax, geometry.xStep);
   const yMarks = markValues(scene.yAxis, geometry.yMin, geometry.yMax, geometry.yStep);
+  const labelSet = labeledMarks(geometry, scene, a, xMarks, yMarks);
+  const xLabelSet = new Set(labelSet.x);
+  const yLabelSet = new Set(labelSet.y);
   const ticks: string[] = [];
   const labels: string[] = [];
   for (const value of xMarks) {
@@ -716,7 +767,7 @@ export function renderPlotSvg(
     // что и остальные подписи (иначе он «липнет» к осям).
     const offsetX = isZero ? x - a.tickSize - 7 : x;
     const baseline = geometry.xAxisY + a.tickSize + a.labelFontSize + 3;
-    labels.push(
+    if (xLabelSet.has(value)) labels.push(
       `<text x="${round(offsetX)}" y="${round(baseline)}" text-anchor="${
         isZero ? "end" : "middle"
       }" font-style="normal" ${labelStyle}>${escapeText(text)}</text>`,
@@ -735,7 +786,7 @@ export function renderPlotSvg(
       );
     }
     const text = displayNumber(value, scene.yAxis.labelFormat);
-    labels.push(
+    if (yLabelSet.has(value)) labels.push(
       `<text x="${round(geometry.yAxisX - a.tickSize - 7)}" y="${round(y + a.labelFontSize * 0.35)}" text-anchor="end" font-style="normal" ${labelStyle}>${escapeText(
         text,
       )}</text>`,
@@ -779,7 +830,7 @@ export function renderPlotSvg(
   }
   parts.push(`<g clip-path="url(#${clipId})">${curveParts.join("")}</g>`);
 
-  const placedLabels = layoutPointLabels(geometry, scene, curves, points, a, xMarks, yMarks);
+  const placedLabels = layoutPointLabels(geometry, scene, curves, points, a, labelSet.x, labelSet.y);
 
   // Маркеры точек и проекции — ниже; подписи точек — в верхнем текстовом слое.
   const markerParts: string[] = [];
