@@ -24,6 +24,7 @@ import techDraftLineRaw from "@/lib/plotting/ai/templates/tech-draft-line.txt?ra
 import techPlanRules from "@/lib/plotting/ai/templates/tech-plan-rules.txt?raw";
 import jsonOutputRules from "@/lib/plotting/ai/templates/json-output-rules.txt?raw";
 import analogTaskAnalyze from "@/lib/plotting/ai/templates/analog-task-analyze.txt?raw";
+import analogTaskVariants from "@/lib/plotting/ai/templates/analog-task-variants.txt?raw";
 import analogTaskGenerate from "@/lib/plotting/ai/templates/analog-task-generate.txt?raw";
 import type { PlotAiScenario, PlotAnalysisResult, PlotSceneType } from "./types";
 
@@ -191,14 +192,38 @@ export function generateSchemaHint(scenario: PlotAiScenario, sceneType?: PlotSce
     : `{ "scene": ${sceneHint} }`;
 }
 
-/** «Аналог по скриншоту», этап 1: распознавание, аналог, размещение и планы чертежей. */
+/** «Аналог по скриншоту», этап 1: распознавание и шаблон аналога (без конкретных чисел). */
 export function buildAnalogTaskAnalyzePrompt(userRefinements: string): string {
   const refinements = userRefinements.trim() || "(нет)";
   return withTechBlocks(analogTaskAnalyze).replaceAll("{{USER_REFINEMENTS}}", () => refinements) +
     "\n\n" + lineFractionRules;
 }
 
-/** «Аналог по скриншоту», этап 2: все однотипные чертежи одним запросом. */
+/** «Аналог по скриншоту», этап 2: N конкретных вариантов с планами чертежей по шаблону. */
+export function buildAnalogTaskVariantsPrompt(opts: {
+  count: number;
+  originalText: string;
+  template: unknown;
+  sceneType: PlotDrawBranchType | null;
+  figures: Array<{ id: string; placement: string; optionIndex: number | null; role: string }>;
+  taskType: "input" | "choice";
+  userRefinements: string;
+}): string {
+  const figs = opts.figures.length
+    ? opts.figures.map((f) => `- ${f.id}: ${f.placement === "option" ? `в варианте ответа №${(f.optionIndex ?? 0) + 1}` : "в тексте"} — ${f.role}`).join("\n")
+    : "(чертежей нет)";
+  return withTechBlocks(analogTaskVariants)
+    .replaceAll("{{COUNT}}", String(opts.count))
+    .replaceAll("{{TASK_TYPE}}", opts.taskType)
+    .replaceAll("{{SCENE_TYPE}}", opts.sceneType ?? "—")
+    .replaceAll("{{ORIGINAL_TEXT}}", () => opts.originalText || "(нет)")
+    .replaceAll("{{TEMPLATE}}", () => JSON.stringify(opts.template, null, 2))
+    .replaceAll("{{FIGURES}}", () => figs)
+    .replaceAll("{{USER_REFINEMENTS}}", () => opts.userRefinements.trim() || "(нет)") +
+    (opts.sceneType === "line" ? "\n\n" + lineFractionRules : "");
+}
+
+/** «Аналог по скриншоту», этап 3: все однотипные чертежи одного варианта одним запросом. */
 export function buildAnalogTaskGeneratePrompt(
   sceneType: PlotDrawBranchType,
   figures: Array<{ id: string; drawPlan: string }>,
