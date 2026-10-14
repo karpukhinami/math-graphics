@@ -52,10 +52,31 @@ export function latexToPlain(raw: string): string {
   s = s.replace(/\\infty/g, "Infinity");
   s = s.replace(/\|([^|]*)\|/g, (_m, a) => `abs(${a})`);
   s = s.replace(/\^\s*\{([^{}]*)\}/g, (_m, a) => `^(${a})`);
+  s = convertLogBase(s);
   s = s.replace(/_\s*\{[^{}]*\}/g, "");
   s = s.replace(/[{}]/g, "");
   s = s.replace(/\\[a-zA-Z]+/g, "");
   return s.trim();
+}
+
+/**
+ * log_2(x), log_{2}(x), \log_2(x) → log(x, 2); log_2 x → log(x, 2).
+ * mathjs понимает основание только как второй аргумент log.
+ */
+function convertLogBase(s: string): string {
+  let out = s;
+  for (let i = 0; i < 4; i++) {
+    const next = out.replace(
+      /\\?log_\{?([0-9A-Za-z.]+)\}?\s*\(([^()]*(?:\([^()]*\)[^()]*)*)\)/g,
+      (_m, base, arg) => `log((${arg}), ${base})`,
+    );
+    if (next === out) break;
+    out = next;
+  }
+  return out.replace(
+    /\\?log_\{?([0-9A-Za-z.]+)\}?\s*([A-Za-z0-9.]+)/g,
+    (_m, base, arg) => `log(${arg}, ${base})`,
+  );
 }
 
 /** Нормализация ввода перед разбором. */
