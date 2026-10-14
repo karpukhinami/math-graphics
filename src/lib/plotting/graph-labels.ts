@@ -9,7 +9,7 @@ function mathText(raw: string, variables: string[]): string {
   return parseExpression(raw, variables).normalized
     .replace(/\blog\(([^,()]+),\s*(\d+)\)/g, (_match, argument: string, base: string) =>
       `log${Array.from(base, (digit) => SUB[Number(digit)]).join("")}(${argument.trim()})`)
-    .replace(/\^\s*(-?\d+)\b/g, (_match, exponent: string) =>
+    .replace(/\s*\^\s*(-?\d+)\b/g, (_match, exponent: string) =>
       Array.from(exponent, (digit) => digit === "-" ? "⁻" : SUPER[Number(digit)]).join(""))
     .replace(/\bpi\b/g, "π")
     .replace(/\bsqrt\(/g, "√(")
