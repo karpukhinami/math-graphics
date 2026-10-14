@@ -41,6 +41,7 @@ export function FunctionCard({ graph }: { graph: SceneGraph }) {
   const scene = usePlotStore((state) => state.scene);
   const updateGraphMath = usePlotStore((state) => state.updateGraphMath);
   const updateGraphStyle = usePlotStore((state) => state.updateGraphStyle);
+  const removeGraphAnchor = usePlotStore((state) => state.removeGraphAnchor);
   const removeGraph = usePlotStore((state) => state.removeGraph);
   const buildGraph = usePlotStore((state) => state.buildGraph);
 
@@ -335,9 +336,7 @@ export function FunctionCard({ graph }: { graph: SceneGraph }) {
                         size="icon"
                         className="size-9 text-muted-foreground"
                         onClick={() =>
-                          updateGraphMath(graph.id, {
-                            anchors: math.anchors.filter((_item, position) => position !== index),
-                          })
+                          removeGraphAnchor(graph.id, index)
                         }
                       >
                         <Trash2 className="size-4" />

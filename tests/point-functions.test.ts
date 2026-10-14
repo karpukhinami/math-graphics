@@ -49,3 +49,16 @@ describe("point-defined functions", () => {
     expect(pointsOnGraphAtX(result, -1)[0].y).not.toBeCloseTo(1);
   });
 });
+import { buildScene, createGraph, createPoint, createScene } from "../src/lib/plotting/scene";
+
+test("rebuilding a point-defined graph moves linked anchor points", () => {
+  const scene = createScene();
+  const graph = { ...createGraph(1, "piecewise-linear"), math: { ...math } };
+  const point = createPoint(1);
+  point.math = { ...point.math, mode: "anchor", graphId: graph.id, anchorIndex: 0 };
+  let built = buildScene({ ...scene, graphs: [graph], points: [point] }).scene;
+  expect(built.points[0].built?.[0]).toMatchObject({ x: 3, y: 1 });
+  const edited = { ...built.graphs[0], math: { ...built.graphs[0].math, anchors: [{ x: "4", y: "2", kind: "min" as const }, ...math.anchors.slice(1)] } };
+  built = buildScene({ ...built, graphs: [edited] }, { graphId: graph.id }).scene;
+  expect(built.points[0].built?.[0]).toMatchObject({ x: 4, y: 2 });
+});
