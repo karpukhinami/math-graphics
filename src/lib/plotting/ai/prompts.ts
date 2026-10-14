@@ -1,6 +1,7 @@
 /** Сборка промптов режима ИИ-рисования из отдельных файлов. */
 import sharedSourceRules from "@/lib/plotting/ai/templates/shared-source-rules.txt?raw";
 import mathNotationRules from "@/lib/plotting/ai/templates/math-notation-rules.txt?raw";
+import lineFractionRules from "@/lib/plotting/ai/templates/line-fraction-rules.txt?raw";
 import analyzeDraw from "@/lib/plotting/ai/templates/analyze-draw.txt?raw";
 import analyzeReproduce from "@/lib/plotting/ai/templates/analyze-reproduce.txt?raw";
 import analyzeAnalog from "@/lib/plotting/ai/templates/analyze-analog.txt?raw";
@@ -23,7 +24,7 @@ import type { PlotAiScenario, PlotAnalysisResult, PlotSceneType } from "./types"
 const schemaLine = schemaLineRaw
   .replaceAll("{{LINE_SETS_RULES}}", lineSetsRules)
   .replaceAll("{{COLOR_GROUPS_RULES}}", colorGroupsRules)
-  .replaceAll("{{MATH_NOTATION_RULES}}", mathNotationRules);
+  .replaceAll("{{MATH_NOTATION_RULES}}", mathNotationRules) + "\n\n" + lineFractionRules;
 
 const schemaPlane = schemaPlaneRaw
   .replaceAll("{{COLOR_GROUPS_RULES}}", colorGroupsRules)
@@ -36,7 +37,7 @@ const schemaSpace = schemaSpaceAiRaw
 
 function injectShared(template: string, sourceText: string): string {
   const shared = sharedSourceRules.replaceAll("{{SOURCE_TEXT}}", sourceText || "(материал не передан)");
-  return template.replaceAll("{{SHARED_SOURCE_RULES}}", shared);
+  return template.replaceAll("{{SHARED_SOURCE_RULES}}", shared) + "\n\n" + lineFractionRules;
 }
 
 export function buildAnalyzePrompt(opts: {
@@ -48,9 +49,9 @@ export function buildAnalyzePrompt(opts: {
   if (scenario === "task") {
     const refinements = opts.userRefinements?.trim() || "(нет)";
     const source = sourceText.trim() || "(текста задания нет)";
-    return taskAnalyze
+    return (taskAnalyze
       .replaceAll("{{SOURCE_TEXT}}", () => source)
-      .replaceAll("{{USER_REFINEMENTS}}", () => refinements);
+      .replaceAll("{{USER_REFINEMENTS}}", () => refinements)) + "\n\n" + lineFractionRules;
   }
   let template: string;
   switch (scenario) {
@@ -117,10 +118,10 @@ export function buildDrawScenePrompt(opts: {
   const refinements = opts.userRefinements.trim() || "(нет — используй только план построения)";
   const plan = opts.drawPlan.trim();
   // Функции-заменители: символы «$» в плане и пожеланиях (LaTeX) не должны читаться как шаблоны replace.
-  return template
+  return (template
     .replaceAll("{{DRAW_PLAN}}", () => plan)
     .replaceAll("{{USER_REFINEMENTS}}", () => refinements)
-    .replaceAll("{{MATH_NOTATION_RULES}}", mathNotationRules);
+    .replaceAll("{{MATH_NOTATION_RULES}}", mathNotationRules)) + (opts.sceneType === "line" ? "\n\n" + lineFractionRules : "");
 }
 
 export function buildDrawRetrySuffix(validationErrors: string[]): string {
@@ -135,7 +136,7 @@ ${validationErrors.map((e) => `- ${e}`).join("\n")}
 
 export function drawSchemaHint(sceneType: PlotDrawBranchType): string {
   return sceneType === "line"
-    ? '{ axis?: { min?, max?, name? }, ticks?: "none"|"all", rows: [ { sets: [ { type: "interval"|"ray"|"set", … } ], points: [ { x, label?, open? } ] } ] }'
+    ? '{ axis?: { min?, max?, name?, step? (только явно запрошенный шаг, строка "1/3") }, ticks?: "none"|"all", rows: [ { sets: [ { type: "interval"|"ray"|"set", … } ], points: [ { x, label?, open? } ] } ] }'
     : '{ axes: { xMin, xMax, yMin, yMax }, graphs: [ { id, type: "explicit"|"implicit"|"piecewise"|"points", … } ], points: [ { type: "coords"|"onGraph"|"intersection"|"graphPoint", … } ] }';
 }
 

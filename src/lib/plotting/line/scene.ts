@@ -10,6 +10,7 @@ import type {
 } from "./types";
 import { DEFAULT_LINE_TICKS, LINE_APPEARANCE_OVERRIDES } from "./types";
 import { DEFAULT_APPEARANCE, nextId, PLOT_PALETTE } from "../shared";
+import { lineNumericLabel } from "./numeric-labels";
 
 export function createLineSceneData(): LineSceneData {
   return {
@@ -106,7 +107,7 @@ function boundariesFromParts(parts: ParsedInterval[]): BuiltSet["boundaries"] {
         key: `${partIndex}-left`,
         x: part.left,
         open: !part.leftInclusive,
-        display: exactDisplay(part.left),
+        display: part.leftInput ?? String(part.left),
       });
     }
     if (Number.isFinite(part.right)) {
@@ -114,7 +115,7 @@ function boundariesFromParts(parts: ParsedInterval[]): BuiltSet["boundaries"] {
         key: `${partIndex}-right`,
         x: part.right,
         open: !part.rightInclusive,
-        display: exactDisplay(part.right),
+        display: part.rightInput ?? String(part.right),
       });
     }
   });
@@ -124,8 +125,8 @@ function boundariesFromParts(parts: ParsedInterval[]): BuiltSet["boundaries"] {
 function builtCoord(raw: string, x: number): { x: number; displayX: string; latex: string } {
   try {
     const mv = makeMathValue(raw);
-    const latex = coordLabelLatex(mv.value) ?? mv.latex ?? mv.display;
-    return { x: mv.value, displayX: mv.display, latex };
+    const label = lineNumericLabel(raw);
+    return { x: mv.value, displayX: label.display, latex: label.latex };
   } catch {
     const displayX = exactDisplay(x);
     return { x, displayX, latex: coordLabelLatex(x) ?? displayX };
@@ -250,7 +251,7 @@ export function buildLinePoint(
     return {
       point: {
         ...point,
-        built: { x: mv.value, displayX: mv.display, latex: mv.latex ?? mv.display },
+        built: { x: mv.value, displayX: lineNumericLabel(point.math.coordinate).display, latex: lineNumericLabel(point.math.coordinate).latex },
         dirty: false,
         error: null,
       },
@@ -337,8 +338,8 @@ function applyPartsToMath(math: SetMath, parts: ParsedInterval[]): SetMath {
       .map((part) => {
         const lb = part.leftInclusive ? "[" : "(";
         const rb = part.rightInclusive ? "]" : ")";
-        const left = part.left === -Infinity ? "-inf" : exactDisplay(part.left);
-        const right = part.right === Infinity ? "+inf" : exactDisplay(part.right);
+        const left = part.left === -Infinity ? "-inf" : part.leftInput ?? String(part.left);
+        const right = part.right === Infinity ? "+inf" : part.rightInput ?? String(part.right);
         return `${lb}${left}; ${right}${rb}`;
       })
       .join("; ");
@@ -349,8 +350,8 @@ function applyPartsToMath(math: SetMath, parts: ParsedInterval[]): SetMath {
     const part = parts[0];
     return {
       ...math,
-      left: part.left === -Infinity ? "-inf" : exactDisplay(part.left),
-      right: part.right === Infinity ? "+inf" : exactDisplay(part.right),
+      left: part.left === -Infinity ? "-inf" : part.leftInput ?? String(part.left),
+      right: part.right === Infinity ? "+inf" : part.rightInput ?? String(part.right),
       leftOp: part.leftInclusive ? "<=" : "<",
       rightOp: part.rightInclusive ? "<=" : "<",
     };
@@ -362,13 +363,13 @@ function applyPartsToMath(math: SetMath, parts: ParsedInterval[]): SetMath {
       return {
         ...math,
         rayOp: part.rightInclusive ? "<=" : "<",
-        rayBoundary: exactDisplay(part.right),
+        rayBoundary: part.rightInput ?? String(part.right),
       };
     }
     return {
       ...math,
       rayOp: part.leftInclusive ? ">=" : ">",
-      rayBoundary: exactDisplay(part.left),
+      rayBoundary: part.leftInput ?? String(part.left),
     };
   }
 

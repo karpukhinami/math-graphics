@@ -3,12 +3,15 @@
  */
 import { decimalComma, evaluateNumber, exactDisplay, normalizeInput, parseBound } from "../math-expr";
 import type { SetMath } from "./types";
+import { hasOrdinaryFraction, lineNumericLabel } from "./numeric-labels";
 
 export interface ParsedInterval {
   left: number;
   right: number;
   leftInclusive: boolean;
   rightInclusive: boolean;
+  leftInput?: string;
+  rightInput?: string;
 }
 
 export interface ParseResult {
@@ -21,8 +24,9 @@ export interface ParseResult {
 const EPS = 1e-9;
 
 function intervalDisplay(part: ParsedInterval): string {
-  const left = part.left === -Infinity ? "−∞" : exactDisplay(part.left);
-  const right = part.right === Infinity ? "+∞" : exactDisplay(part.right);
+  const prefer = hasOrdinaryFraction(`${part.leftInput ?? ""} ${part.rightInput ?? ""}`);
+  const left = part.left === -Infinity ? "−∞" : lineNumericLabel(part.leftInput ?? String(part.left), prefer).display;
+  const right = part.right === Infinity ? "+∞" : lineNumericLabel(part.rightInput ?? String(part.right), prefer).display;
   const lb = part.leftInclusive ? "[" : "(";
   const rb = part.rightInclusive ? "]" : ")";
   return `${lb}${left}; ${right}${rb}`;
@@ -37,8 +41,9 @@ function formatSetLatex(parts: ParsedInterval[]): string {
     .map((part) => {
       const lb = part.leftInclusive ? "\\left[" : "\\left(";
       const rb = part.rightInclusive ? "\\right]" : "\\right)";
-      const left = part.left === -Infinity ? "-\\infty" : String(part.left);
-      const right = part.right === Infinity ? "+\\infty" : String(part.right);
+      const prefer = hasOrdinaryFraction(`${part.leftInput ?? ""} ${part.rightInput ?? ""}`);
+      const left = part.left === -Infinity ? "-\\infty" : lineNumericLabel(part.leftInput ?? String(part.left), prefer).latex;
+      const right = part.right === Infinity ? "+\\infty" : lineNumericLabel(part.rightInput ?? String(part.right), prefer).latex;
       return `${lb}${left};\\ ${right}${rb}`;
     })
     .join(" \\cup ");
@@ -114,6 +119,8 @@ export function parseSingleInterval(text: string): ParsedInterval {
     right: right.value,
     leftInclusive: left.inclusive,
     rightInclusive: right.inclusive,
+    leftInput: leftRaw,
+    rightInput: rightRaw,
   };
 }
 
@@ -144,6 +151,7 @@ export function normalizeIntervals(parts: ParsedInterval[]): ParsedInterval[] {
       continue;
     }
 
+    if (next.right > last.right) last.rightInput = next.rightInput;
     last.right = Math.max(last.right, next.right);
     if (Math.abs(last.right - next.right) < EPS) {
       last.rightInclusive = last.rightInclusive || next.rightInclusive;
@@ -174,6 +182,8 @@ export function parseIntervalMath(math: SetMath): ParseResult {
           right: rightVal,
           leftInclusive: math.leftOp === "<=",
           rightInclusive: math.rightOp === "<=",
+          leftInput: math.left,
+          rightInput: math.right,
         },
       ];
     } else {
@@ -185,6 +195,7 @@ export function parseIntervalMath(math: SetMath): ParseResult {
             right: boundary,
             leftInclusive: false,
             rightInclusive: math.rayOp === "<=",
+            rightInput: math.rayBoundary,
           },
         ];
       } else {
@@ -194,6 +205,7 @@ export function parseIntervalMath(math: SetMath): ParseResult {
             right: Infinity,
             leftInclusive: math.rayOp === ">=",
             rightInclusive: false,
+            leftInput: math.rayBoundary,
           },
         ];
       }

@@ -1,5 +1,7 @@
 # Project rules
 
+- Number-line labels use exact rational arithmetic in `line/numeric-labels.ts`, deriving tick labels from the original minimum and step; parsed interval endpoints retain source expressions through normalization and boundary edits. Why: coordinates remain exact and fraction/decimal presentation never relies on rounded geometry or saved label layout.
+
 - Graph captions are derived in `graph-labels.ts` and placed through the shared `label-layout.ts` engine using multiple visible curve anchors; persist only the chosen caption mode, never layout coordinates. Why: preview, embeddings and exports must share collision-aware labels that adapt to scene edits.
 
 - The app is a math plotting tool (line / plane / space); `/` is the plotting page, `/workspace` is a demo task editor that embeds plots. Do not reintroduce infographic or style-profile code.
