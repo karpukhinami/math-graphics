@@ -1,16 +1,20 @@
-/** «Аналог по скриншоту»: картинка → анализ (предпросмотр) → построение сразу в готовое задание. */
+/** «Аналог по скриншоту»: картинка → шаблон аналога (предпросмотр) → N вариантов → чертежи → готовые задания. */
 import { useState } from "react";
 import { Loader2, Pencil, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Markdown } from "@/components/plotting/Markdown";
 import { SourceImageInput } from "@/components/workspace/SourceImageInput";
 import { DEFAULT_REPRODUCE_MODEL } from "@/lib/ai/models";
-import { analyzeAnalogTask, generateAnalogFigures, type AnalogTaskAnalysis } from "@/lib/plotting/ai/analog-task";
+import {
+  analyzeAnalogTask, generateAnalogFigures, generateAnalogVariants, MAX_ANALOG_COUNT,
+  type AnalogTaskAnalysis, type AnalogTemplate,
+} from "@/lib/plotting/ai/analog-task";
 import { usePlotStore } from "@/lib/plotting/store";
 import { sceneToSvg } from "@/lib/plotting/use-plot-svg";
 import { standalonePlotSvg } from "@/lib/plotting/standalone-svg";
@@ -24,57 +28,79 @@ export interface AnalogTaskResult {
 
 const markerPreview = (text: string) => text.replace(/\[\[(fig\d+|[a-z0-9_-]+)\]\]/gi, (_m, id: string) => `*[чертёж ${id}]*`);
 
+function List({ title, items }: { title: string; items: string[] }) {
+  if (!items.length) return null;
+  return (
+    <div>
+      <p className="text-xs font-medium text-muted-foreground">{title}</p>
+      <ul className="list-disc space-y-0.5 pl-5 text-sm">{items.map((x, i) => <li key={i}><Markdown>{x}</Markdown></li>)}</ul>
+    </div>
+  );
+}
+
 export function AnalogTaskDialog({ open, onOpenChange, onCreate }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreate: (result: AnalogTaskResult) => void;
+  onCreate: (results: AnalogTaskResult[]) => void;
 }) {
   const [images, setImages] = useState<string[]>([]);
   const [wishes, setWishes] = useState("");
-  const [analysis, setAnalysis] = useState<AnalogTaskAnalysis | null>(null);
+  const [count, setCount] = useState(1);
+  const [tpl, setTpl] = useState<AnalogTemplate | null>(null);
   const [busy, setBusy] = useState<"analyze" | "build" | null>(null);
+  const [progress, setProgress] = useState("");
 
   async function onAnalyze() {
     if (!images[0]) { toast.error("Вставьте скриншот задания"); return; }
-    setBusy("analyze"); setAnalysis(null);
+    setBusy("analyze"); setTpl(null);
     try {
-      setAnalysis(await analyzeAnalogTask({ model: DEFAULT_REPRODUCE_MODEL, image: images[0], userRefinements: wishes }));
+      setTpl(await analyzeAnalogTask({ model: DEFAULT_REPRODUCE_MODEL, image: images[0], userRefinements: wishes }));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Ошибка анализа");
     } finally { setBusy(null); }
   }
 
   async function onBuild() {
-    if (!analysis) return;
+    if (!tpl || !images[0]) return;
     setBusy("build");
     const store = usePlotStore.getState();
     try {
-      const scenes = await generateAnalogFigures({ model: DEFAULT_REPRODUCE_MODEL, analysis });
-      const rendered: AnalogTaskResult["images"] = {};
-      for (const fig of analysis.figures) {
-        if (!(fig.id in scenes)) continue;
-        store.importAiScene(scenes[fig.id]);
-        const scene = usePlotStore.getState().scene;
-        const svg = sceneToSvg(scene);
-        if (!svg) throw new Error(`Чертёж ${fig.id} не построен`);
-        const standalone = await standalonePlotSvg(svg);
-        rendered[fig.id] = { src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(standalone)}`, scene: structuredClone(scene) };
+      setProgress("Придумываю варианты…");
+      const variants = await generateAnalogVariants({ model: DEFAULT_REPRODUCE_MODEL, image: images[0], template: tpl, count, userRefinements: wishes });
+      setProgress("Строю чертежи…");
+      const allScenes = await Promise.all(variants.map((v) => generateAnalogFigures({ model: DEFAULT_REPRODUCE_MODEL, analysis: v })));
+      // Рендер через общий стор — строго последовательно.
+      const results: AnalogTaskResult[] = [];
+      for (let i = 0; i < variants.length; i++) {
+        const v = variants[i];
+        const rendered: AnalogTaskResult["images"] = {};
+        for (const fig of v.figures) {
+          if (!(fig.id in allScenes[i])) continue;
+          store.importAiScene(allScenes[i][fig.id]);
+          const scene = usePlotStore.getState().scene;
+          const svg = sceneToSvg(scene);
+          if (!svg) throw new Error(`Вариант ${i + 1}: чертёж ${fig.id} не построен`);
+          const standalone = await standalonePlotSvg(svg);
+          rendered[fig.id] = { src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(standalone)}`, scene: structuredClone(scene) };
+        }
+        results.push({ task: v.task, figures: v.figures, images: rendered });
       }
       store.resetScene();
-      onCreate({ task: analysis.task, figures: analysis.figures, images: rendered });
-      toast.success("Задание создано");
+      onCreate(results);
+      toast.success(results.length > 1 ? `Создано заданий: ${results.length}` : "Задание создано");
       onOpenChange(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Не удалось построить задание");
-    } finally { setBusy(null); }
+    } finally { setBusy(null); setProgress(""); }
   }
 
+  const t = tpl?.template;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
         <DialogTitle>Аналог по скриншоту</DialogTitle>
         <fieldset disabled={busy !== null} className="space-y-4">
-          <SourceImageInput images={images} onChange={(urls) => { setImages(urls); setAnalysis(null); }} />
+          <SourceImageInput images={images} onChange={(urls) => { setImages(urls); setTpl(null); }} />
           <div className="space-y-2">
             <Label htmlFor="analog-wishes">Уточнения</Label>
             <Textarea id="analog-wishes" rows={3} value={wishes} onChange={(e) => setWishes(e.target.value)}
@@ -85,44 +111,41 @@ export function AnalogTaskDialog({ open, onOpenChange, onCreate }: {
           </Button>
         </fieldset>
 
-        {analysis && (
+        {tpl && t && (
           <div className="space-y-3 rounded-md border border-border p-3">
             <p className="text-xs font-medium text-muted-foreground">
-              Новое задание · {analysis.task.type === "choice" ? "выбор ответа" : "ввод ответа"}
-              {analysis.figures.length > 0 && ` · чертежей: ${analysis.figures.length}`}
+              Шаблон аналога · {t.type === "choice" ? `выбор ответа (${t.optionCount})` : "ввод ответа"}
+              {tpl.figures.length > 0 && ` · чертежей: ${tpl.figures.length}`}
             </p>
-            <Markdown>{markerPreview(analysis.task.text)}</Markdown>
-            {analysis.task.type === "input" && analysis.task.answer && (
-              <p className="text-sm"><span className="text-muted-foreground">Ответ:</span> {analysis.task.answer}</p>
-            )}
-            {analysis.task.type === "choice" && (
-              <ol className="list-decimal space-y-1 pl-5 text-sm">
-                {analysis.task.options.map((o, i) => (
-                  <li key={i} className={o.correct ? "font-medium" : undefined}>
-                    {o.text || "—"}{o.figure && <span className="text-muted-foreground"> [чертёж {o.figure}]</span>}{o.correct && " ✓"}
-                  </li>
-                ))}
-              </ol>
-            )}
-            {!analysis.canDraw && analysis.figures.length > 0 && (
+            <Markdown>{markerPreview(t.pattern)}</Markdown>
+            <List title="Сохраняется" items={t.mustPreserve} />
+            <List title="Меняется" items={t.mayChange} />
+            {!tpl.canDraw && tpl.figures.length > 0 && (
               <p className="text-sm text-destructive">Чертежи построить инструментом нельзя — будет создан только текст.</p>
             )}
             <Collapsible>
               <CollapsibleTrigger asChild><Button variant="ghost" size="sm" className="px-0 text-xs">Подробности анализа</Button></CollapsibleTrigger>
               <CollapsibleContent className="space-y-2 pt-2 text-sm">
-                {analysis.originalText && <><p className="text-xs font-medium text-muted-foreground">Исходное задание</p><Markdown>{markerPreview(analysis.originalText)}</Markdown></>}
-                {analysis.figures.map((f) => (
-                  <div key={f.id}>
-                    <p className="text-xs font-medium text-muted-foreground">Чертёж {f.id} ({f.placement === "option" ? "в варианте ответа" : "в тексте"})</p>
-                    <pre className="whitespace-pre-wrap font-sans text-sm">{f.drawPlan}</pre>
-                  </div>
+                {tpl.originalText && <><p className="text-xs font-medium text-muted-foreground">Исходное задание</p><Markdown>{markerPreview(tpl.originalText)}</Markdown></>}
+                {t.answerRule && <><p className="text-xs font-medium text-muted-foreground">Как получается ответ</p><Markdown>{t.answerRule}</Markdown></>}
+                {t.visibility && <><p className="text-xs font-medium text-muted-foreground">Что видно на чертежах</p><pre className="whitespace-pre-wrap font-sans text-sm">{t.visibility}</pre></>}
+                {tpl.figures.map((f) => (
+                  <p key={f.id}><span className="text-muted-foreground">Чертёж {f.id} ({f.placement === "option" ? `в варианте №${(f.optionIndex ?? 0) + 1}` : "в тексте"}):</span> {f.role}</p>
                 ))}
-                {analysis.reasoning && <Markdown>{analysis.reasoning}</Markdown>}
+                {tpl.reasoning && <Markdown>{tpl.reasoning}</Markdown>}
               </CollapsibleContent>
             </Collapsible>
-            <Button className="w-full" onClick={() => void onBuild()} disabled={busy !== null}>
-              {busy === "build" ? <Loader2 className="size-4 animate-spin" /> : <Pencil className="size-4" />} Построить задание
-            </Button>
+            <div className="flex items-end gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="analog-count">Сколько заданий</Label>
+                <Input id="analog-count" type="number" min={1} max={MAX_ANALOG_COUNT} className="w-24" value={count} disabled={busy !== null}
+                  onChange={(e) => setCount(Math.min(MAX_ANALOG_COUNT, Math.max(1, Number(e.target.value) || 1)))} />
+              </div>
+              <Button className="flex-1" onClick={() => void onBuild()} disabled={busy !== null}>
+                {busy === "build" ? <Loader2 className="size-4 animate-spin" /> : <Pencil className="size-4" />}
+                {busy === "build" && progress ? progress : count > 1 ? `Построить задания (${count})` : "Построить задание"}
+              </Button>
+            </div>
           </div>
         )}
       </DialogContent>
