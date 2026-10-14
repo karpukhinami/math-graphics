@@ -320,9 +320,8 @@ function WorkspacePage() {
                   )}
                   {block.type === "choice" && (
                     <div className="space-y-2">
-                      {allAnswersAreImages(block.options) && (
-                        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                          <span className="min-w-0 text-sm text-muted-foreground">Раскладка ответов</span>
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                        <span className="min-w-0 text-sm text-muted-foreground">Раскладка ответов</span>
                           <ToggleGroup type="single" variant="outline" size="sm" value={block.answerLayout ?? "vertical"}
                             onValueChange={(value) => { if (value === "vertical" || value === "horizontal" || value === "grid") patch(block.id, { answerLayout: value }); }}>
                             <ToggleGroupItem value="vertical" title="Все вниз подряд" aria-label="Все вниз подряд"><Rows3 className="size-4" /></ToggleGroupItem>
