@@ -1,13 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Download, FileJson, Hammer, Sparkles, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { usePlotStore } from "@/lib/plotting/store";
 import { usePlotSvg } from "@/lib/plotting/use-plot-svg";
-import { draftRenderPoints, sceneCurves, scenePoints } from "@/lib/plotting/scene";
-import { renderPlotSvg } from "@/lib/plotting/render";
-import { renderLineSvg } from "@/lib/plotting/line/render";
-import { renderSpaceSvg } from "@/lib/plotting/space/render";
 import { generatePlotBeautifiedImage } from "@/lib/plotting/beautify";
 import { downloadPng, downloadSceneJson, downloadSvg, readSceneJson } from "@/lib/plotting/export";
 import { PlotBeautifyDialog } from "@/components/plotting/PlotBeautifyDialog";
@@ -16,7 +12,6 @@ import { toast } from "sonner";
 export function PlotPreview() {
   const scene = usePlotStore((state) => state.scene);
   const status = usePlotStore((state) => state.status);
-  const pointDraft = usePlotStore((state) => state.pointDraft);
   const buildAll = usePlotStore((state) => state.buildAll);
   const importScene = usePlotStore((state) => state.importScene);
   const fileRef = useRef<HTMLInputElement>(null);
