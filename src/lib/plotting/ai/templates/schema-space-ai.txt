@@ -2,6 +2,8 @@
 
 Модель возвращает УПРОЩЁННЫЙ объект. Приложение дополнит все служебные поля (appearance, fit, id, built-геометрию, полный view).
 
+{{MATH_NOTATION_RULES}}
+
 Корень ответа:
 { "scene": { "version": 1, "space": "space", "space3d": { ... } } }
 

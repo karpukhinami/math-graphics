@@ -1,5 +1,6 @@
 /** Сборка промптов режима ИИ-рисования из отдельных файлов. */
 import sharedSourceRules from "@/lib/plotting/ai/templates/shared-source-rules.txt?raw";
+import mathNotationRules from "@/lib/plotting/ai/templates/math-notation-rules.txt?raw";
 import analyzeDraw from "@/lib/plotting/ai/templates/analyze-draw.txt?raw";
 import analyzeReproduce from "@/lib/plotting/ai/templates/analyze-reproduce.txt?raw";
 import analyzeAnalog from "@/lib/plotting/ai/templates/analyze-analog.txt?raw";

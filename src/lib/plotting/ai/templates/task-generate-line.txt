@@ -42,6 +42,8 @@
 }
 Числа — строки math.js: "-3", "1/2", "sqrt(2)". Бесконечность — "inf" / "-inf" (граница всегда открыта).
 
+{{MATH_NOTATION_RULES}}
+
 SET:
   { "type": "interval", "from": "3", "to": "4", "fromOpen": true, "toOpen": false }
   { "type": "ray", "direction": "right" | "left", "boundary": "2", "open": false }
