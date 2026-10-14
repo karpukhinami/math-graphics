@@ -492,7 +492,7 @@ export function expandPlaneDraft(raw: unknown, options: DraftOptions = {}): Draf
     errors.push("Черновик пуст: нет ни одного графика или точки");
   }
 
-  const axisMarksAll = String((root.axes as Rec | undefined)?.axisMarks ?? "").trim() === "all";
+  const axisMarksAll = String(axes.axisMarks ?? "").trim() === "all";
   const scene = {
     version: 1,
     space: "plane",
