@@ -269,7 +269,8 @@ export function expandLineDraft(
   }
 
   const axisOk = min !== null && max !== null && max > min;
-  const step = text(axisRaw.step) || (axisOk ? niceStep(min!, max!) : "1");
+  // Шаг шкалы по умолчанию всегда 1; другое значение — только по явному запросу (axis.step).
+  const step = text(axisRaw.step) || "1";
 
   // По умолчанию у чертежа множеств деления не нужны, у чертежа одних точек — нужны.
   const tickMode = enumKey(root.ticks) || (sets.length ? "none" : "all");
