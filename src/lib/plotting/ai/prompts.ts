@@ -22,13 +22,17 @@ import type { PlotAiScenario, PlotAnalysisResult, PlotSceneType } from "./types"
 
 const schemaLine = schemaLineRaw
   .replaceAll("{{LINE_SETS_RULES}}", lineSetsRules)
-  .replaceAll("{{COLOR_GROUPS_RULES}}", colorGroupsRules);
+  .replaceAll("{{COLOR_GROUPS_RULES}}", colorGroupsRules)
+  .replaceAll("{{MATH_NOTATION_RULES}}", mathNotationRules);
 
-const schemaPlane = schemaPlaneRaw.replaceAll("{{COLOR_GROUPS_RULES}}", colorGroupsRules);
+const schemaPlane = schemaPlaneRaw
+  .replaceAll("{{COLOR_GROUPS_RULES}}", colorGroupsRules)
+  .replaceAll("{{MATH_NOTATION_RULES}}", mathNotationRules);
 
 const schemaSpace = schemaSpaceAiRaw
   .replaceAll("{{SPACE_FIGURES_GUIDE}}", spaceFiguresGuide)
-  .replaceAll("{{SPACE_CONSTRUCTIONS_GUIDE}}", spaceConstructionsGuide);
+  .replaceAll("{{SPACE_CONSTRUCTIONS_GUIDE}}", spaceConstructionsGuide)
+  .replaceAll("{{MATH_NOTATION_RULES}}", mathNotationRules);
 
 function injectShared(template: string, sourceText: string): string {
   const shared = sharedSourceRules.replaceAll("{{SOURCE_TEXT}}", sourceText || "(материал не передан)");
@@ -112,7 +116,8 @@ export function buildDrawScenePrompt(opts: {
   // Функции-заменители: символы «$» в плане и пожеланиях (LaTeX) не должны читаться как шаблоны replace.
   return template
     .replaceAll("{{DRAW_PLAN}}", () => plan)
-    .replaceAll("{{USER_REFINEMENTS}}", () => refinements);
+    .replaceAll("{{USER_REFINEMENTS}}", () => refinements)
+    .replaceAll("{{MATH_NOTATION_RULES}}", mathNotationRules);
 }
 
 export function buildDrawRetrySuffix(validationErrors: string[]): string {
