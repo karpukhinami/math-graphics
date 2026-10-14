@@ -3,6 +3,7 @@
  */
 import { displayNumber, evaluateNumber } from "../math-expr";
 import type { PlotScene } from "../types";
+import { lineNumericLabel, linePrefersFractions, lineTickLabel } from "./numeric-labels";
 import { majorTickValues, parseSemicolonList, valueOnMajorTick } from "./intervals";
 import {
   labelNeedsLatex,
@@ -306,6 +307,7 @@ export function renderLineSvg(scene: PlotScene): string | null {
 
   const a = scene.appearance;
   const parts: string[] = [];
+  const preferFractions = linePrefersFractions(line);
   const majors = majorTickValues(geom.axisMin, geom.axisMax, geom.majorStep);
   const majorLabelValues = majorLabels(line.ticks, majors, geom.axisMin, geom.majorStep);
   const divisions = axisNumber(line.ticks.minorDivisions) ?? 5;
@@ -381,15 +383,15 @@ export function renderLineSvg(scene: PlotScene): string | null {
     const tickLabelY = row.axisY + a.tickSize + a.labelFontSize + 2;
     for (const value of majorLabelValues) {
       const x = geom.sx(value);
-      const text = displayNumber(value, "number");
-      parts.push(renderSvgTextLabel(x, tickLabelY, "middle", text, a.labelFontSize, a.labelColor, font));
+      const label = lineTickLabel(line, Math.round((value - geom.axisMin) / geom.majorStep));
+      parts.push(renderCoordinateLabel(x, tickLabelY, label.display, label.latex, a.labelFontSize, a.labelColor, font));
     }
 
     const minorFont = a.labelFontSize * 0.6;
     for (const value of minorLabelValues) {
       const x = geom.sx(value);
-      const text = displayNumber(value, "number");
-      parts.push(renderSvgTextLabel(x, tickLabelY, "middle", text, minorFont, a.labelColor, font));
+      const label = lineTickLabel(line, Math.round((value - geom.axisMin) / geom.majorStep * divisions), divisions);
+      parts.push(renderCoordinateLabel(x, tickLabelY, label.display, label.latex, minorFont, a.labelColor, font));
     }
 
     const nameWidth = axisLabel.length * a.labelFontSize * 0.55;
@@ -421,8 +423,9 @@ export function renderLineSvg(scene: PlotScene): string | null {
     const coordFontSize = a.labelFontSize;
     const name =
       point.style.showLabel && point.style.label.trim() ? point.style.label.trim() : "";
-    const coord = point.style.showCoords ? point.built.displayX : "";
-    const coordLatex = point.built.latex;
+    const coordinateLabel = lineNumericLabel(point.math.coordinate, preferFractions);
+    const coord = point.style.showCoords ? coordinateLabel.display : "";
+    const coordLatex = coordinateLabel.latex;
 
     const labelYAbove = py - 10 - nameFontSize * 0.25;
     const labelYBelow = py + Math.max(nameFontSize, coordFontSize) + 12;

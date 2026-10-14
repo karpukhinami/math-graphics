@@ -58,7 +58,7 @@ export function renderSvgMathLabel(
 ): string {
   const html = katex.renderToString(latex, { throwOnError: false, displayMode: false });
   const width = Math.max(48, latex.length * fontSize * 0.45 + 12);
-  const height = Math.ceil(fontSize * 1.55);
+  const height = Math.ceil(fontSize * (latex.includes("\\frac") ? 2.5 : 1.55));
   let foX = x - width / 2;
   if (anchor === "end") foX = x - width;
   if (anchor === "start") foX = x;

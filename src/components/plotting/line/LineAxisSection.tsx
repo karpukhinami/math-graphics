@@ -96,6 +96,8 @@ export function LineAxisSection() {
             <Label className="text-xs text-muted-foreground">Шаг засечек</Label>
             <Input
               value={line.axis.majorStep}
+              aria-label="Шаг засечек"
+              placeholder="1/3"
               className="h-8 px-2 font-mono text-sm"
               onChange={(e) => updateLineAxis({ majorStep: e.target.value })}
             />
