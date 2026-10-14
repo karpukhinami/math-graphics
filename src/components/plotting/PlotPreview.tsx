@@ -9,7 +9,7 @@ import { downloadPng, downloadSceneJson, downloadSvg, readSceneJson } from "@/li
 import { PlotBeautifyDialog } from "@/components/plotting/PlotBeautifyDialog";
 import { toast } from "sonner";
 
-export function PlotPreview() {
+export function PlotPreview({ simplified = false }: { simplified?: boolean }) {
   const scene = usePlotStore((state) => state.scene);
   const status = usePlotStore((state) => state.status);
   const buildAll = usePlotStore((state) => state.buildAll);
@@ -51,7 +51,7 @@ export function PlotPreview() {
   return (
     <Card>
       <CardContent className="space-y-3 p-3">
-        <div className="flex flex-wrap gap-2">
+        {!simplified && <div className="flex flex-wrap gap-2">
           <Button type="button" size="sm" onClick={buildAll}>
             <Hammer className="size-4" />
             Построить всё
@@ -106,7 +106,7 @@ export function PlotPreview() {
               }
             }}
           />
-        </div>
+        </div>}
 
         <div
           ref={previewRef}

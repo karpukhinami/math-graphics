@@ -14,7 +14,7 @@ import { usePlotStore } from "@/lib/plotting/store";
 import { buildSpaceFaceDepthReport } from "@/lib/plotting/space/space-face-depth-report";
 import type { SpaceFaceDepthReport } from "@/lib/plotting/space/space-face-depth-report";
 
-export function PlotWorkbench({ aiInitial, title }: { aiInitial?: PlotAiPanelProps; title?: ReactNode }) {
+export function PlotWorkbench({ aiInitial, title, simplified = false, resultReady = false }: { aiInitial?: PlotAiPanelProps; title?: ReactNode; simplified?: boolean; resultReady?: boolean }) {
   const inputMode = usePlotStore((state) => state.inputMode);
   const setInputMode = usePlotStore((state) => state.setInputMode);
   const spaceTab = usePlotStore((state) => state.spaceTab);
@@ -39,7 +39,7 @@ export function PlotWorkbench({ aiInitial, title }: { aiInitial?: PlotAiPanelPro
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>{title}</div>
-        <div className="flex items-center gap-2">
+        {!simplified && <div className="flex items-center gap-2">
           <Tabs value={inputMode} onValueChange={(value) => setInputMode(value as "manual" | "ai")}>
             <TabsList>
               <TabsTrigger value="manual">Ручной ввод</TabsTrigger>
@@ -65,7 +65,7 @@ export function PlotWorkbench({ aiInitial, title }: { aiInitial?: PlotAiPanelPro
             <RotateCcw className="size-4" />
             Сбросить
           </Button>
-        </div>
+        </div>}
       </header>
 
       {!isAi && (
@@ -80,11 +80,11 @@ export function PlotWorkbench({ aiInitial, title }: { aiInitial?: PlotAiPanelPro
 
       <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto lg:grid-cols-2 lg:overflow-hidden">
         <div className="min-h-0 space-y-4 overflow-y-auto lg:pr-2">
-          {isAi ? <PlotAiPanel key={aiSessionKey} {...aiInitial} /> : <PlotManualPanel />}
+          {isAi ? <PlotAiPanel key={aiSessionKey} {...aiInitial} simplified={simplified} /> : <PlotManualPanel />}
         </div>
-        <div className="min-h-0 overflow-y-auto lg:pl-1">
-          <PlotPreview />
-        </div>
+        {(!simplified || !isAi || resultReady) && <div className="min-h-0 overflow-y-auto lg:pl-1">
+          <PlotPreview simplified={simplified} />
+        </div>}
       </div>
       <SpaceFaceDepthDebugDialog open={faceDepthOpen} onOpenChange={setFaceDepthOpen} report={faceDepthReport} />
     </div>

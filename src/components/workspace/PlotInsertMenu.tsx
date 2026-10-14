@@ -1,6 +1,6 @@
 /** Меню вставки картинки: файл или чертёж (ИИ / ручной конструктор). Встраиваемая точка входа. */
 import { useRef } from "react";
-import { ImagePlus, Upload, Wand2, MessageSquareText, Copy, ScanLine, PencilRuler } from "lucide-react";
+import { ImagePlus, Upload, Wand2, ScanLine, PencilRuler } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,16 +11,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export type PlotInsertAction = "ai-draw" | "ai-draw-wish" | "ai-analog" | "ai-reproduce" | "manual";
+export type PlotInsertAction = "ai-draw" | "ai-reproduce" | "manual";
 
 export function PlotInsertMenu({
   onFile,
   onPlot,
   size = "sm",
+  context = "text",
 }: {
   onFile: (dataUrl: string) => void;
   onPlot: (action: PlotInsertAction) => void;
   size?: "sm" | "icon";
+  context?: "text" | "task";
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   return (
@@ -53,16 +55,10 @@ export function PlotInsertMenu({
           <DropdownMenuSeparator />
           <DropdownMenuLabel className="text-xs text-muted-foreground">Чертёж</DropdownMenuLabel>
           <DropdownMenuItem onSelect={() => onPlot("ai-draw")}>
-            <Wand2 className="size-4" /> Сгенерировать по тексту задания
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => onPlot("ai-draw-wish")}>
-            <MessageSquareText className="size-4" /> Сгенерировать с пожеланиями…
+            <Wand2 className="size-4" /> {context === "task" ? "Сгенерировать по тексту задания" : "Сгенерировать по тексту"}
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onPlot("ai-reproduce")}>
             <ScanLine className="size-4" /> Воспроизвести по картинке
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => onPlot("ai-analog")}>
-            <Copy className="size-4" /> Аналог по скриншоту задания
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onPlot("manual")}>
             <PencilRuler className="size-4" /> Ручной конструктор
