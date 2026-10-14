@@ -12,7 +12,7 @@ import { Markdown } from "@/components/plotting/Markdown";
 import { SourceImageInput } from "@/components/workspace/SourceImageInput";
 import { DEFAULT_REPRODUCE_MODEL } from "@/lib/ai/models";
 import {
-  analyzeAnalogTask, generateAnalogFigures, generateAnalogVariants, MAX_ANALOG_COUNT,
+  analyzeAnalogTask, analyzeRequestTask, generateAnalogFigures, generateAnalogVariants, MAX_ANALOG_COUNT,
   type AnalogTaskAnalysis, type AnalogTemplate,
 } from "@/lib/plotting/ai/analog-task";
 import { usePlotStore } from "@/lib/plotting/store";
@@ -38,8 +38,10 @@ function List({ title, items }: { title: string; items: string[] }) {
   );
 }
 
-export function AnalogTaskDialog({ open, onOpenChange, onCreate }: {
+export function AnalogTaskDialog({ open, onOpenChange, onCreate, mode = "screenshot" }: {
   open: boolean;
+  /** "screenshot" — аналог по скриншоту; "request" — задание по свободному запросу. */
+  mode?: "screenshot" | "request";
   onOpenChange: (open: boolean) => void;
   onCreate: (results: AnalogTaskResult[]) => void;
 }) {
@@ -50,23 +52,26 @@ export function AnalogTaskDialog({ open, onOpenChange, onCreate }: {
   const [busy, setBusy] = useState<"analyze" | "build" | null>(null);
   const [progress, setProgress] = useState("");
 
+  const isShot = mode === "screenshot";
   async function onAnalyze() {
-    if (!images[0]) { toast.error("Вставьте скриншот задания"); return; }
+    if (isShot ? !images[0] : !wishes.trim()) { toast.error(isShot ? "Вставьте скриншот задания" : "Опишите, какое задание нужно"); return; }
     setBusy("analyze"); setTpl(null);
     try {
-      setTpl(await analyzeAnalogTask({ model: DEFAULT_REPRODUCE_MODEL, image: images[0], userRefinements: wishes }));
+      setTpl(isShot
+        ? await analyzeAnalogTask({ model: DEFAULT_REPRODUCE_MODEL, image: images[0], userRefinements: wishes })
+        : await analyzeRequestTask({ model: DEFAULT_REPRODUCE_MODEL, request: wishes }));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Ошибка анализа");
     } finally { setBusy(null); }
   }
 
   async function onBuild() {
-    if (!tpl || !images[0]) return;
+    if (!tpl || (isShot && !images[0])) return;
     setBusy("build");
     const store = usePlotStore.getState();
     try {
       setProgress("Придумываю варианты…");
-      const variants = await generateAnalogVariants({ model: DEFAULT_REPRODUCE_MODEL, image: images[0], template: tpl, count, userRefinements: wishes });
+      const variants = await generateAnalogVariants({ model: DEFAULT_REPRODUCE_MODEL, image: isShot ? images[0] : undefined, template: tpl, count, userRefinements: isShot ? wishes : "" });
       setProgress("Строю чертежи…");
       const allScenes = await Promise.all(variants.map((v) => generateAnalogFigures({ model: DEFAULT_REPRODUCE_MODEL, analysis: v })));
       // Рендер через общий стор — строго последовательно.
@@ -98,15 +103,17 @@ export function AnalogTaskDialog({ open, onOpenChange, onCreate }: {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
-        <DialogTitle>Аналог по скриншоту</DialogTitle>
+        <DialogTitle>{isShot ? "Аналог по скриншоту" : "Задание с чертежом по запросу"}</DialogTitle>
         <fieldset disabled={busy !== null} className="space-y-4">
-          <SourceImageInput images={images} onChange={(urls) => { setImages(urls); setTpl(null); }} />
+          {isShot && <SourceImageInput images={images} onChange={(urls) => { setImages(urls); setTpl(null); }} />}
           <div className="space-y-2">
-            <Label htmlFor="analog-wishes">Уточнения</Label>
-            <Textarea id="analog-wishes" rows={3} value={wishes} onChange={(e) => setWishes(e.target.value)}
-              placeholder="Например: оставить тот же тип функции, поменять только коэффициенты" />
+            <Label htmlFor="analog-wishes">{isShot ? "Уточнения" : "Какое задание нужно"}</Label>
+            <Textarea id="analog-wishes" rows={isShot ? 3 : 5} value={wishes} onChange={(e) => setWishes(e.target.value)}
+              placeholder={isShot
+                ? "Например: оставить тот же тип функции, поменять только коэффициенты"
+                : "Например: 9 класс, по графику параболы найти координаты вершины, ответ вводом"} />
           </div>
-          <Button className="w-full" onClick={() => void onAnalyze()} disabled={!images[0]}>
+          <Button className="w-full" onClick={() => void onAnalyze()} disabled={isShot ? !images[0] : !wishes.trim()}>
             {busy === "analyze" ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Проанализировать
           </Button>
         </fieldset>
@@ -114,7 +121,7 @@ export function AnalogTaskDialog({ open, onOpenChange, onCreate }: {
         {tpl && t && (
           <div className="space-y-3 rounded-md border border-border p-3">
             <p className="text-xs font-medium text-muted-foreground">
-              Шаблон аналога · {t.type === "choice" ? `выбор ответа (${t.optionCount})` : "ввод ответа"}
+              {isShot ? "Шаблон аналога" : "Шаблон задания"} · {t.type === "choice" ? `выбор ответа (${t.optionCount})` : "ввод ответа"}
               {tpl.figures.length > 0 && ` · чертежей: ${tpl.figures.length}`}
             </p>
             <Markdown>{markerPreview(t.pattern)}</Markdown>
@@ -126,7 +133,7 @@ export function AnalogTaskDialog({ open, onOpenChange, onCreate }: {
             <Collapsible>
               <CollapsibleTrigger asChild><Button variant="ghost" size="sm" className="px-0 text-xs">Подробности анализа</Button></CollapsibleTrigger>
               <CollapsibleContent className="space-y-2 pt-2 text-sm">
-                {tpl.originalText && <><p className="text-xs font-medium text-muted-foreground">Исходное задание</p><Markdown>{markerPreview(tpl.originalText)}</Markdown></>}
+                {tpl.originalText && <><p className="text-xs font-medium text-muted-foreground">{isShot ? "Исходное задание" : "Образец задания"}</p><Markdown>{markerPreview(tpl.originalText)}</Markdown></>}
                 {t.answerRule && <><p className="text-xs font-medium text-muted-foreground">Как получается ответ</p><Markdown>{t.answerRule}</Markdown></>}
                 {t.visibility && <><p className="text-xs font-medium text-muted-foreground">Что видно на чертежах</p><pre className="whitespace-pre-wrap font-sans text-sm">{t.visibility}</pre></>}
                 {tpl.figures.map((f) => (

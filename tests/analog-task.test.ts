@@ -71,3 +71,14 @@ describe("аналог: шаблон и варианты", () => {
     expect(p).not.toMatch(/\{\{[A-Z_]+\}\}/);
   });
 });
+
+import { buildRequestTaskAnalyzePrompt } from "../src/lib/plotting/ai/prompts";
+describe("задание по запросу", () => {
+  test("промпты первого и второго этапов без пропусков, второй этап без скриншота", () => {
+    expect(buildRequestTaskAnalyzePrompt("парабола")).not.toMatch(/\{\{[A-Z_]+\}\}/);
+    const tpl = parseAnalogTemplate(tplRaw);
+    const p = buildAnalogTaskVariantsPrompt({ count: 2, originalText: "", template: tpl.template, sceneType: "plane", figures: tpl.figures, taskType: "choice", userRefinements: "", source: "request" });
+    expect(p).toContain("Скриншота нет");
+    expect(p).not.toMatch(/\{\{[A-Z_]+\}\}/);
+  });
+});

@@ -9,6 +9,7 @@ import {
   buildAnalogTaskAnalyzePrompt,
   buildAnalogTaskGeneratePrompt,
   buildAnalogTaskVariantsPrompt,
+  buildRequestTaskAnalyzePrompt,
   buildDrawRetrySuffix,
   type PlotDrawBranchType,
 } from "./prompts";
@@ -172,9 +173,20 @@ export async function analyzeAnalogTask(opts: { model: string; image: string; us
   });
 }
 
+/** «Задание по запросу», этап 1: тот же шаблон, но по тексту учителя, без картинки. */
+export async function analyzeRequestTask(opts: { model: string; request: string }): Promise<AnalogTemplate> {
+  return callTextForJson({
+    model: opts.model,
+    prompt: buildRequestTaskAnalyzePrompt(opts.request),
+    label: "request-task-analyze",
+    schemaHint: '{ reasoning, originalText, canDraw, sceneType: "plane"|"line", template: { type, optionCount, pattern, mustPreserve, mayChange, answerRule, visibility }, figures: [{ id, placement, optionIndex, role }] }',
+    parse: parseAnalogTemplate,
+  });
+}
+
 /** Этап 2: count конкретных вариантов одним запросом. */
 export async function generateAnalogVariants(opts: {
-  model: string; image: string; template: AnalogTemplate; count: number; userRefinements: string;
+  model: string; image?: string; template: AnalogTemplate; count: number; userRefinements: string;
 }): Promise<AnalogTaskAnalysis[]> {
   const { template: tpl } = opts;
   const count = Math.min(MAX_ANALOG_COUNT, Math.max(1, Math.round(opts.count)));
@@ -183,10 +195,11 @@ export async function generateAnalogVariants(opts: {
     prompt: buildAnalogTaskVariantsPrompt({
       count, originalText: tpl.originalText, template: tpl.template, sceneType: tpl.sceneType,
       figures: tpl.canDraw ? tpl.figures : [], taskType: tpl.template.type, userRefinements: opts.userRefinements,
+      source: opts.image ? "screenshot" : "request",
     }),
     label: "analog-task-variants",
     schemaHint: '{ variants: [ { reasoning, task: { type, text, answer, options: [{ text, correct, figure }] }, figures: [{ id, drawPlan }] } ] }',
-    images: [opts.image],
+    images: opts.image ? [opts.image] : undefined,
     parse: (v) => {
       const list = Array.isArray((v as { variants?: unknown })?.variants) ? (v as { variants: unknown[] }).variants : [];
       if (list.length !== count) throw new Error(`Нужно ровно ${count} вариантов задания, получено ${list.length}`);

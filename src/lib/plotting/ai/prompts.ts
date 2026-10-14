@@ -25,6 +25,7 @@ import techPlanRules from "@/lib/plotting/ai/templates/tech-plan-rules.txt?raw";
 import jsonOutputRules from "@/lib/plotting/ai/templates/json-output-rules.txt?raw";
 import analogTaskAnalyze from "@/lib/plotting/ai/templates/analog-task-analyze.txt?raw";
 import analogTaskVariants from "@/lib/plotting/ai/templates/analog-task-variants.txt?raw";
+import requestTaskAnalyze from "@/lib/plotting/ai/templates/request-task-analyze.txt?raw";
 import analogTaskGenerate from "@/lib/plotting/ai/templates/analog-task-generate.txt?raw";
 import type { PlotAiScenario, PlotAnalysisResult, PlotSceneType } from "./types";
 
@@ -199,6 +200,12 @@ export function buildAnalogTaskAnalyzePrompt(userRefinements: string): string {
     "\n\n" + lineFractionRules;
 }
 
+/** «Задание по запросу», этап 1: идея и шаблон по свободному описанию (дальше — как у аналога). */
+export function buildRequestTaskAnalyzePrompt(request: string): string {
+  return withTechBlocks(requestTaskAnalyze).replaceAll("{{USER_REQUEST}}", () => request.trim() || "(пусто)") +
+    "\n\n" + lineFractionRules;
+}
+
 /** «Аналог по скриншоту», этап 2: N конкретных вариантов с планами чертежей по шаблону. */
 export function buildAnalogTaskVariantsPrompt(opts: {
   count: number;
@@ -208,7 +215,13 @@ export function buildAnalogTaskVariantsPrompt(opts: {
   figures: Array<{ id: string; placement: string; optionIndex: number | null; role: string }>;
   taskType: "input" | "choice";
   userRefinements: string;
+  /** "screenshot" — исходник во вложении; "request" — идея по текстовому запросу. */
+  source?: "screenshot" | "request";
 }): string {
+  const fromShot = opts.source !== "request";
+  const note = fromShot
+    ? "Исходный скриншот — во вложении: сверяй с ним видимость элементов. Ниже «исходник» — это он."
+    : "Скриншота нет: задание придумано по запросу учителя. Ниже «исходник» — это образец задания из шаблона, а видимость определяется только полем template.visibility.";
   const figs = opts.figures.length
     ? opts.figures.map((f) => `- ${f.id}: ${f.placement === "option" ? `в варианте ответа №${(f.optionIndex ?? 0) + 1}` : "в тексте"} — ${f.role}`).join("\n")
     : "(чертежей нет)";
@@ -216,6 +229,8 @@ export function buildAnalogTaskVariantsPrompt(opts: {
     .replaceAll("{{COUNT}}", String(opts.count))
     .replaceAll("{{TASK_TYPE}}", opts.taskType)
     .replaceAll("{{SCENE_TYPE}}", opts.sceneType ?? "—")
+    .replaceAll("{{SOURCE_NOTE}}", note)
+    .replaceAll("{{ORIGINAL_TITLE}}", fromShot ? "ИСХОДНОЕ ЗАДАНИЕ (распознано на первом этапе)" : "ОБРАЗЕЦ ЗАДАНИЯ (первый этап)")
     .replaceAll("{{ORIGINAL_TEXT}}", () => opts.originalText || "(нет)")
     .replaceAll("{{TEMPLATE}}", () => JSON.stringify(opts.template, null, 2))
     .replaceAll("{{FIGURES}}", () => figs)
