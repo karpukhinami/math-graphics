@@ -269,6 +269,10 @@ export function expandLineDraft(
 
   // Шаг шкалы по умолчанию всегда 1; другое значение — только по явному запросу (axis.step).
   const step = text(axisRaw.step) || "1";
+  const stepValue = parseNumber(step);
+  if (stepValue === null || !Number.isFinite(stepValue) || stepValue <= 0) {
+    errors.push(`axis.step: «${step}» должен быть конечным положительным числом`);
+  }
 
   // По умолчанию у чертежа множеств деления не нужны, у чертежа одних точек — нужны.
   const tickMode = enumKey(root.ticks) || (sets.length ? "none" : "all");
