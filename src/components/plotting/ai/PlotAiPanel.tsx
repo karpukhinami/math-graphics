@@ -123,6 +123,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
   async function onDraw() {
     if (!analysis?.canDraw || !analysis.sceneType) return;
     setDrawing(true);
+    if (simplified) setSceneBuilt(false);
     try {
       const result = await generatePlotScene({
         model,
