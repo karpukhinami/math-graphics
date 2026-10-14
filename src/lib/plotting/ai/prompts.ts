@@ -19,6 +19,12 @@ import spaceFiguresGuide from "@/lib/plotting/ai/templates/space-figures-guide.t
 import spaceConstructionsGuide from "@/lib/plotting/ai/templates/space-constructions-guide.txt?raw";
 import lineSetsRules from "@/lib/plotting/ai/templates/line-sets-rules.txt?raw";
 import colorGroupsRules from "@/lib/plotting/ai/templates/color-groups.txt?raw";
+import techDraftPlaneRaw from "@/lib/plotting/ai/templates/tech-draft-plane.txt?raw";
+import techDraftLineRaw from "@/lib/plotting/ai/templates/tech-draft-line.txt?raw";
+import techPlanRules from "@/lib/plotting/ai/templates/tech-plan-rules.txt?raw";
+import jsonOutputRules from "@/lib/plotting/ai/templates/json-output-rules.txt?raw";
+import analogTaskAnalyze from "@/lib/plotting/ai/templates/analog-task-analyze.txt?raw";
+import analogTaskGenerate from "@/lib/plotting/ai/templates/analog-task-generate.txt?raw";
 import type { PlotAiScenario, PlotAnalysisResult, PlotSceneType } from "./types";
 
 const schemaLine = schemaLineRaw
@@ -35,9 +41,27 @@ const schemaSpace = schemaSpaceAiRaw
   .replaceAll("{{SPACE_CONSTRUCTIONS_GUIDE}}", spaceConstructionsGuide)
   .replaceAll("{{MATH_NOTATION_RULES}}", mathNotationRules);
 
+/**
+ * Общие технические блоки: схемы черновиков и правила плана. Сценарные шаблоны только
+ * подставляют их, поэтому изменение блока применяется ко всем сценариям сразу.
+ */
+export const techDraftPlane = techDraftPlaneRaw
+  .replaceAll("{{MATH_NOTATION_RULES}}", mathNotationRules)
+  .replaceAll("{{JSON_OUTPUT_RULES}}", jsonOutputRules);
+export const techDraftLine = techDraftLineRaw
+  .replaceAll("{{MATH_NOTATION_RULES}}", mathNotationRules)
+  .replaceAll("{{JSON_OUTPUT_RULES}}", jsonOutputRules);
+
+function withTechBlocks(template: string): string {
+  return template
+    .replaceAll("{{TECH_PLAN_RULES}}", techPlanRules)
+    .replaceAll("{{TECH_DRAFT_PLANE}}", techDraftPlane)
+    .replaceAll("{{TECH_DRAFT_LINE}}", techDraftLine);
+}
+
 function injectShared(template: string, sourceText: string): string {
   const shared = sharedSourceRules.replaceAll("{{SOURCE_TEXT}}", sourceText || "(материал не передан)");
-  return template.replaceAll("{{SHARED_SOURCE_RULES}}", shared) + "\n\n" + lineFractionRules;
+  return withTechBlocks(template).replaceAll("{{SHARED_SOURCE_RULES}}", shared) + "\n\n" + lineFractionRules;
 }
 
 export function buildAnalyzePrompt(opts: {
@@ -49,7 +73,7 @@ export function buildAnalyzePrompt(opts: {
   if (scenario === "task") {
     const refinements = opts.userRefinements?.trim() || "(нет)";
     const source = sourceText.trim() || "(текста задания нет)";
-    return (taskAnalyze
+    return (withTechBlocks(taskAnalyze)
       .replaceAll("{{SOURCE_TEXT}}", () => source)
       .replaceAll("{{USER_REFINEMENTS}}", () => refinements)) + "\n\n" + lineFractionRules;
   }
@@ -118,7 +142,7 @@ export function buildDrawScenePrompt(opts: {
   const refinements = opts.userRefinements.trim() || "(нет — используй только план построения)";
   const plan = opts.drawPlan.trim();
   // Функции-заменители: символы «$» в плане и пожеланиях (LaTeX) не должны читаться как шаблоны replace.
-  return (template
+  return (withTechBlocks(template)
     .replaceAll("{{DRAW_PLAN}}", () => plan)
     .replaceAll("{{USER_REFINEMENTS}}", () => refinements)
     .replaceAll("{{MATH_NOTATION_RULES}}", mathNotationRules)) + (opts.sceneType === "line" ? "\n\n" + lineFractionRules : "");
@@ -165,4 +189,23 @@ export function generateSchemaHint(scenario: PlotAiScenario, sceneType?: PlotSce
   return scenario === "analog"
     ? `{ "newTaskText": string, "scene": ${sceneHint} }`
     : `{ "scene": ${sceneHint} }`;
+}
+
+/** «Аналог по скриншоту», этап 1: распознавание, аналог, размещение и планы чертежей. */
+export function buildAnalogTaskAnalyzePrompt(userRefinements: string): string {
+  const refinements = userRefinements.trim() || "(нет)";
+  return withTechBlocks(analogTaskAnalyze).replaceAll("{{USER_REFINEMENTS}}", () => refinements) +
+    "\n\n" + lineFractionRules;
+}
+
+/** «Аналог по скриншоту», этап 2: все однотипные чертежи одним запросом. */
+export function buildAnalogTaskGeneratePrompt(
+  sceneType: PlotDrawBranchType,
+  figures: Array<{ id: string; drawPlan: string }>,
+): string {
+  const plans = figures.map((f) => `── ЧЕРТЁЖ ${f.id} ──\n${f.drawPlan.trim()}`).join("\n\n");
+  return analogTaskGenerate
+    .replaceAll("{{SCENE_TYPE_NAME}}", sceneType === "line" ? "числовая прямая" : "координатная плоскость")
+    .replaceAll("{{TECH_DRAFT}}", sceneType === "line" ? techDraftLine : techDraftPlane)
+    .replaceAll("{{FIGURE_PLANS}}", () => plans) + (sceneType === "line" ? "\n\n" + lineFractionRules : "");
 }
