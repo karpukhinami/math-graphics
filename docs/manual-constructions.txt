@@ -61,6 +61,68 @@
   space: built == true) И его style.visible == true. Пока пользователь не нажал
   «Построить/Отметить», объект на чертёж не попадает.
 
+0.6 Сохраняемый JSON (version = 2, компактный) и правило «авто»
+  Кнопка «Сохранить JSON» пишет ТОЛЬКО ВХОД. Всё, что конструктор вычисляет сам,
+  не пишется и пересчитывается при загрузке (файл или ответ ИИ). Загрузка
+  принимает и старый полный формат version = 1 (лишние поля пересчитываются).
+
+  ПРАВИЛО «АВТО»: отсутствующее поле = значение подставляет код.
+    - любое поле style/appearance/ticks/view, равное дефолту, не пишется;
+    - цвет объекта не пишется, если он равен цвету палитры по номеру объекта;
+    - index не пишется (номер = позиция в массиве); id пишется только там,
+      где на объект ссылаются (graphs, points, sets, объекты пространства);
+    - пустая строка в шаге сетки (xAxis/yAxis.gridStep) = «авто»:
+      equal -> 1, independent -> подбор niceStep по пределам оси; в UI поле
+      показывает подсказку «авто». Шаг, совпадающий с авто, сохраняется как авто;
+      labelStep, совпадающий с шагом сетки, не пишется;
+    - built, dirty, error, locked, kindLocked, geometry, figure, fit* — никогда.
+
+  ЧТО ДОСЧИТЫВАЕТ КОНСТРУКТОР (признак в JSON -> что вычисляется):
+  Плоскость
+    graphs[].math.kind + свои поля (explicit: expression; implicit: equation;
+      piecewise: pieces; qualitative/piecewise-linear: anchors, extendEnds
+      (пишется только false)) -> ломаные кривой (built.segments).
+      Поля других видов задания не пишутся.
+    points[].math.mode = "plane"        -> хранятся x и y (обе — ВХОД).
+    mode = "onGraph" + graphId + x      -> y вычисляется по графику (не хранится).
+    mode = "onGraph"/"anchor" + graphId + anchorIndex -> обе координаты берутся
+                                          из опорной точки графика.
+    mode = "intersection" + graphId + graphIdB -> все точки пересечения в
+                                          текущей области вычисляются кодом.
+  Несколько решений у одной точки (несколько пересечений, вертикаль через
+  неявную кривую, разрыв кусочной функции): в JSON это ОДНА запись точки,
+  в конструкторе — отдельное «облачко» на каждое решение. Индивидуальные правки
+  решений хранятся в points[].solutions: [{ show?: false, style?: {...} }, ...]
+  по номеру решения (решения упорядочены так, как их находит конструктор);
+  координаты в solutions не хранятся, пустые хвостовые элементы не пишутся.
+  Пример: { "math": {"mode":"intersection","graphId":"g1","graphIdB":"g2"},
+            "solutions": [ {"style":{"label":"A"}}, {"style":{"label":"B"}} ] }
+  У кусочной функции открытость решения на разрыве задаёт конструктор.
+
+  Прямая
+    sets[].math.kind + свои поля (interval: left,right,leftOp,rightOp;
+      ray: rayOp,rayBoundary; freeform: freeformInput) -> разбор множества.
+    Граничные точки множеств (math.sourceSetId + boundaryKey) создаёт сам
+      конструктор: координата, открытость и цвет (если style.colorManual
+      не true) вычисляются из множества. В JSON такая точка пишется только если
+      пользователь изменил её оформление (подпись, показ координаты и т. п.) —
+      и без coordinate/open.
+    Свободные точки: math.coordinate — ВХОД.
+    axisRowCount пишется только если > 1.
+
+  Пространство
+    shapeKind + baseVerticesInput + figureConstraints -> вершины, рёбра, грани
+      (figure не хранится).
+    points[].definition — ВХОД; исключения:
+      onFace + placement "center"  -> faceU/faceV не пишутся (центр грани);
+      onLine + ratioMode "explicit" -> lineParam не пишется (из ratioA:ratioB);
+      onLine + ratioMode "auto"     -> ratioA/ratioB не пишутся, хранится lineParam.
+      linePlaneIntersection / planeEdgeIntersection / planeIntersectionBoundary
+      -> координаты всегда вычисляются.
+    label пишется, если не пустой; built пишется только как false.
+    view и appearance — только отличия от дефолта.
+
+
 
 ================================================================================
 1. РЕЖИМ «ПРЯМАЯ» (1D) — space = "line"
