@@ -4,13 +4,15 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import { Bold, Eye, Italic, Pencil, Plus, Copy, FileText, ListChecks, TextCursorInput, Send, Sigma, Trash2, X } from "lucide-react";
+import { Bold, Eye, Italic, Pencil, Plus, Copy, FileText, ListChecks, TextCursorInput, Send, Sigma, Trash2, X, Rows3, Columns3, Grid2X2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { allAnswersAreImages, answerColumnCount, type AnswerLayout } from "@/lib/workspace/answer-layout";
 import { PlotInsertMenu, type PlotInsertAction } from "@/components/workspace/PlotInsertMenu";
 import { PlotEditorDialog, type PlotInsertResult } from "@/components/workspace/PlotEditorDialog";
 import type { PlotAiPanelProps } from "@/components/plotting/ai/PlotAiPanel";
@@ -34,7 +36,7 @@ export const Route = createFileRoute("/workspace")({
 
 type BlockType = "text" | "input" | "choice";
 interface ChoiceOption { id: string; text: string; correct: boolean; imageId?: string }
-interface Block { id: string; type: BlockType; text: string; answer: string; options: ChoiceOption[] }
+interface Block { id: string; type: BlockType; text: string; answer: string; options: ChoiceOption[]; answerLayout?: AnswerLayout }
 interface TaskImage { src: string; scene?: PlotScene }
 interface PlotTarget { blockId: string; optionId?: string; imageId?: string; position?: number; syncText?: boolean; newTask?: boolean }
 
@@ -53,7 +55,7 @@ function newBlock(type: BlockType): Block {
 
 function RichView({ text, images }: { text: string; images: Record<string, TaskImage> }) {
   return (
-    <div className="markdown-body text-sm leading-relaxed [&_img]:my-2 [&_img]:max-h-80 [&_img]:rounded-md [&_img]:border [&_img]:border-border">
+    <div className="markdown-body min-w-0 text-sm leading-relaxed [&_img]:my-2 [&_img]:block [&_img]:h-auto [&_img]:w-full [&_img]:rounded-md [&_img]:border [&_img]:border-border">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}
@@ -177,8 +179,8 @@ function WorkspacePage() {
     const img = images[imageId];
     if (!img) return null;
     return (
-      <div className="group relative w-40 rounded-md border border-border bg-card p-1">
-        <img src={img.src} alt="Чертёж" className="h-28 w-full object-contain" />
+      <div className="group relative w-full min-w-0 rounded-md border border-border bg-card p-1">
+        <img src={img.src} alt="Чертёж" className="block h-auto w-full" />
         <div className="absolute right-1 top-1 flex gap-1 opacity-0 transition group-hover:opacity-100">
           {img.scene && (
             <Button size="icon" variant="secondary" className="size-7" title="Редактировать чертёж"
@@ -196,13 +198,13 @@ function WorkspacePage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-muted/30">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-background px-4 py-3">
-        <div className="text-sm text-muted-foreground">
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border bg-background px-4 py-3 sm:flex sm:justify-between">
+        <div className="min-w-0 truncate text-sm text-muted-foreground">
           <Link to="/" className="hover:text-foreground">Конструктор графиков</Link>
           <span className="mx-2">/</span>
           <span className="text-foreground">{title || "Без названия"}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <Button variant={preview ? "default" : "outline"} size="sm" onClick={() => setPreview((p) => !p)}>
             <Eye className="size-4" /> {preview ? "Редактировать" : "Предпросмотр"}
           </Button>
@@ -234,14 +236,14 @@ function WorkspacePage() {
                   <RichView text={block.text} images={images} />
                   {block.type === "input" && <Input placeholder="Ваш ответ" />}
                   {block.type === "choice" && (
-                    <div className="space-y-2">
+                    <div className="workspace-answer-grid grid gap-2" style={{ "--answer-columns": answerColumnCount(allAnswersAreImages(block.options) ? block.answerLayout ?? "vertical" : "vertical", block.options.length) } as React.CSSProperties}>
                       {block.options.map((o) => (
-                        <label key={o.id} className="flex cursor-pointer items-start gap-2 rounded-md border border-border p-2">
-                          <Checkbox className="mt-1" />
-                          <div className="space-y-1">
+                        <label key={o.id} className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] cursor-pointer items-start gap-2 rounded-md border border-border p-2">
+                          <Checkbox className="mt-1 shrink-0" aria-label={`Выбрать вариант ${block.options.indexOf(o) + 1}`} />
+                          <div className="min-w-0 space-y-1">
                             <RichView text={o.text} images={images} />
                             {o.imageId && images[o.imageId] && (
-                              <img src={images[o.imageId].src} alt="Вариант" className="max-h-48 rounded border border-border" />
+                              <img src={images[o.imageId].src} alt="Вариант" className="block h-auto w-full rounded border border-border" />
                             )}
                           </div>
                         </label>
@@ -283,7 +285,7 @@ function WorkspacePage() {
                     className="min-h-28 font-mono text-sm"
                   />
                   {imagesOf(block.text).length > 0 && (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="space-y-2">
                       {imagesOf(block.text).map((id) => (
                         <ImageThumb key={id} blockId={block.id} imageId={id}
                           onRemove={() => patch(block.id, { text: block.text.replace(new RegExp(`\\n?!\\[[^\\]]*\\]\\(plot:${id}\\)\\n?`, "g"), "") })} />
@@ -295,13 +297,28 @@ function WorkspacePage() {
                   )}
                   {block.type === "choice" && (
                     <div className="space-y-2">
+                      {allAnswersAreImages(block.options) && (
+                        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                          <span className="min-w-0 text-sm text-muted-foreground">Раскладка ответов</span>
+                          <ToggleGroup type="single" variant="outline" size="sm" value={block.answerLayout ?? "vertical"}
+                            onValueChange={(value) => { if (value === "vertical" || value === "horizontal" || value === "grid") patch(block.id, { answerLayout: value }); }}>
+                            <ToggleGroupItem value="vertical" title="Все вниз подряд" aria-label="Все вниз подряд"><Rows3 className="size-4" /></ToggleGroupItem>
+                            <ToggleGroupItem value="horizontal" title="Все по горизонтали" aria-label="Все по горизонтали"><Columns3 className="size-4" /></ToggleGroupItem>
+                            <ToggleGroupItem value="grid" title="Раскладка 2×2" aria-label="Раскладка 2×2"><Grid2X2 className="size-4" /></ToggleGroupItem>
+                          </ToggleGroup>
+                        </div>
+                      )}
+                      <div className="workspace-answer-grid grid gap-2" style={{ "--answer-columns": answerColumnCount(allAnswersAreImages(block.options) ? block.answerLayout ?? "vertical" : "vertical", block.options.length) } as React.CSSProperties}>
                       {block.options.map((o, i) => (
-                        <div key={o.id} className="space-y-2 rounded-md border border-border p-2">
-                          <div className="flex items-center gap-2">
-                            <Checkbox checked={o.correct} title="Верный вариант"
+                        <div key={o.id} className="min-w-0 space-y-2 rounded-md border border-border p-2">
+                          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                            <div className="flex min-w-0 items-center gap-2">
+                            <Checkbox checked={o.correct} title="Верный вариант" className="shrink-0"
                               onCheckedChange={(v) => patchOption(block.id, o.id, { correct: v === true })} />
                             <Input value={o.text} onChange={(e) => patchOption(block.id, o.id, { text: e.target.value })}
-                              placeholder={`Вариант ${i + 1}`} />
+                              placeholder={`Вариант ${i + 1}`} className="min-w-0" />
+                            </div>
+                            <div className="flex shrink-0 items-center">
                             <PlotInsertMenu size="icon" context="task"
                               onFile={(src) => placeImage({ blockId: block.id, optionId: o.id }, { src })}
                               onPlot={(a) => openPlot({ blockId: block.id, optionId: o.id }, a)} />
@@ -309,6 +326,7 @@ function WorkspacePage() {
                               onClick={() => patch(block.id, { options: block.options.filter((x) => x.id !== o.id) })}>
                               <X className="size-4" />
                             </Button>
+                            </div>
                           </div>
                           {o.imageId && (
                             <ImageThumb blockId={block.id} imageId={o.imageId}
@@ -316,6 +334,7 @@ function WorkspacePage() {
                           )}
                         </div>
                       ))}
+                      </div>
                       <Button variant="outline" size="sm"
                         onClick={() => patch(block.id, { options: [...block.options, { id: uid(), text: "", correct: false }] })}>
                         <Plus className="size-4" /> Вариант
