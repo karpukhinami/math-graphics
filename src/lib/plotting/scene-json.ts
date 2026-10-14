@@ -354,7 +354,7 @@ function lineFromJson(input: RawScene): PlotScene {
           dirty: true,
           error: null,
           // Граничные точки пересоздаёт и синхронизирует сам конструктор.
-          locked: boolean ? true : false,
+          locked: boundary,
         };
       }),
     },
