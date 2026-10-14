@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { allAnswersAreImages, answerColumnCount, type AnswerLayout } from "@/lib/workspace/answer-layout";
+import { answerColumnCount, type AnswerLayout } from "@/lib/workspace/answer-layout";
 import { PlotInsertMenu, type PlotInsertAction } from "@/components/workspace/PlotInsertMenu";
 import { PlotEditorDialog, type PlotInsertResult } from "@/components/workspace/PlotEditorDialog";
 import type { PlotAiPanelProps } from "@/components/plotting/ai/PlotAiPanel";
@@ -259,7 +259,7 @@ function WorkspacePage() {
                   <RichView text={block.text} images={images} />
                   {block.type === "input" && <Input placeholder="Ваш ответ" />}
                   {block.type === "choice" && (
-                    <div className="workspace-answer-grid grid gap-2" style={{ "--answer-columns": answerColumnCount(allAnswersAreImages(block.options) ? block.answerLayout ?? "vertical" : "vertical", block.options.length) } as React.CSSProperties}>
+                    <div className="workspace-answer-grid grid gap-2" style={{ "--answer-columns": answerColumnCount(block.answerLayout ?? "vertical", block.options.length) } as React.CSSProperties}>
                       {block.options.map((o) => (
                         <label key={o.id} className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] cursor-pointer items-start gap-2 rounded-md border border-border p-2">
                           <Checkbox className="mt-1 shrink-0" aria-label={`Выбрать вариант ${block.options.indexOf(o) + 1}`} />
@@ -320,18 +320,16 @@ function WorkspacePage() {
                   )}
                   {block.type === "choice" && (
                     <div className="space-y-2">
-                      {allAnswersAreImages(block.options) && (
-                        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                          <span className="min-w-0 text-sm text-muted-foreground">Раскладка ответов</span>
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                        <span className="min-w-0 text-sm text-muted-foreground">Раскладка ответов</span>
                           <ToggleGroup type="single" variant="outline" size="sm" value={block.answerLayout ?? "vertical"}
                             onValueChange={(value) => { if (value === "vertical" || value === "horizontal" || value === "grid") patch(block.id, { answerLayout: value }); }}>
                             <ToggleGroupItem value="vertical" title="Все вниз подряд" aria-label="Все вниз подряд"><Rows3 className="size-4" /></ToggleGroupItem>
                             <ToggleGroupItem value="horizontal" title="Все по горизонтали" aria-label="Все по горизонтали"><Columns3 className="size-4" /></ToggleGroupItem>
                             <ToggleGroupItem value="grid" title="Раскладка 2×2" aria-label="Раскладка 2×2"><Grid2X2 className="size-4" /></ToggleGroupItem>
                           </ToggleGroup>
-                        </div>
-                      )}
-                      <div className="workspace-answer-grid grid gap-2" style={{ "--answer-columns": answerColumnCount(allAnswersAreImages(block.options) ? block.answerLayout ?? "vertical" : "vertical", block.options.length) } as React.CSSProperties}>
+                      </div>
+                      <div className="workspace-answer-grid grid gap-2" style={{ "--answer-columns": answerColumnCount(block.answerLayout ?? "vertical", block.options.length) } as React.CSSProperties}>
                       {block.options.map((o, i) => (
                         <div key={o.id} className="min-w-0 space-y-2 rounded-md border border-border p-2">
                           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
