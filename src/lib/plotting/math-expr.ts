@@ -83,8 +83,19 @@ function convertLogBase(s: string): string {
 }
 
 /** Нормализация ввода перед разбором. */
+const SUBSCRIPT_DIGITS: Record<string, string> = {
+  "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4",
+  "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9",
+};
+
 export function normalizeInput(raw: string): string {
-  let s = latexToPlain(raw);
+  // \log_2 x: без этого общий «\\[a-zA-Z]+» в latexToPlain съедает «\log».
+  let s = String(raw ?? "").replace(/\\log_/g, "log_");
+  s = latexToPlain(s);
+  // Хвостовые знаки препинания из текста задания («2x^2 - 4x.») mathjs
+  // читает как обращение к свойству и падает — срезаем их всегда
+  // (и до, и после разворота log_a, чтобы «log_2 x.» не дал «log(x., 2)»).
+  s = s.replace(/[\s.,;:]+$/, "");
   s = s
     .replace(/[–—−]/g, "-")
     .replace(/[·×∙]/g, "*")
@@ -92,10 +103,14 @@ export function normalizeInput(raw: string): string {
     .replace(/π/g, "pi")
     .replace(/√/g, "sqrt")
     .replace(/∞/g, "Infinity")
-    .replace(/,(?=\s*\d)/g, ".");
+    // log₂x → log_2x
+    .replace(/log([₀-₉]+)/g, (_m, d: string) => `log_${[...d].map((c) => SUBSCRIPT_DIGITS[c]).join("")}`)
+    // lg x — школьный десятичный логарифм
+    .replace(/\blg(?=\s*[(A-Za-z0-9])/g, "log10")
+    // Десятичная запятая — только между цифрами без пробела («2,5»).
+    // Запятая с пробелом — разделитель аргументов: log(x, 2), max(1, 2).
+    .replace(/(?<=\d),(?=\d)/g, ".");
   s = convertLogBase(s);
-  // Хвостовые знаки препинания из текста задания («2x^2 - 4x.») mathjs
-  // читает как обращение к свойству и падает — срезаем их всегда.
   s = s.replace(/[\s.,;:]+$/, "");
   return s.trim();
 }
