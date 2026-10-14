@@ -259,7 +259,7 @@ function WorkspacePage() {
                   <RichView text={block.text} images={images} />
                   {block.type === "input" && <Input placeholder="Ваш ответ" />}
                   {block.type === "choice" && (
-                    <div className="workspace-answer-grid grid gap-2" style={{ "--answer-columns": answerColumnCount(allAnswersAreImages(block.options) ? block.answerLayout ?? "vertical" : "vertical", block.options.length) } as React.CSSProperties}>
+                    <div className="workspace-answer-grid grid gap-2" style={{ "--answer-columns": answerColumnCount(block.answerLayout ?? "vertical", block.options.length) } as React.CSSProperties}>
                       {block.options.map((o) => (
                         <label key={o.id} className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] cursor-pointer items-start gap-2 rounded-md border border-border p-2">
                           <Checkbox className="mt-1 shrink-0" aria-label={`Выбрать вариант ${block.options.indexOf(o) + 1}`} />
