@@ -14,12 +14,13 @@ import {
 } from "./prompts";
 import { expandLineDraft } from "./draft-line";
 import { expandPlaneDraft } from "./draft-plane";
-import type {
-  PlotAiScenario,
-  PlotAnalysisResult,
-  PlotGenerateAnalogResult,
-  PlotGenerateSceneResult,
-  PlotSceneType,
+import {
+  type PlotAiScenario,
+  type PlotAnalysisResult,
+  type PlotGenerateAnalogResult,
+  type PlotGenerateSceneResult,
+  type PlotSceneType,
+  isPlanScenario,
 } from "./types";
 import { validatePlotAnalysisJson } from "./validate-analysis";
 import {
@@ -34,11 +35,14 @@ export async function analyzePlotMaterial(opts: {
   manualText: string;
   uploadedSourceText: string;
   attachedImages: string[];
+  /** Только «task»: пожелания учитываются уже на этапе анализа. */
+  userRefinements?: string;
 }): Promise<PlotAnalysisResult> {
   const sourceText = buildSourceTextForPrompt(opts.manualText, opts.uploadedSourceText);
   const prompt = buildAnalyzePrompt({
     scenario: opts.scenario,
     sourceText,
+    userRefinements: opts.userRefinements,
   });
   const images = opts.attachedImages.length ? opts.attachedImages : undefined;
 
@@ -50,7 +54,7 @@ export async function analyzePlotMaterial(opts: {
     images,
     // «draw»: без явного вывода «что строить» (drawPlan) анализ не принимается.
     parse: (value) =>
-      validatePlotAnalysisJson(value, { requireDrawPlan: opts.scenario === "draw" }),
+      validatePlotAnalysisJson(value, { requireDrawPlan: isPlanScenario(opts.scenario) }),
   });
 }
 
@@ -63,11 +67,13 @@ async function generateDrawBranchScene(opts: {
   sceneType: PlotDrawBranchType;
   drawPlan: string;
   userRefinements: string;
+  variant: "draw" | "task";
 }): Promise<PlotGenerateSceneResult> {
   const basePrompt = buildDrawScenePrompt({
     sceneType: opts.sceneType,
     drawPlan: opts.drawPlan,
     userRefinements: opts.userRefinements,
+    variant: opts.variant,
   });
   const schemaHint = drawSchemaHint(opts.sceneType);
 
@@ -79,7 +85,7 @@ async function generateDrawBranchScene(opts: {
       schemaHint,
       parse: (v) => v,
     });
-    return validateDrawDraft(draft, opts.sceneType);
+    return validateDrawDraft(draft, opts.sceneType, opts.variant === "task");
   };
 
   let result = await attempt();
@@ -96,9 +102,12 @@ async function generateDrawBranchScene(opts: {
 function validateDrawDraft(
   draft: unknown,
   sceneType: PlotDrawBranchType,
+  minimalLabels = false,
 ): { valid: true; errors: []; scene: unknown } | { valid: false; errors: string[] } {
   try {
-    const expanded = sceneType === "line" ? expandLineDraft(draft) : expandPlaneDraft(draft);
+    const expanded = sceneType === "line"
+        ? expandLineDraft(draft, { minimalLabels })
+        : expandPlaneDraft(draft, { minimalLabels });
     // Ошибки содержимого черновика — сразу в повторный запрос, без построения.
     if (expanded.errors.length || expanded.scene == null) {
       return {
@@ -132,12 +141,14 @@ export async function generatePlotScene(opts: {
   }
 
   // Прямая и плоскость: своя ветка, на вход — только итог анализа. Пространство — прежний путь.
-  if (opts.scenario === "draw" && isDrawBranchType(sceneType)) {
+  if (isPlanScenario(opts.scenario) && isDrawBranchType(sceneType)) {
     return generateDrawBranchScene({
       model: opts.model,
       sceneType,
       drawPlan: opts.analysis.drawPlan?.trim() || opts.analysis.analysisText,
-      userRefinements: opts.userRefinements,
+      // «task»: пожелания уже вошли в план; повторная передача провоцирует лишние подписи.
+      userRefinements: opts.scenario === "task" ? "" : opts.userRefinements,
+      variant: opts.scenario,
     });
   }
 

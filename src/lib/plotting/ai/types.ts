@@ -1,7 +1,12 @@
 /** Типы и контракты режима ИИ-рисования на странице Plotting. */
 
 /** Что анализировать в сценарии «Нарисовать по заданию» — зарезервировано. */
-export type PlotAiScenario = "draw" | "reproduce" | "analog";
+export type PlotAiScenario = "draw" | "reproduce" | "analog" | "task";
+
+/** Сценарии «описание → черновик → сцена»: «draw» — главная страница, «task» — редактор заданий. */
+export function isPlanScenario(s: PlotAiScenario): s is "draw" | "task" {
+  return s === "draw" || s === "task";
+}
 
 export type PlotSceneType = "plane" | "line" | "space";
 
