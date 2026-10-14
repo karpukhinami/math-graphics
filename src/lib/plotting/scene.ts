@@ -407,7 +407,8 @@ export function buildScene(scene: PlotScene, only?: { graphId?: string; pointId?
 
   const withGraphs: PlotScene = { ...scene, graphs };
   const points = scene.points.map((point) => {
-    if (only?.graphId) return point;
+    // При перестроении графика пересчитываются и все зависящие от него точки.
+    if (only?.graphId && point.math.graphId !== only.graphId && point.math.graphIdB !== only.graphId) return point;
     if (only?.pointId && point.id !== only.pointId) return point;
     try {
       const solutions = buildPoint(point, withGraphs, bounds);
