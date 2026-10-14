@@ -21,6 +21,41 @@ const planeDraft = {
 };
 
 describe("plane draft → scene", () => {
+  test("аналог сохраняет квадратичную функцию и прямую через начало координат как формулы", () => {
+    const { scene, errors } = expandPlaneDraft({
+      axes: { xMin: "-2", xMax: "4", yMin: "-3", yMax: "3" },
+      graphs: [
+        { id: "g1", type: "explicit", expression: "x^2 - 6*x + 8" },
+        { id: "g2", type: "explicit", expression: "x" },
+      ],
+      points: [],
+    }, { minimalLabels: true });
+    expect(errors).toEqual([]);
+    const built = buildScene(mergeAiScene(scene)).scene;
+    expect(built.graphs.map((g) => g.math.kind)).toEqual(["explicit", "explicit"]);
+    expect(built.graphs.map((g) => g.math.expression)).toEqual(["x^2 - 6*x + 8", "x"]);
+    expect(scenePoints(built)).toHaveLength(0);
+  });
+
+  test("аналог отмечает только видимое пересечение A, не раскрывая скрытое B", () => {
+    const { scene, errors } = expandPlaneDraft({
+      axes: { xMin: "-2", xMax: "4", yMin: "-3", yMax: "3" },
+      graphs: [
+        { id: "g1", type: "explicit", expression: "x^2 - 6*x + 8" },
+        { id: "g2", type: "explicit", expression: "x" },
+      ],
+      points: [{ type: "intersection", graphs: ["g1", "g2"], label: "A" }],
+    }, { minimalLabels: true });
+    expect(errors).toEqual([]);
+    const built = buildScene(mergeAiScene(scene)).scene;
+    const visible = scenePoints(built);
+    expect(visible).toHaveLength(1);
+    expect(visible[0]?.label).toBe("A");
+    expect(visible[0]?.x).toBeCloseTo((7 - Math.sqrt(17)) / 2, 3);
+    expect(Number(built.xAxis.max)).toBe(4);
+    expect((7 + Math.sqrt(17)) / 2).toBeGreaterThan(Number(built.xAxis.max));
+  });
+
   test("fills technical fields in code and keeps the model's content", () => {
     const { scene, errors } = expandPlaneDraft(planeDraft);
     expect(errors).toEqual([]);
