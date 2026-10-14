@@ -113,7 +113,7 @@ export function PlotPreview({ simplified = false }: { simplified?: boolean }) {
           className="overflow-auto rounded-md border border-border bg-background p-2"
         >
           {svg ? (
-            <div className="[&_svg]:h-auto [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+            <div className="[&>svg]:h-auto [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
           ) : (
             <p className="p-8 text-center text-sm text-muted-foreground">
               {spaceTab === "line"
