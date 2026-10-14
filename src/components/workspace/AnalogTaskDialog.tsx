@@ -113,9 +113,16 @@ export function AnalogTaskDialog({ open, onOpenChange, onCreate, mode = "screens
                 ? "Например: оставить тот же тип функции, поменять только коэффициенты"
                 : "Например: 9 класс, по графику параболы найти координаты вершины, ответ вводом"} />
           </div>
-          <Button className="w-full" onClick={() => void onAnalyze()} disabled={isShot ? !images[0] : !wishes.trim()}>
-            {busy === "analyze" ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Проанализировать
-          </Button>
+          <div className="flex items-end gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="analog-count">Сколько заданий</Label>
+              <Input id="analog-count" type="number" min={1} max={MAX_ANALOG_COUNT} className="w-24" value={count}
+                onChange={(e) => setCount(Math.min(MAX_ANALOG_COUNT, Math.max(1, Number(e.target.value) || 1)))} />
+            </div>
+            <Button className="flex-1" onClick={() => void onAnalyze()} disabled={isShot ? !images[0] : !wishes.trim()}>
+              {busy === "analyze" ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Проанализировать
+            </Button>
+          </div>
         </fieldset>
 
         {tpl && t && (
@@ -142,17 +149,10 @@ export function AnalogTaskDialog({ open, onOpenChange, onCreate, mode = "screens
                 {tpl.reasoning && <Markdown>{tpl.reasoning}</Markdown>}
               </CollapsibleContent>
             </Collapsible>
-            <div className="flex items-end gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="analog-count">Сколько заданий</Label>
-                <Input id="analog-count" type="number" min={1} max={MAX_ANALOG_COUNT} className="w-24" value={count} disabled={busy !== null}
-                  onChange={(e) => setCount(Math.min(MAX_ANALOG_COUNT, Math.max(1, Number(e.target.value) || 1)))} />
-              </div>
-              <Button className="flex-1" onClick={() => void onBuild()} disabled={busy !== null}>
-                {busy === "build" ? <Loader2 className="size-4 animate-spin" /> : <Pencil className="size-4" />}
-                {busy === "build" && progress ? progress : count > 1 ? `Построить задания (${count})` : "Построить задание"}
-              </Button>
-            </div>
+            <Button className="w-full" onClick={() => void onBuild()} disabled={busy !== null}>
+              {busy === "build" ? <Loader2 className="size-4 animate-spin" /> : <Pencil className="size-4" />}
+              {busy === "build" && progress ? progress : count > 1 ? `Построить задания (${count})` : "Построить задание"}
+            </Button>
           </div>
         )}
       </DialogContent>
