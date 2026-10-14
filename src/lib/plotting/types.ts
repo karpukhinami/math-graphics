@@ -139,6 +139,8 @@ export interface GraphStyle {
   color: string;
   width: number | null;
   label: string;
+  /** Подпись на графике; отсутствие поля в старом JSON означает none. */
+  labelMode?: "none" | "name" | "equation";
   visible: boolean;
 }
 
@@ -247,6 +249,8 @@ export interface PlotScene {
 
 /** Данные, которые получает SVG-рисовальщик (никакого UI-состояния). */
 export interface RenderCurve {
+  id?: string;
+  caption?: string | null;
   color: string;
   width: number;
   segments: Polyline[];
