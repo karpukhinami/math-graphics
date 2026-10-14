@@ -492,6 +492,7 @@ export function expandPlaneDraft(raw: unknown, options: DraftOptions = {}): Draf
     errors.push("Черновик пуст: нет ни одного графика или точки");
   }
 
+  const axisMarksAll = String((root.axes as Rec | undefined)?.axisMarks ?? "").trim() === "all";
   const scene = {
     version: 1,
     space: "plane",
@@ -505,7 +506,7 @@ export function expandPlaneDraft(raw: unknown, options: DraftOptions = {}): Draf
       gridStep: xStep,
       labelStep: "",
       labelFormat: xFormat,
-      markRule: "zeroAndFirst",
+      markRule: axisMarksAll ? "all" : "zeroAndFirst",
       selectedMarks: "",
     },
     yAxis: {
@@ -516,7 +517,7 @@ export function expandPlaneDraft(raw: unknown, options: DraftOptions = {}): Draf
       gridStep: yStep,
       labelStep: "",
       labelFormat: yFormat,
-      markRule: "zeroAndFirst",
+      markRule: axisMarksAll ? "all" : "zeroAndFirst",
       selectedMarks: "",
     },
     grid: { visible: flag(root.grid, true) },
