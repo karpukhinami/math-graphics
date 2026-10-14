@@ -64,7 +64,9 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
   useEffect(() => { onBuiltChange?.(sceneBuilt); }, [sceneBuilt, onBuiltChange]);
   function invalidate() { setAnalysis(null); setSceneBuilt(false); setAnalogTaskText(null); }
 
-  const hasSource = hasSourceMaterials(manualText, source.state.uploadedSourceText, attachedImages);
+  const hasSource =
+    hasSourceMaterials(manualText, source.state.uploadedSourceText, attachedImages) ||
+    (scenario === "task" && userRefinements.trim().length > 0);
 
   async function handleAttachFiles(files: File[]) {
     await importPlotSourceFiles(files, {
