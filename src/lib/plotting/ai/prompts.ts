@@ -58,7 +58,10 @@ export function buildAnalyzePrompt(opts: {
       template = analyzeDraw;
       break;
     case "reproduce":
-      template = analyzeReproduce;
+      template = analyzeReproduce.replaceAll(
+        "{{USER_REFINEMENTS}}",
+        () => opts.userRefinements?.trim() || "(нет)",
+      );
       break;
     case "analog":
       template = analyzeAnalog;

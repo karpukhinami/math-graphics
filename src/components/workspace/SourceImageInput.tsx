@@ -18,16 +18,6 @@ export function SourceImageInput({ images, onChange }: { images: string[]; onCha
     reader.onerror = () => toast.error("Не удалось прочитать изображение");
     reader.readAsDataURL(file);
   }
-  async function paste() {
-    try {
-      const items = await navigator.clipboard.read();
-      for (const item of items) {
-        const type = item.types.find((t) => t.startsWith("image/"));
-        if (type) { await load([new File([await item.getType(type)], "clipboard", { type })]); return; }
-      }
-      toast.error("В буфере обмена нет изображения");
-    } catch { toast.error("Вставьте изображение из буфера в область загрузки"); }
-  }
   function position(e: PointerEvent<HTMLDivElement>) {
     const bounds = e.currentTarget.getBoundingClientRect();
     return { x: (e.clientX - bounds.left) / bounds.width, y: (e.clientY - bounds.top) / bounds.height };
@@ -49,10 +39,13 @@ export function SourceImageInput({ images, onChange }: { images: string[]; onCha
       const files = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith("image/"));
       if (files.length) { e.preventDefault(); void load(files); }
     }}>
-      <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}><Upload className="size-4" /> Загрузить изображение</Button>
-        <Button variant="outline" size="sm" onClick={() => void paste()}><ClipboardPaste className="size-4" /> Вставить из буфера</Button>
-      </div>
+      {!image && <div role="button" tabIndex={0} aria-label="Поле для вставки изображения"
+        className="flex min-h-[180px] flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground outline-none focus:border-primary"
+        onClick={(e) => e.currentTarget.focus()}>
+        <ClipboardPaste className="size-6" />
+        <span>Нажмите на поле и вставьте картинку из буфера: <kbd className="rounded border border-border px-1">Ctrl</kbd>+<kbd className="rounded border border-border px-1">V</kbd></span>
+        <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}><Upload className="size-4" /> или загрузите файл</Button>
+      </div>}
       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { void load(Array.from(e.target.files ?? [])); e.target.value = ""; }} />
       {image && <>
         <div className="relative w-fit max-w-full overflow-hidden rounded-md border border-border touch-none" aria-label="Область обрезки"
