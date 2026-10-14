@@ -35,7 +35,7 @@
 {
   "axes": {
     "xMin": string, "xMax": string, "yMin": string, "yMax": string,   [!]
-    "xName"?: string, "yName"?: string,             [редко] только если оси названы не x/y
+    "xName"?: string, "yName"?: string,             [редко] ИМЯ ПЕРЕМЕННОЙ (одна буква, напр. "t"), а не словесное название оси
     "xLabelFormat"?: "number" | "pi" | "fraction",  [редко] "pi" — тригонометрия; по умолчанию "number"
     "yLabelFormat"?: "number" | "pi" | "fraction"   [редко]
   },
