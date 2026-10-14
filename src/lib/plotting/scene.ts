@@ -27,7 +27,7 @@ function createAxis(name: string): AxisSpec {
     unit: "",
     min: "",
     max: "",
-    gridStep: "1",
+    gridStep: "",
     labelStep: "",
     labelFormat: "number",
     markRule: "all",

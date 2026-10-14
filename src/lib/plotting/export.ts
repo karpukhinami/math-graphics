@@ -1,6 +1,6 @@
 /** Выгрузка построенного чертежа в SVG и PNG (только на клиенте). */
 import type { PlotScene } from "./types";
-import { serializePlotSceneForExport } from "./space/serialize";
+import { sceneToJson } from "./scene-json";
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -42,7 +42,7 @@ export async function downloadPng(svg: string, filename = "chertezh.png", scale 
 }
 
 export function downloadSceneJson(scene: PlotScene, filename = "scene.json") {
-  const payload = serializePlotSceneForExport(scene);
+  const payload = sceneToJson(scene);
   downloadBlob(
     new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
     filename,

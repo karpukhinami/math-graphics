@@ -3,6 +3,7 @@
  * без топологии тела, координат вершин и вычисленных полей fit/geometry.
  */
 import type { PlotScene } from "../types";
+import { DEFAULT_SPACE_VIEW } from "./camera";
 import {
   createFigureFromInput,
   createSpaceLine,
@@ -13,6 +14,7 @@ import {
   defaultPyramidConstraints,
   defaultPrismConstraints,
   figureVertexInputString,
+  DEFAULT_SPACE_APPEARANCE,
 } from "./scene";
 import type {
   ParallelepipedConstraints,
@@ -176,11 +178,56 @@ function figureWasBuilt(raw: Record<string, unknown>): boolean {
   return raw.figure != null;
 }
 
-/** Выгрузка: семантика построения, без figure и без geometry/built/errors. */
+const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+function diffObject<T extends object>(value: T, base: T): Partial<T> {
+  const out: Record<string, unknown> = {};
+  for (const [key, v] of Object.entries(value)) {
+    if (v === undefined) continue;
+    if (!sameJson(v, (base as Record<string, unknown>)[key])) out[key] = v;
+  }
+  return out as Partial<T>;
+}
+
+/** Убрать из определения точки значения, которые конструктор вычисляет сам. */
+function compactPointDefinition(def: SpacePointDefinition): SpacePointDefinition {
+  if (def.kind === "onFace" && def.placement === "center") {
+    const { faceU: _u, faceV: _v, ...rest } = def;
+    return rest as SpacePointDefinition;
+  }
+  if (def.kind === "onLine" && def.ratioMode === "explicit") {
+    const { lineParam: _t, ...rest } = def;
+    return rest as SpacePointDefinition;
+  }
+  if (def.kind === "onLine" && def.ratioMode === "auto") {
+    const { ratioA: _a, ratioB: _b, ...rest } = def;
+    return rest as SpacePointDefinition;
+  }
+  return def;
+}
+
+function restorePointDefinition(def: SpacePointDefinition): SpacePointDefinition {
+  if (def.kind === "onFace") return { ...def, faceU: def.faceU ?? 0.5, faceV: def.faceV ?? 0.5 };
+  if (def.kind === "onLine") {
+    return { ...def, ratioA: def.ratioA ?? 1, ratioB: def.ratioB ?? 1, lineParam: def.lineParam as number };
+  }
+  return def;
+}
+
+/**
+ * Выгрузка: только ввод пользователя. Без figure, geometry, errors; стиль, вид и
+ * оформление — только отличия от значений по умолчанию; label/built — если не по умолчанию.
+ */
 export function serializeSpaceSceneData(data: SpaceSceneData): SpaceSceneDataJson {
   const baseVerticesInput =
     data.baseVerticesInput.trim() ||
     (data.figure ? figureVertexInputString(data.figure) : "");
+  const common = (o: { id: string; index: number; label: string; built: boolean }) => ({
+    id: o.id,
+    index: o.index,
+    ...(o.label ? { label: o.label } : {}),
+    ...(o.built ? {} : { built: false }),
+  });
 
   return {
     shapeKind: data.shapeKind,
@@ -188,42 +235,43 @@ export function serializeSpaceSceneData(data: SpaceSceneData): SpaceSceneDataJso
     figureConstraints: { ...data.figureConstraints },
     figureBuilt: data.figure != null,
     points: data.points.map((p) => ({
-      id: p.id,
-      index: p.index,
-      label: p.label,
-      definition: p.definition,
-      style: { ...p.style },
-      built: p.built,
+      ...common(p),
+      definition: compactPointDefinition(p.definition),
+      style: diffObject(p.style, createSpacePoint(p.index, p.definition).style),
     })),
     lines: data.lines.map((l) => ({
-      id: l.id,
-      index: l.index,
-      label: l.label,
+      ...common(l),
       definition: l.definition,
-      style: { ...l.style },
-      built: l.built,
+      style: diffObject(l.style, createSpaceLine(l.index, l.definition).style),
     })),
     planes: data.planes.map((pl) => ({
-      id: pl.id,
-      index: pl.index,
-      label: pl.label,
+      ...common(pl),
       definition: pl.definition,
-      style: { ...pl.style },
-      built: pl.built,
+      style: diffObject(pl.style, createSpacePlane(pl.index, pl.definition).style),
     })),
-    view: stripViewForExport(data.view),
-    appearance: { ...data.appearance },
+    view: diffObject(stripViewForExport(data.view), stripViewForExport(DEFAULT_SPACE_VIEW)),
+    appearance: diffObject(data.appearance, DEFAULT_SPACE_APPEARANCE),
+  } as unknown as SpaceSceneDataJson;
+}
+
+/** Пропущенные в JSON номер, подпись, стиль и флаг построения — значения по умолчанию. */
+function withDefaults<T extends { index: number; label: string; built: boolean }>(raw: T, position: number): T {
+  return {
+    ...raw,
+    index: raw.index ?? position + 1,
+    label: raw.label ?? "",
+    built: raw.built ?? true,
+    style: (raw as { style?: object }).style ?? {},
   };
 }
 
-function restoreSpacePoint(raw: SpaceSceneDataJson["points"][number]): SpacePoint {
-  const base = createSpacePoint(raw.index, raw.definition, raw.label);
+function restoreSpacePoint(input: SpaceSceneDataJson["points"][number], position: number): SpacePoint {
+  const raw = withDefaults(input, position);
+  const definition = restorePointDefinition(raw.definition);
+  const base = createSpacePoint(raw.index, definition, raw.label);
   return {
     ...base,
-    id: raw.id,
-    index: raw.index,
-    label: raw.label,
-    definition: raw.definition,
+    id: raw.id ?? base.id,
     style: { ...base.style, ...raw.style },
     built: raw.built,
     geometry: null,
@@ -233,14 +281,12 @@ function restoreSpacePoint(raw: SpaceSceneDataJson["points"][number]): SpacePoin
   };
 }
 
-function restoreSpaceLine(raw: SpaceSceneDataJson["lines"][number]): SpaceLine {
+function restoreSpaceLine(input: SpaceSceneDataJson["lines"][number], position: number): SpaceLine {
+  const raw = withDefaults(input, position);
   const base = createSpaceLine(raw.index, raw.definition, raw.label);
   return {
     ...base,
-    id: raw.id,
-    index: raw.index,
-    label: raw.label,
-    definition: raw.definition,
+    id: raw.id ?? base.id,
     style: { ...base.style, ...raw.style },
     built: raw.built,
     dirty: raw.built,
@@ -249,14 +295,12 @@ function restoreSpaceLine(raw: SpaceSceneDataJson["lines"][number]): SpaceLine {
   };
 }
 
-function restoreSpacePlane(raw: SpaceSceneDataJson["planes"][number]): SpacePlane {
+function restoreSpacePlane(input: SpaceSceneDataJson["planes"][number], position: number): SpacePlane {
+  const raw = withDefaults(input, position);
   const base = createSpacePlane(raw.index, raw.definition, raw.label);
   return {
     ...base,
-    id: raw.id,
-    index: raw.index,
-    label: raw.label,
-    definition: raw.definition,
+    id: raw.id ?? base.id,
     style: { ...base.style, ...raw.style },
     built: raw.built,
     dirty: raw.built,
@@ -303,56 +347,11 @@ export function deserializeSpaceSceneData(raw: unknown): SpaceSceneData {
     figureConstraints,
     figureDirty,
     figure,
-    points: pointsRaw.map((p) => restoreSpacePoint(p as SpaceSceneDataJson["points"][number])),
-    lines: linesRaw.map((l) => restoreSpaceLine(l as SpaceSceneDataJson["lines"][number])),
-    planes: planesRaw.map((pl) => restoreSpacePlane(pl as SpaceSceneDataJson["planes"][number])),
+    points: pointsRaw.map((p, i) => restoreSpacePoint(p as SpaceSceneDataJson["points"][number], i)),
+    lines: linesRaw.map((l, i) => restoreSpaceLine(l as SpaceSceneDataJson["lines"][number], i)),
+    planes: planesRaw.map((pl, i) => restoreSpacePlane(pl as SpaceSceneDataJson["planes"][number], i)),
     view: mergeViewFromJson(viewRaw, base.view),
     appearance: { ...base.appearance, ...appearanceRaw },
-  };
-}
-
-/**
- * Полная сцена plotting для JSON.
- * Поле `space`: `"line"` | `"plane"` | `"space"` — куда открывать вкладку при загрузке.
- */
-export function serializePlotSceneForExport(scene: PlotScene): PlotScene {
-  if (scene.space === "line" && scene.line) {
-    return {
-      ...scene,
-      version: 1,
-      space: "line",
-      graphs: [],
-      points: [],
-      tangents: scene.tangents ?? [],
-      space3d: null,
-    };
-  }
-
-  if (scene.space === "space" && scene.space3d) {
-    return {
-      version: 1,
-      space: "space",
-      axisScaleMode: scene.axisScaleMode,
-      plotAspectRatio: scene.plotAspectRatio,
-      xAxis: scene.xAxis,
-      yAxis: scene.yAxis,
-      grid: scene.grid,
-      appearance: scene.appearance,
-      graphs: [],
-      points: [],
-      tangents: [],
-      customColors: scene.customColors,
-      line: null,
-      space3d: serializeSpaceSceneData(scene.space3d) as unknown as SpaceSceneData,
-    };
-  }
-
-  return {
-    ...scene,
-    version: 1,
-    space: scene.space ?? "plane",
-    line: null,
-    space3d: null,
   };
 }
 

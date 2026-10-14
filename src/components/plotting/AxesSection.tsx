@@ -82,7 +82,7 @@ function AxisMainFields({ axis, title }: { axis: "xAxis" | "yAxis"; title: strin
           <Label className="text-xs text-muted-foreground">Шаг сетки</Label>
           <Input
             value={spec.gridStep}
-            placeholder="1"
+            placeholder="авто"
             className="h-8 px-2 font-mono text-sm"
             onChange={(event) => updateAxis(axis, { gridStep: event.target.value })}
           />
@@ -133,7 +133,7 @@ function AxisDetails({ axis, title }: { axis: "xAxis" | "yAxis"; title: string }
           <Label className="text-xs text-muted-foreground">Шаг подписи</Label>
           <Input
             value={spec.labelStep}
-            placeholder={spec.gridStep || "1"}
+            placeholder={spec.gridStep || "авто"}
             className="h-8 px-2 font-mono text-sm"
             disabled={spec.markRule === "selected"}
             onChange={(event) => updateAxis(axis, { labelStep: event.target.value })}

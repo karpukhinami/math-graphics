@@ -38,6 +38,7 @@ import {
 } from "./line/scene";
 import { filterAiLinePoints, normalizeLineAxisRows } from "./line/import-ai";
 import { mergeAiScene } from "./ai/merge-scene";
+import { sceneFromJson } from "./scene-json";
 import type {
   LineAxisSpec,
   LinePointStyle,
@@ -277,7 +278,8 @@ function axisBounds(min: string, max: string): { min: number; max: number } | nu
 
 function autoGridStepForAxis(axis: AxisSpec): string {
   const bounds = axisBounds(axis.min, axis.max);
-  return bounds ? String(niceStep(bounds.min, bounds.max)) : axis.gridStep;
+  // Пустой шаг = «авто»: рисовальщик сам подбирает niceStep по пределам оси.
+  return axisBounds(axis.min, axis.max) ? "" : axis.gridStep;
 }
 
 function commitImportedScene(
@@ -321,8 +323,12 @@ function commitImportedScene(
     return;
   }
   const report = buildScene(scene);
+  // Заготовки решений (подписи/видимость по номеру) не должны рисоваться, если точка не построилась.
+  const points = report.scene.points.map((point) =>
+    point.error && point.built?.some((solution) => solution.displayX === "") ? { ...point, built: null } : point,
+  );
   set({
-    scene: report.scene,
+    scene: { ...report.scene, points },
     status: { built: report.built, errors: report.errors, at: Date.now() },
     pointDraft: null,
     pointDraftError: null,
@@ -967,115 +973,7 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
   },
 
   importScene: (raw) => {
-    const base = createScene();
-    const input = (raw ?? {}) as Partial<PlotScene> & {
-      grid?: Partial<GridSpec> & { followAxisStep?: boolean; stepX?: string; stepY?: string };
-      space3d?: unknown;
-    };
-    const legacyGrid: Partial<GridSpec> & { followAxisStep?: boolean; stepX?: string; stepY?: string } =
-      input.grid ?? {};
-    const isLine = input.space === "line";
-    const isSpace =
-      input.space === "space" || (input.space3d != null && typeof input.space3d === "object" && !isLine);
-    if (isSpace) {
-      const spaceDefaults = createSpacePlotScene();
-      const space3d = deserializeSpaceSceneData(input.space3d ?? {});
-      const scene: PlotScene = {
-        ...spaceDefaults,
-        ...input,
-        version: 1,
-        space: "space",
-        appearance: input.appearance
-          ? { ...spaceDefaults.appearance, ...input.appearance }
-          : spaceDefaults.appearance,
-        graphs: [],
-        points: [],
-        tangents: input.tangents ?? [],
-        customColors: input.customColors ?? [],
-        line: null,
-        space3d,
-      };
-      commitImportedScene(set, scene);
-      return;
-    }
-    const scene: PlotScene = isLine
-      ? (() => {
-          const lineBase = createLineScene().line!;
-          const rawLine = normalizeLineAxisRows({
-            ...(input.line ?? {}),
-            axisRowCount: input.line?.axisRowCount ?? lineBase.axisRowCount,
-            sets: input.line?.sets ?? [],
-            points: filterAiLinePoints(input.line?.points),
-          });
-          const lineDefaults = createLineScene();
-          return {
-            ...lineDefaults,
-            ...input,
-            appearance: input.appearance
-              ? { ...lineDefaults.appearance, ...input.appearance }
-              : lineDefaults.appearance,
-            line: {
-              ...lineBase,
-              ...rawLine,
-              ticks: { ...lineBase.ticks, ...(rawLine.ticks ?? {}) },
-              sets: (rawLine.sets ?? []).map((set, position) => ({
-                ...createSet(position + 1, set.axisRow ?? 0),
-                ...set,
-                math: { ...createSet(position + 1, set.axisRow ?? 0).math, ...set.math },
-                style: { ...createSet(position + 1, set.axisRow ?? 0).style, ...set.style },
-                built: null,
-                dirty: true,
-                error: null,
-              })),
-              points: (rawLine.points ?? []).map((point, position) => ({
-                ...createLinePoint(position + 1, point.axisRow ?? 0),
-                ...point,
-                math: { ...createLinePoint(position + 1, point.axisRow ?? 0).math, ...point.math },
-                style: { ...createLinePoint(position + 1, point.axisRow ?? 0).style, ...point.style },
-                built: null,
-                dirty: true,
-                error: null,
-              })),
-            },
-            version: 1,
-            space: "line",
-          };
-        })()
-      : {
-          ...base,
-          ...input,
-          axisScaleMode: input.axisScaleMode ?? base.axisScaleMode,
-          plotAspectRatio: input.plotAspectRatio ?? base.plotAspectRatio,
-          xAxis: migrateAxisImport(base.xAxis, (input.xAxis ?? {}) as Partial<AxisSpec>, legacyGrid.stepX ?? ""),
-          yAxis: migrateAxisImport(base.yAxis, (input.yAxis ?? {}) as Partial<AxisSpec>, legacyGrid.stepY ?? ""),
-          grid: { visible: legacyGrid.visible ?? base.grid.visible },
-          appearance: input.appearance
-            ? { ...base.appearance, ...input.appearance }
-            : base.appearance,
-          graphs: (input.graphs ?? []).map((graph, position) => ({
-            ...createGraph(position + 1),
-            ...graph,
-            math: { ...createGraph(position + 1).math, ...graph.math },
-            style: { ...createGraph(position + 1).style, ...graph.style },
-            built: null,
-            dirty: true,
-          })),
-          points: (input.points ?? []).map((point, position) => ({
-            ...createPoint(position + 1),
-            ...point,
-            math: { ...createPoint(position + 1).math, ...point.math },
-            style: { ...createPoint(position + 1).style, ...point.style },
-            built: null,
-            dirty: true,
-          })),
-          tangents: input.tangents ?? [],
-          customColors: input.customColors ?? [],
-          line: null,
-          space3d: null,
-          version: 1,
-          space: "plane",
-        };
-    commitImportedScene(set, scene);
+    commitImportedScene(set, sceneFromJson(raw));
   },
 
   importAiScene: (raw) => {
