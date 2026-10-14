@@ -250,11 +250,14 @@ export function expandPlaneDraft(raw: unknown, options: DraftOptions = {}): Draf
   const axesOk = Boolean(xMin && xMax && yMin && yMax);
   const xSpan = axesOk ? xMax!.value - xMin!.value : 0;
   const ySpan = axesOk ? yMax!.value - yMin!.value : 0;
-  const xStep = axesOk ? pickStep(text(axes.xStep), xMin!.value, xMax!.value, xFormat) : "1";
-  const yStep = axesOk ? pickStep(text(axes.yStep), yMin!.value, yMax!.value, yFormat) : "1";
   // Квадратная сетка, пока масштабы осей сопоставимы; иначе независимые шкалы.
   const ratio = axesOk && ySpan > 0 ? xSpan / ySpan : 1;
   const equalScale = ratio <= ASPECT_RATIO_LIMIT && ratio >= 1 / ASPECT_RATIO_LIMIT;
+  // При равном масштабе шаг сетки всегда 1 (кроме осей в долях π); шаг от модели игнорируется.
+  const stepFor = (requested: string, min: number, max: number, format: "number" | "fraction" | "pi") =>
+    equalScale && format !== "pi" ? "1" : pickStep(equalScale ? "" : requested, min, max, format);
+  const xStep = axesOk ? stepFor(text(axes.xStep), xMin!.value, xMax!.value, xFormat) : "1";
+  const yStep = axesOk ? stepFor(text(axes.yStep), yMin!.value, yMax!.value, yFormat) : "1";
 
   // ── Графики ────────────────────────────────────────────────────────────
   const graphsRaw = Array.isArray(root.graphs) ? root.graphs : [];
