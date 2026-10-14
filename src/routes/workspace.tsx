@@ -328,9 +328,8 @@ function WorkspacePage() {
                             <ToggleGroupItem value="horizontal" title="Все по горизонтали" aria-label="Все по горизонтали"><Columns3 className="size-4" /></ToggleGroupItem>
                             <ToggleGroupItem value="grid" title="Раскладка 2×2" aria-label="Раскладка 2×2"><Grid2X2 className="size-4" /></ToggleGroupItem>
                           </ToggleGroup>
-                        </div>
-                      )}
-                      <div className="workspace-answer-grid grid gap-2" style={{ "--answer-columns": answerColumnCount(allAnswersAreImages(block.options) ? block.answerLayout ?? "vertical" : "vertical", block.options.length) } as React.CSSProperties}>
+                      </div>
+                      <div className="workspace-answer-grid grid gap-2" style={{ "--answer-columns": answerColumnCount(block.answerLayout ?? "vertical", block.options.length) } as React.CSSProperties}>
                       {block.options.map((o, i) => (
                         <div key={o.id} className="min-w-0 space-y-2 rounded-md border border-border p-2">
                           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
