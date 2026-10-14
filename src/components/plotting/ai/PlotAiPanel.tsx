@@ -188,14 +188,14 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
               <Textarea id="plot-source-text" rows={8} value={manualText} onChange={(e) => { source.setManualText(e.target.value); invalidate(); }} />
             </div>
             <div className="space-y-2"><Label htmlFor="plot-wishes">Дополнительные пожелания</Label>
-              <Textarea id="plot-wishes" rows={3} value={userRefinements} onChange={(e) => { setUserRefinements(e.target.value); if (scenario === "task") invalidate(); else setSceneBuilt(false); }} />
+              <Textarea id="plot-wishes" rows={3} value={userRefinements} onChange={(e) => setUserRefinements(e.target.value)} />
             </div>
           </> : <>
             <SourceImageInput images={attachedImages} onChange={(urls) => { source.removeImage(0); if (urls.length) source.addImages(urls); invalidate(); }} />
             <div className="space-y-2"><Label htmlFor="plot-reproduce-wishes">Уточнения</Label>
               <Textarea id="plot-reproduce-wishes" rows={3} value={userRefinements}
                 placeholder="Например: точки A(1; 2) и B(-3; 0); ожидаемая функция y = x^2 - 2x"
-                onChange={(e) => { setUserRefinements(e.target.value); invalidate(); }} />
+                onChange={(e) => setUserRefinements(e.target.value)} />
             </div>
           </>}
         </fieldset>
