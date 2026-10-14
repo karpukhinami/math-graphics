@@ -105,12 +105,15 @@ describe("plane draft → scene", () => {
     expect(niceStep(0, 24.1)).toBe("2");
     expect(niceStepPi(0, 25 * Math.PI)).toBe("2*pi");
 
-    // Слишком крупный шаг от модели заменяется автоматическим; разумный — сохраняется.
+    // При равном масштабе шаг всегда 1, шаг от модели игнорируется; подписи — 0 и первая засечка.
     const axes = { xMin: "-2", xMax: "2", yMin: "-2", yMax: "2" };
-    const big = expandPlaneDraft({ axes: { ...axes, xStep: "2" }, graphs: [], points: [{ type: "coords", x: "0", y: "0" }] });
-    expect((big.scene as Record<string, any>).xAxis.gridStep).toBe("0.5");
-    const ok = expandPlaneDraft({ axes: { ...axes, xStep: "0.5" }, graphs: [], points: [{ type: "coords", x: "0", y: "0" }] });
-    expect((ok.scene as Record<string, any>).xAxis.gridStep).toBe("0.5");
+    for (const xStep of ["2", "0.5"]) {
+      const s = expandPlaneDraft({ axes: { ...axes, xStep }, graphs: [], points: [] }).scene as Record<string, any>;
+      expect(s.xAxis.gridStep).toBe("1");
+      expect(s.yAxis.gridStep).toBe("1");
+      expect(s.xAxis.markRule).toBe("zeroAndFirst");
+      expect(s.yAxis.markRule).toBe("zeroAndFirst");
+    }
   });
 
   test("reports unknown graph references and points outside the axes", () => {
