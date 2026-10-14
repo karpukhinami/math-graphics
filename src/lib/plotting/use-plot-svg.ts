@@ -6,7 +6,7 @@ import { renderPlotSvg } from "./render";
 import { renderLineSvg } from "./line/render";
 import { renderSpaceSvg } from "./space/render";
 
-export function usePlotSvg(): string {
+export function usePlotSvg(): string | null {
   const scene = usePlotStore((state) => state.scene);
   const pointDraft = usePlotStore((state) => state.pointDraft);
   return useMemo(() => {
