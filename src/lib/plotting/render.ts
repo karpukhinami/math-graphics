@@ -504,6 +504,47 @@ function buildLabelObstacles(
   return obstacles;
 }
 
+function graphLabelAnchors(curve: RenderCurve, geometry: PlotGeometry): Array<[number, number]> {
+  const visible: Array<[number, number]> = [];
+  for (const segment of curve.segments) {
+    for (let i = 1; i < segment.length; i += 1) {
+      const from = segment[i - 1];
+      const to = segment[i];
+      if (!from || !to) continue;
+      // Обрезаем отрезок до видимой области до отбора опор (важно для ломаных).
+      let low = 0;
+      let high = 1;
+      const dx = to[0] - from[0];
+      const dy = to[1] - from[1];
+      const edges = [[-dx, from[0] - geometry.xMin], [dx, geometry.xMax - from[0]],
+        [-dy, from[1] - geometry.yMin], [dy, geometry.yMax - from[1]]];
+      let clipped = false;
+      for (const [p, q] of edges) {
+        if (p === 0) { if (q < 0) clipped = true; continue; }
+        if (p < 0) low = Math.max(low, q / p);
+        else high = Math.min(high, q / p);
+      }
+      if (clipped || low > high) continue;
+      const x1 = geometry.sx(from[0] + dx * low);
+      const y1 = geometry.sy(from[1] + dy * low);
+      const x2 = geometry.sx(from[0] + dx * high);
+      const y2 = geometry.sy(from[1] + dy * high);
+      const count = Math.max(1, Math.ceil(Math.hypot(x2 - x1, y2 - y1) / 18));
+      for (let j = 0; j <= count; j += 1) {
+        visible.push([x1 + (x2 - x1) * j / count, y1 + (y2 - y1) * j / count]);
+      }
+    }
+  }
+  // Предпочитаем правую часть, но перебираем всю кривую, включая замкнутые ветви.
+  const sampled = visible.filter((_point, index) => index % Math.max(1, Math.ceil(visible.length / 36)) === 0);
+  return sampled.sort((a, b) => b[0] - a[0]);
+}
+
+function curveLabelFontSize(curve: RenderCurve, geometry: PlotGeometry, a: PlotAppearance): number {
+  const width = measureTextWidth(curve.caption ?? "", a.pointLabelFontSize);
+  return Math.min(a.pointLabelFontSize, a.pointLabelFontSize * (geometry.right - geometry.left - 24) / Math.max(1, width));
+}
+
 function layoutPointLabels(
   geometry: PlotGeometry,
   scene: PlotScene,
@@ -536,6 +577,20 @@ function layoutPointLabels(
       height: fontSize * 1.12,
       gap: a.pointRadius + POINT_LABEL_GAP,
       placement: point.labelPlacement ?? "auto",
+    });
+  }
+
+  for (const curve of curves) {
+    if (!curve.caption || !curve.id) continue;
+    const anchors = graphLabelAnchors(curve, geometry);
+    const first = anchors[0];
+    if (!first) continue;
+    const fontSize = curveLabelFontSize(curve, geometry, a);
+    requests.push({
+      id: `graph:${curve.id}`,
+      anchorX: first[0], anchorY: first[1], anchors,
+      width: measureTextWidth(curve.caption, fontSize), height: fontSize * 1.12,
+      fontSize, gap: 12 + curve.width / 2,
     });
   }
 
@@ -775,6 +830,18 @@ export function renderPlotSvg(
   }
   parts.push(markerParts.join(""));
   parts.push(`<g>${pointLabelParts.join("")}</g>`);
+
+  for (const curve of curves) {
+    if (!curve.caption || !curve.id) continue;
+    const placed = placedLabels.get(`graph:${curve.id}`);
+    if (!placed) continue;
+    const fontSize = curveLabelFontSize(curve, geometry, a);
+    const attrs = `x="${round(placed.x)}" y="${round(placed.y)}" text-anchor="middle" font-family="${escapeText(a.pointLabelFontFamily)}" font-size="${round(fontSize)}" font-style="italic"`;
+    const caption = escapeText(curve.caption);
+    const backdrop = placed.needsBackdrop
+      ? `<text ${attrs} fill="#FFFFFF" fill-opacity="${BACKDROP_OPACITY}" stroke="#FFFFFF" stroke-opacity="${BACKDROP_OPACITY}" stroke-width="${BACKDROP_STROKE}" paint-order="stroke fill">${caption}</text>` : "";
+    parts.push(`<g data-graph-label="${escapeText(curve.id)}">${backdrop}<text ${attrs} fill="${curve.color}">${caption}</text></g>`);
+  }
 
   const w = round(geometry.canvasWidth);
   const h = round(geometry.canvasHeight);

@@ -95,6 +95,9 @@ export interface LabelRequest {
   /** Опорная точка (центр объекта), пиксели. */
   anchorX: number;
   anchorY: number;
+  /** Для графиков: несколько равноправных опор вдоль видимой кривой. */
+  anchors?: Array<[number, number]>;
+  fontSize?: number;
   /** Габарит текстового блока. */
   width: number;
   height: number;
@@ -290,12 +293,15 @@ export function layoutLabels(
     const fixed = request.placement && request.placement !== "auto" ? request.placement : null;
     let best: { direction: LabelDirection; rect: Rect; score: number } | null = null;
     const candidates = fixed ? [fixed] : LABEL_DIRECTIONS;
-    candidates.forEach((direction, index) => {
-      const rect = directionRect(request, direction);
-      // Небольшой бонус за более предпочтительное направление.
-      const score = penalty(rect, live, area) + index * 0.5;
-      if (!best || score < best.score) best = { direction, rect, score };
-    });
+    const anchors = request.anchors?.length ? request.anchors : [[request.anchorX, request.anchorY]];
+    for (const [anchorIndex, anchor] of anchors.entries()) {
+      const [anchorX, anchorY] = anchor;
+      candidates.forEach((direction, index) => {
+        const rect = directionRect({ ...request, anchorX, anchorY }, direction);
+        const score = penalty(rect, live, area) + index * 0.5 + anchorIndex * 0.01;
+        if (!best || score < best.score) best = { direction, rect, score };
+      });
+    }
     if (!best) continue;
     const chosen = best as { direction: LabelDirection; rect: Rect; score: number };
     placed.push({
@@ -303,7 +309,7 @@ export function layoutLabels(
       direction: chosen.direction,
       rect: chosen.rect,
       x: chosen.rect.x + chosen.rect.width / 2,
-      y: chosen.rect.y + chosen.rect.height / 2 + fontSize * 0.35,
+      y: chosen.rect.y + chosen.rect.height / 2 + (request.fontSize ?? fontSize) * 0.35,
       textAnchor: "middle",
       needsBackdrop: allowBackdrop && chosen.score > BACKDROP_THRESHOLD,
     });

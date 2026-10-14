@@ -5,6 +5,7 @@ import { resolveGeometry } from "./render";
 import { DEFAULT_APPEARANCE, nextId, PLOT_PALETTE, PLOT_PALETTE_GROUPS } from "./shared";
 import { createSpaceSceneData } from "./space/scene";
 import { intersectGraphs, pointsOnGraphAtX } from "./solve";
+import { graphCaption } from "./graph-labels";
 import type {
   AxisSpec,
   GraphKind,
@@ -132,6 +133,7 @@ export function createGraph(index: number, kind: GraphKind = "explicit"): SceneG
       color: PLOT_PALETTE[(index - 1) % PLOT_PALETTE.length],
       width: null,
       label: "",
+      labelMode: "none",
       visible: true,
     },
     built: null,
@@ -423,13 +425,16 @@ export function buildScene(scene: PlotScene, only?: { graphId?: string; pointId?
 
 /** Данные для рисовальщика: только построенные и видимые объекты. */
 export function sceneCurves(scene: PlotScene): RenderCurve[] {
-  return scene.graphs
-    .filter((graph) => graph.built && graph.style.visible)
-    .map((graph) => ({
+  return scene.graphs.flatMap((graph) => {
+    if (!graph.built || !graph.style.visible) return [];
+    return [{
+      id: graph.id,
+      caption: graphCaption(graph, scene),
       color: graph.style.color,
       width: graph.style.width ?? scene.appearance.graphWidth,
-      segments: graph.built!.segments,
-    }));
+      segments: graph.built.segments,
+    }];
+  });
 }
 
 export function scenePoints(scene: PlotScene): RenderPoint[] {

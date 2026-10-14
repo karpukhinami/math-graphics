@@ -20,7 +20,7 @@ import { MathInput } from "./MathInput";
 import { ColorDot } from "./ColorDot";
 import { usePlotStore } from "@/lib/plotting/store";
 import { graphSummary } from "@/lib/plotting/scene";
-import type { AnchorKind, GraphKind, SceneGraph } from "@/lib/plotting/types";
+import type { AnchorKind, GraphKind, GraphStyle, SceneGraph } from "@/lib/plotting/types";
 
 const KINDS: Array<{ value: GraphKind; label: string }> = [
   { value: "explicit", label: "явное задание" },
@@ -126,6 +126,7 @@ export function FunctionCard({ graph }: { graph: SceneGraph }) {
                 <Label className="text-xs text-muted-foreground">Название</Label>
                 <Input
                   value={graph.style.label}
+                  aria-label="Название функции"
                   placeholder="f"
                   maxLength={4}
                   className="text-center italic"
@@ -135,6 +136,20 @@ export function FunctionCard({ graph }: { graph: SceneGraph }) {
               </div>
             </div>
 
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor={`graph-label-${graph.id}`} className="shrink-0 text-xs text-muted-foreground">Подпись графика</Label>
+              <Select
+                value={graph.style.labelMode === "equation" && math.kind !== "explicit" && math.kind !== "implicit" ? "none" : graph.style.labelMode ?? "none"}
+                onValueChange={(value) => updateGraphStyle(graph.id, { labelMode: value as GraphStyle["labelMode"] })}
+              >
+                <SelectTrigger id={`graph-label-${graph.id}`} aria-label="Подпись графика" className="h-8 min-w-0 flex-1 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Без подписи</SelectItem>
+                  <SelectItem value="name" disabled={!graph.style.label.trim()}>По названию</SelectItem>
+                  {(math.kind === "explicit" || math.kind === "implicit") && <SelectItem value="equation">Уравнением</SelectItem>}
+                </SelectContent>
+              </Select>
+            </div>
 
             {math.kind === "explicit" && (
               <MathInput
