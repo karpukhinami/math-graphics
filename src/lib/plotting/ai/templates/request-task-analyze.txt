@@ -40,7 +40,7 @@
 ═══════════════════════════════════════
 Верни ТОЛЬКО один JSON-объект без markdown-ограждений и текста вне JSON:
 {
-  "reasoning": string,          // кратко шаги 1–6
+  "reasoning": string,          // кратко шаги 1–6 (включая 5а/5б)
   "originalText": string,       // образец задания (Markdown + $LaTeX$)
   "canDraw": boolean,
   "sceneType": "plane" | "line",
