@@ -9,6 +9,7 @@ import type { PlotAiPanelProps } from "@/components/plotting/ai/PlotAiPanel";
 import { usePlotSvg } from "@/lib/plotting/use-plot-svg";
 import { usePlotStore } from "@/lib/plotting/store";
 import type { PlotScene } from "@/lib/plotting/types";
+import { standalonePlotSvg } from "@/lib/plotting/standalone-svg";
 
 export interface PlotInsertResult {
   src: string;
@@ -31,24 +32,33 @@ export function PlotEditorDialog({
   onInsert: (result: PlotInsertResult) => void;
 }) {
   const [resultReady, setResultReady] = useState(false);
+  const [inserting, setInserting] = useState(false);
   const [text, setText] = useState(aiInitial?.initialText ?? "");
   const [newTaskText, setNewTaskText] = useState<string>();
   const isAi = usePlotStore((s) => s.inputMode === "ai");
   const svg = usePlotSvg();
   const scene = usePlotStore((s) => s.scene);
 
-  function insert() {
+  async function insert() {
     if (!svg || (isAi && !resultReady)) {
       toast.error("Сначала постройте чертёж");
       return;
     }
+    setInserting(true);
+    try {
+    const standalone = await standalonePlotSvg(svg);
     onInsert({
-      src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
+      src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(standalone)}`,
       scene: structuredClone(scene),
       text: aiInitial?.initialScenario === "task" ? text : undefined,
       newTaskText,
     });
     onOpenChange(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Не удалось вставить чертёж");
+    } finally {
+      setInserting(false);
+    }
   }
 
   return (
@@ -66,8 +76,8 @@ export function PlotEditorDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Отмена
           </Button>
-          <Button onClick={insert} disabled={!svg || (isAi && !resultReady)}>
-            <Check className="size-4" /> Вставить чертёж
+          <Button onClick={insert} disabled={inserting || !svg || (isAi && !resultReady)}>
+            <Check className="size-4" /> {inserting ? "Подготовка…" : "Вставить чертёж"}
           </Button>
         </div>
       </DialogContent>

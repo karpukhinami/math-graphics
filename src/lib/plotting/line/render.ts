@@ -6,6 +6,7 @@ import type { PlotScene } from "../types";
 import { lineNumericLabel, linePrefersFractions, lineTickLabel } from "./numeric-labels";
 import { majorTickValues, parseSemicolonList, valueOnMajorTick } from "./intervals";
 import {
+  belowAxisLabelY,
   labelNeedsLatex,
   renderCoordinateLabel,
   renderSvgTextLabel,
@@ -384,14 +385,14 @@ export function renderLineSvg(scene: PlotScene): string | null {
     for (const value of majorLabelValues) {
       const x = geom.sx(value);
       const label = lineTickLabel(line, Math.round((value - geom.axisMin) / geom.majorStep));
-      parts.push(renderCoordinateLabel(x, tickLabelY, label.display, label.latex, a.labelFontSize, a.labelColor, font));
+      parts.push(renderCoordinateLabel(x, belowAxisLabelY(tickLabelY, label.latex, a.labelFontSize), label.display, label.latex, a.labelFontSize, a.labelColor, font));
     }
 
     const minorFont = a.labelFontSize * 0.6;
     for (const value of minorLabelValues) {
       const x = geom.sx(value);
       const label = lineTickLabel(line, Math.round((value - geom.axisMin) / geom.majorStep * divisions), divisions);
-      parts.push(renderCoordinateLabel(x, tickLabelY, label.display, label.latex, minorFont, a.labelColor, font));
+      parts.push(renderCoordinateLabel(x, belowAxisLabelY(tickLabelY, label.latex, minorFont), label.display, label.latex, minorFont, a.labelColor, font));
     }
 
     const nameWidth = axisLabel.length * a.labelFontSize * 0.55;
@@ -452,7 +453,7 @@ export function renderLineSvg(scene: PlotScene): string | null {
         );
       }
       if (coord) {
-        const y = point.style.coordSide === "above" ? labelYAbove : labelYBelow;
+        const y = point.style.coordSide === "above" ? labelYAbove : belowAxisLabelY(labelYBelow, coordLatex, coordFontSize);
         parts.push(
           renderCoordinateLabel(px, y, coord, coordLatex, coordFontSize, coordColor, font),
         );
