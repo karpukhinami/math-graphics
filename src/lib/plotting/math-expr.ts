@@ -52,7 +52,10 @@ export function latexToPlain(raw: string): string {
   s = s.replace(/\\infty/g, "Infinity");
   s = s.replace(/\|([^|]*)\|/g, (_m, a) => `abs(${a})`);
   s = s.replace(/\^\s*\{([^{}]*)\}/g, (_m, a) => `^(${a})`);
-  s = convertLogBase(s);
+  // \log_{2} → log_2: основание переживает общее удаление _{...},
+  // а в log(x, 2) его превратит convertLogBase в normalizeInput (после
+  // замены десятичной запятой, иначе «, 2» превратится в «. 2»).
+  s = s.replace(/\\?log_\{([^{}]+)\}/g, "log_$1");
   s = s.replace(/_\s*\{[^{}]*\}/g, "");
   s = s.replace(/[{}]/g, "");
   s = s.replace(/\\[a-zA-Z]+/g, "");
