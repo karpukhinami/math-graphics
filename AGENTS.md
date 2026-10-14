@@ -1,5 +1,7 @@
 # Project rules
 
+- Graph captions are derived in `graph-labels.ts` and placed through the shared `label-layout.ts` engine using multiple visible curve anchors; persist only the chosen caption mode, never layout coordinates. Why: preview, embeddings and exports must share collision-aware labels that adapt to scene edits.
+
 - The app is a math plotting tool (line / plane / space); `/` is the plotting page, `/workspace` is a demo task editor that embeds plots. Do not reintroduce infographic or style-profile code.
 - The plotting UI lives in `PlotWorkbench` and is reused by `/` and the `/workspace` plot dialog (entry points in `components/workspace/PlotInsertMenu`); never fork plotting logic for the editor. Why: plotting improvements must reach every embedding.
 - Configure embedded plotting through presentation props on the shared workbench, AI panel, and preview; pass source text and generation readiness back through callbacks, keeping them scoped to the dialog session. Why: the editor can simplify individual scenarios without duplicating plotting logic or leaking text between sessions.
