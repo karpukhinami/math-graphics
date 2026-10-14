@@ -85,3 +85,8 @@ export function renderCoordinateLabel(
   }
   return renderSvgTextLabel(x, y, "middle", display, fontSize, color, fontFamily);
 }
+
+/** Keep the entire fraction box below ticks rather than aligning its centre to a text baseline. */
+export function belowAxisLabelY(baseline: number, latex: string, fontSize: number): number {
+  return baseline + (latex.includes("\\frac") ? fontSize * 0.8 : 0);
+}
