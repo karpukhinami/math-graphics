@@ -179,6 +179,8 @@ interface PlotStore {
   resetAppearance: () => void;
   addGraph: () => void;
   updateGraphMath: (id: string, patch: Partial<GraphMath>) => void;
+  /** Удаляет опорную точку и сдвигает ссылки точек сцены на последующие опорные. */
+  removeGraphAnchor: (id: string, index: number) => void;
   updateGraphStyle: (id: string, patch: Partial<GraphStyle>) => void;
   removeGraph: (id: string) => void;
   startPointDraft: () => void;
@@ -833,6 +835,29 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
             ? { ...graph, math: { ...graph.math, ...patch }, dirty: true, error: null }
             : graph,
         ),
+      },
+    })),
+
+  removeGraphAnchor: (id, index) =>
+    set((state) => ({
+      scene: {
+        ...state.scene,
+        graphs: state.scene.graphs.map((graph) =>
+          graph.id === id
+            ? {
+                ...graph,
+                math: { ...graph.math, anchors: graph.math.anchors.filter((_item, position) => position !== index) },
+                dirty: true,
+                error: null,
+              }
+            : graph,
+        ),
+        points: state.scene.points.map((point) => {
+          const ref = point.math.anchorIndex;
+          if (point.math.graphId !== id || ref === null || ref < index) return point;
+          const anchorIndex = ref === index ? null : ref - 1;
+          return { ...point, math: { ...point.math, anchorIndex }, dirty: true };
+        }),
       },
     })),
 
