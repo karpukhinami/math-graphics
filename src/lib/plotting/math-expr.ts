@@ -106,7 +106,7 @@ export function normalizeInput(raw: string): string {
     // log₂x → log_2x
     .replace(/log([₀-₉]+)/g, (_m, d: string) => `log_${[...d].map((c) => SUBSCRIPT_DIGITS[c]).join("")}`)
     // lg x — школьный десятичный логарифм
-    .replace(/\blg(?=\s*[(A-Za-z0-9])/g, "log10")
+    .replace(/\blg\s*\(/g, "log10(")
     // Десятичная запятая — только между цифрами без пробела («2,5»).
     // Запятая с пробелом — разделитель аргументов: log(x, 2), max(1, 2).
     .replace(/(?<=\d),(?=\d)/g, ".");
