@@ -93,20 +93,21 @@ function WorkspacePage() {
   const [analogOpen, setAnalogOpen] = useState(false);
   const [analogKey, setAnalogKey] = useState(0);
 
-  function onAnalogCreate(r: AnalogTaskResult) {
-    const ids: Record<string, string> = {};
-    const imageIdOf = (fig: string) => (ids[fig] ??= uid());
-    const built = new Set(Object.keys(r.images));
-    const b = buildAnalogBlock({ task: r.task, figures: r.figures, built, imageIdOf });
-    const block: Block = { ...newBlock(b.type), text: b.text, answer: b.answer };
-    if (b.type === "choice") block.options = b.options.map((o) => ({ id: uid(), ...o }));
-    if (b.options.length && b.options.every((o) => o.imageId)) block.answerLayout = b.options.length === 4 ? "grid" : "horizontal";
-    setImages((m) => {
-      const next = { ...m };
-      for (const [fig, img] of Object.entries(r.images)) next[imageIdOf(fig)] = img;
-      return next;
+  function onAnalogCreate(results: AnalogTaskResult[]) {
+    const newImages: Record<string, AnalogTaskResult["images"][string]> = {};
+    const newBlocks: Block[] = results.map((r) => {
+      const ids: Record<string, string> = {};
+      const imageIdOf = (fig: string) => (ids[fig] ??= uid());
+      const built = new Set(Object.keys(r.images));
+      const b = buildAnalogBlock({ task: r.task, figures: r.figures, built, imageIdOf });
+      const block: Block = { ...newBlock(b.type), text: b.text, answer: b.answer };
+      if (b.type === "choice") block.options = b.options.map((o) => ({ id: uid(), ...o }));
+      if (b.options.length && b.options.every((o) => o.imageId)) block.answerLayout = b.options.length === 4 ? "grid" : "horizontal";
+      for (const [fig, img] of Object.entries(r.images)) newImages[imageIdOf(fig)] = img;
+      return block;
     });
-    setBlocks((bs) => [...bs, block]);
+    setImages((m) => ({ ...m, ...newImages }));
+    setBlocks((bs) => [...bs, ...newBlocks]);
   }
   const textRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
 
