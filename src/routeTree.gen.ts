@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WorkspaceRouteImport } from './routes/workspace'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiExtractDocumentRouteImport } from './routes/api/extract-document'
 import { Route as ApiAiTextRouteImport } from './routes/api/ai/text'
 import { Route as ApiAiImageRouteImport } from './routes/api/ai/image'
 
+const WorkspaceRoute = WorkspaceRouteImport.update({
+  id: '/workspace',
+  path: '/workspace',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -37,12 +43,14 @@ const ApiAiImageRoute = ApiAiImageRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/workspace': typeof WorkspaceRoute
   '/api/extract-document': typeof ApiExtractDocumentRoute
   '/api/ai/image': typeof ApiAiImageRoute
   '/api/ai/text': typeof ApiAiTextRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/workspace': typeof WorkspaceRoute
   '/api/extract-document': typeof ApiExtractDocumentRoute
   '/api/ai/image': typeof ApiAiImageRoute
   '/api/ai/text': typeof ApiAiTextRoute
@@ -50,18 +58,30 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/workspace': typeof WorkspaceRoute
   '/api/extract-document': typeof ApiExtractDocumentRoute
   '/api/ai/image': typeof ApiAiImageRoute
   '/api/ai/text': typeof ApiAiTextRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/extract-document' | '/api/ai/image' | '/api/ai/text'
+  fullPaths:
+    | '/'
+    | '/workspace'
+    | '/api/extract-document'
+    | '/api/ai/image'
+    | '/api/ai/text'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/extract-document' | '/api/ai/image' | '/api/ai/text'
+  to:
+    | '/'
+    | '/workspace'
+    | '/api/extract-document'
+    | '/api/ai/image'
+    | '/api/ai/text'
   id:
     | '__root__'
     | '/'
+    | '/workspace'
     | '/api/extract-document'
     | '/api/ai/image'
     | '/api/ai/text'
@@ -69,6 +89,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  WorkspaceRoute: typeof WorkspaceRoute
   ApiExtractDocumentRoute: typeof ApiExtractDocumentRoute
   ApiAiImageRoute: typeof ApiAiImageRoute
   ApiAiTextRoute: typeof ApiAiTextRoute
@@ -76,6 +97,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/workspace': {
+      id: '/workspace'
+      path: '/workspace'
+      fullPath: '/workspace'
+      preLoaderRoute: typeof WorkspaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -109,6 +137,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  WorkspaceRoute: WorkspaceRoute,
   ApiExtractDocumentRoute: ApiExtractDocumentRoute,
   ApiAiImageRoute: ApiAiImageRoute,
   ApiAiTextRoute: ApiAiTextRoute,
