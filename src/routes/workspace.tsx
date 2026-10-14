@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import { Bold, Eye, Italic, Pencil, Plus, Copy, FileText, ListChecks, TextCursorInput, Send, Sigma, Trash2, X, Rows3, Columns3, Grid2X2 } from "lucide-react";
+import { Bold, Eye, Italic, Pencil, Plus, Copy, FileText, ListChecks, TextCursorInput, Send, Sigma, Trash2, X, Rows3, Columns3, Grid2X2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -92,6 +92,7 @@ function WorkspacePage() {
   const [target, setTarget] = useState<PlotTarget | null>(null);
   const [analogOpen, setAnalogOpen] = useState(false);
   const [analogKey, setAnalogKey] = useState(0);
+  const [analogMode, setAnalogMode] = useState<"screenshot" | "request">("screenshot");
 
   function onAnalogCreate(results: AnalogTaskResult[]) {
     const newImages: Record<string, AnalogTaskResult["images"][string]> = {};
@@ -240,7 +241,8 @@ function WorkspacePage() {
           <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => setBlocks((bs) => [...bs, newBlock("text")])}><FileText className="size-4 shrink-0" /> Текст</Button>
           <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => setBlocks((bs) => [...bs, newBlock("input")])}><TextCursorInput className="size-4 shrink-0" /> Вопрос с вводом</Button>
           <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => setBlocks((bs) => [...bs, newBlock("choice")])}><ListChecks className="size-4 shrink-0" /> Вопрос с вариантами</Button>
-          <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => { setAnalogKey((k) => k + 1); setAnalogOpen(true); }}><Copy className="size-4 shrink-0" /> Аналог по скриншоту</Button>
+          <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => { setAnalogMode("screenshot"); setAnalogKey((k) => k + 1); setAnalogOpen(true); }}><Copy className="size-4 shrink-0" /> Аналог по скриншоту</Button>
+          <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => { setAnalogMode("request"); setAnalogKey((k) => k + 1); setAnalogOpen(true); }}><Sparkles className="size-4 shrink-0" /> Задание с чертежом по запросу</Button>
         </aside>}
       <main className="mx-auto min-w-0 w-full max-w-3xl flex-1 space-y-4 p-4 lg:p-6">
         {preview ? (
@@ -373,7 +375,7 @@ function WorkspacePage() {
 
       <PlotEditorDialog key={sessionKey} open={dialogOpen} onOpenChange={setDialogOpen} aiInitial={aiInitial}
         sessionKey={sessionKey} onInsert={onInsert} />
-      <AnalogTaskDialog key={analogKey} open={analogOpen} onOpenChange={setAnalogOpen} onCreate={onAnalogCreate} />
+      <AnalogTaskDialog key={analogKey} mode={analogMode} open={analogOpen} onOpenChange={setAnalogOpen} onCreate={onAnalogCreate} />
     </div>
   );
 }
