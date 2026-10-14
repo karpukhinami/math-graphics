@@ -300,51 +300,6 @@ export function deserializeSpaceSceneData(raw: unknown): SpaceSceneData {
   };
 }
 
-/**
- * Полная сцена plotting для JSON.
- * Поле `space`: `"line"` | `"plane"` | `"space"` — куда открывать вкладку при загрузке.
- */
-export function serializePlotSceneForExport(scene: PlotScene): PlotScene {
-  if (scene.space === "line" && scene.line) {
-    return {
-      ...scene,
-      version: 1,
-      space: "line",
-      graphs: [],
-      points: [],
-      tangents: scene.tangents ?? [],
-      space3d: null,
-    };
-  }
-
-  if (scene.space === "space" && scene.space3d) {
-    return {
-      version: 1,
-      space: "space",
-      axisScaleMode: scene.axisScaleMode,
-      plotAspectRatio: scene.plotAspectRatio,
-      xAxis: scene.xAxis,
-      yAxis: scene.yAxis,
-      grid: scene.grid,
-      appearance: scene.appearance,
-      graphs: [],
-      points: [],
-      tangents: [],
-      customColors: scene.customColors,
-      line: null,
-      space3d: serializeSpaceSceneData(scene.space3d) as unknown as SpaceSceneData,
-    };
-  }
-
-  return {
-    ...scene,
-    version: 1,
-    space: scene.space ?? "plane",
-    line: null,
-    space3d: null,
-  };
-}
-
 /** Импорт space3d из JSON (новый или legacy с полным figure). */
 export function importSpaceSceneFromJson(raw: unknown): SpaceSceneData {
   return deserializeSpaceSceneData(raw);
