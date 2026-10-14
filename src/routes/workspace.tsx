@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { allAnswersAreImages, answerColumnCount, type AnswerLayout } from "@/lib/workspace/answer-layout";
+import { answerColumnCount, type AnswerLayout } from "@/lib/workspace/answer-layout";
 import { PlotInsertMenu, type PlotInsertAction } from "@/components/workspace/PlotInsertMenu";
 import { PlotEditorDialog, type PlotInsertResult } from "@/components/workspace/PlotEditorDialog";
 import type { PlotAiPanelProps } from "@/components/plotting/ai/PlotAiPanel";
