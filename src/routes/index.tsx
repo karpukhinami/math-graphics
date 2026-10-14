@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Button } from "@/components/ui/button";
 import { PlotWorkbench } from "@/components/plotting/PlotWorkbench";
 import { usePlotStore } from "@/lib/plotting/store";
 
@@ -40,10 +41,15 @@ function PlottingPage() {
       <div className="mx-auto flex min-h-0 w-full max-w-[1400px] flex-1 flex-col p-4 lg:p-6">
         <PlotWorkbench
           title={
-            <>
-              <h1 className="text-2xl font-semibold tracking-tight">Plotting</h1>
-              <p className="text-sm text-muted-foreground">{subtitle}</p>
-            </>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight">Plotting</h1>
+                <p className="text-sm text-muted-foreground">{subtitle}</p>
+              </div>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/workspace">Конструктор заданий</Link>
+              </Button>
+            </div>
           }
         />
       </div>
