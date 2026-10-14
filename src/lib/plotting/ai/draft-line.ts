@@ -1,3 +1,4 @@
+import { axisVariableName } from "./draft-plane";
 /**
  * Урезанная схема числовой прямой → полная JSON-сцена.
  *
@@ -283,7 +284,7 @@ export function expandLineDraft(
     space: "line",
     line: {
       axis: {
-        name: text(axisRaw.name) || "x",
+        name: axisVariableName(text(axisRaw.name), "x"),
         unit: "",
         min: min !== null ? String(min) : "",
         max: max !== null ? String(max) : "",

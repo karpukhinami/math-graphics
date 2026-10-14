@@ -242,8 +242,8 @@ export function expandPlaneDraft(raw: unknown, options: DraftOptions = {}): Draf
   if (xMin && xMax && !(xMax.value > xMin.value)) errors.push("axes: xMax должен быть больше xMin");
   if (yMin && yMax && !(yMax.value > yMin.value)) errors.push("axes: yMax должен быть больше yMin");
 
-  const xName = text(axes.xName) || "x";
-  const yName = text(axes.yName) || "y";
+  const xName = axisVariableName(text(axes.xName), "x");
+  const yName = axisVariableName(text(axes.yName), "y");
   const xFormat = labelFormat(axes.xLabelFormat);
   const yFormat = labelFormat(axes.yLabelFormat);
 
@@ -526,4 +526,10 @@ export function expandPlaneDraft(raw: unknown, options: DraftOptions = {}): Draf
   };
 
   return { scene, errors };
+}
+
+/** Имя оси — это имя переменной в формулах; словесное название («Время (ч)») заменяем на стандартное. */
+export function axisVariableName(raw: string | undefined, fallback: string): string {
+  const v = (raw ?? "").trim();
+  return /^[A-Za-zα-ωΑ-Ω](_?[A-Za-z0-9]{1,2})?$/.test(v) ? v : fallback;
 }
