@@ -3,6 +3,7 @@ import { Download, FileJson, Hammer, Sparkles, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { usePlotStore } from "@/lib/plotting/store";
+import { usePlotSvg } from "@/lib/plotting/use-plot-svg";
 import { draftRenderPoints, sceneCurves, scenePoints } from "@/lib/plotting/scene";
 import { renderPlotSvg } from "@/lib/plotting/render";
 import { renderLineSvg } from "@/lib/plotting/line/render";
@@ -27,14 +28,7 @@ export function PlotPreview() {
   const [beautifying, setBeautifying] = useState(false);
   const [beautifiedImage, setBeautifiedImage] = useState<string | null>(null);
 
-  const svg = useMemo(() => {
-    if (scene.space === "line") return renderLineSvg(scene);
-    if (scene.space === "space" && scene.space3d) return renderSpaceSvg(scene.space3d);
-    return renderPlotSvg(scene, sceneCurves(scene), [
-      ...scenePoints(scene),
-      ...draftRenderPoints(scene, pointDraft),
-    ]);
-  }, [scene, pointDraft]);
+  const svg = usePlotSvg();
 
   useEffect(() => {
     setBeautifiedImage(null);

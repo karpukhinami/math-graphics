@@ -32,14 +32,21 @@ const SCENARIOS: Array<{ id: PlotAiScenario; label: string }> = [
   { id: "analog", label: "Создать аналогичное задание с изображением" },
 ];
 
-export function PlotAiPanel() {
+export interface PlotAiPanelProps {
+  /** Предзаполнение извне (встраивание в редактор заданий). */
+  initialText?: string;
+  initialScenario?: PlotAiScenario;
+  initialRefinements?: string;
+}
+
+export function PlotAiPanel({ initialText, initialScenario, initialRefinements }: PlotAiPanelProps = {}) {
   const importAiScene = usePlotStore((s) => s.importAiScene);
 
-  const source = usePlotSourceState();
+  const source = usePlotSourceState(initialText ?? "");
   const [model, setModel] = useState(DEFAULT_TEXT_MODEL);
-  const [scenario, setScenario] = useState<PlotAiScenario>("draw");
+  const [scenario, setScenario] = useState<PlotAiScenario>(initialScenario ?? "draw");
   const [analysis, setAnalysis] = useState<PlotAnalysisResult | null>(null);
-  const [userRefinements, setUserRefinements] = useState("");
+  const [userRefinements, setUserRefinements] = useState(initialRefinements ?? "");
   const [analogTaskText, setAnalogTaskText] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [drawing, setDrawing] = useState(false);

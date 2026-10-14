@@ -40,8 +40,8 @@ function rebuildUploadedText(docs: DocumentAttachment[]): string {
     .join("\n\n");
 }
 
-export function usePlotSourceState() {
-  const [manualText, setManualText] = useState("");
+export function usePlotSourceState(initialText = "") {
+  const [manualText, setManualText] = useState(initialText);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const [documents, setDocuments] = useState<DocumentAttachment[]>([]);
   const uploadedSourceText = rebuildUploadedText(documents);
