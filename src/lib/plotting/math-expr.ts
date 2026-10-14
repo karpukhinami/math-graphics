@@ -90,6 +90,10 @@ export function normalizeInput(raw: string): string {
     .replace(/√/g, "sqrt")
     .replace(/∞/g, "Infinity")
     .replace(/,(?=\s*\d)/g, ".");
+  s = convertLogBase(s);
+  // Хвостовые знаки препинания из текста задания («2x^2 - 4x.») mathjs
+  // читает как обращение к свойству и падает — срезаем их всегда.
+  s = s.replace(/[\s.,;:]+$/, "");
   return s.trim();
 }
 
