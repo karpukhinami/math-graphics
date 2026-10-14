@@ -99,7 +99,7 @@ async function generateDrawBranchScene(opts: {
 }
 
 /** Урезанный ответ модели → полная сцена → проверка тем же валидатором, что и раньше. */
-function validateDrawDraft(
+export function validateDrawDraft(
   draft: unknown,
   sceneType: PlotDrawBranchType,
   minimalLabels = false,
