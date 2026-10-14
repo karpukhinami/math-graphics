@@ -1,4 +1,5 @@
 /** Модалка с общим конструктором чертежей; по «Вставить» отдаёт SVG и снимок сцены. */
+import { useState } from "react";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,8 @@ import type { PlotScene } from "@/lib/plotting/types";
 export interface PlotInsertResult {
   src: string;
   scene: PlotScene;
+  text?: string;
+  newTaskText?: string;
 }
 
 export function PlotEditorDialog({
@@ -27,17 +30,23 @@ export function PlotEditorDialog({
   sessionKey: number;
   onInsert: (result: PlotInsertResult) => void;
 }) {
+  const [resultReady, setResultReady] = useState(false);
+  const [text, setText] = useState(aiInitial?.initialText ?? "");
+  const [newTaskText, setNewTaskText] = useState<string>();
+  const isAi = usePlotStore((s) => s.inputMode === "ai");
   const svg = usePlotSvg();
   const scene = usePlotStore((s) => s.scene);
 
   function insert() {
-    if (!svg) {
+    if (!svg || (isAi && !resultReady)) {
       toast.error("Сначала постройте чертёж");
       return;
     }
     onInsert({
       src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
       scene: structuredClone(scene),
+      text: aiInitial?.initialScenario === "draw" ? text : undefined,
+      newTaskText,
     });
     onOpenChange(false);
   }
@@ -48,14 +57,16 @@ export function PlotEditorDialog({
         <DialogTitle className="sr-only">Конструктор чертежа</DialogTitle>
         <PlotWorkbench
           key={sessionKey}
-          aiInitial={aiInitial}
+          simplified
+          resultReady={resultReady}
+          aiInitial={{ ...aiInitial, onBuiltChange: setResultReady, onTextChange: setText, onAnalogText: setNewTaskText }}
           title={<h2 className="text-lg font-semibold">Чертёж</h2>}
         />
         <div className="flex justify-end gap-2 border-t border-border pt-3">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Отмена
           </Button>
-          <Button onClick={insert}>
+          <Button onClick={insert} disabled={!svg || (isAi && !resultReady)}>
             <Check className="size-4" /> Вставить чертёж
           </Button>
         </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, Sparkles, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import {
 } from "./PlotSourceInput";
 import { PlotManualPanel } from "../PlotManualPanel";
 import { cn } from "@/lib/utils";
+import { SourceImageInput } from "@/components/workspace/SourceImageInput";
 
 const SCENARIOS: Array<{ id: PlotAiScenario; label: string }> = [
   { id: "draw", label: "Нарисовать по заданию" },
@@ -35,11 +36,16 @@ const SCENARIOS: Array<{ id: PlotAiScenario; label: string }> = [
 export interface PlotAiPanelProps {
   /** Предзаполнение извне (встраивание в редактор заданий). */
   initialText?: string;
+  simplified?: boolean;
+  textLabel?: string;
+  onTextChange?: (text: string) => void;
+  onBuiltChange?: (built: boolean) => void;
+  onAnalogText?: (text: string) => void;
   initialScenario?: PlotAiScenario;
   initialRefinements?: string;
 }
 
-export function PlotAiPanel({ initialText, initialScenario, initialRefinements }: PlotAiPanelProps = {}) {
+export function PlotAiPanel({ initialText, initialScenario, initialRefinements, simplified = false, textLabel = "Текст", onTextChange, onBuiltChange, onAnalogText }: PlotAiPanelProps = {}) {
   const importAiScene = usePlotStore((s) => s.importAiScene);
 
   const source = usePlotSourceState(initialText ?? "");
@@ -54,6 +60,10 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements }
   const [editOpen, setEditOpen] = useState(false);
 
   const { manualText, attachedImages, documents } = source;
+  useEffect(() => { onTextChange?.(manualText); }, [manualText, onTextChange]);
+  useEffect(() => { onBuiltChange?.(sceneBuilt); }, [sceneBuilt, onBuiltChange]);
+  function invalidate() { setAnalysis(null); setSceneBuilt(false); setAnalogTaskText(null); }
+
   const hasSource = hasSourceMaterials(manualText, source.state.uploadedSourceText, attachedImages);
 
   async function handleAttachFiles(files: File[]) {
@@ -113,6 +123,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements }
   async function onDraw() {
     if (!analysis?.canDraw || !analysis.sceneType) return;
     setDrawing(true);
+    if (simplified) setSceneBuilt(false);
     try {
       const result = await generatePlotScene({
         model,
@@ -127,6 +138,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements }
       setSceneBuilt(true);
       if ("newTaskText" in result && result.newTaskText) {
         setAnalogTaskText(result.newTaskText);
+        onAnalogText?.(result.newTaskText);
       }
       toast.success("Чертёж построен");
     } catch (e) {
@@ -138,7 +150,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements }
 
   return (
     <div className="space-y-4">
-      <Card>
+      {!simplified && <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Сценарий</CardTitle>
         </CardHeader>
@@ -163,9 +175,20 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements }
             ))}
           </RadioGroup>
         </CardContent>
-      </Card>
+      </Card>}
 
-      <Card>
+      {simplified ? (
+        <fieldset disabled={analyzing || drawing} className="space-y-4">
+          {scenario === "draw" ? <>
+            <div className="space-y-2"><Label htmlFor="plot-source-text">{textLabel}</Label>
+              <Textarea id="plot-source-text" rows={8} value={manualText} onChange={(e) => { source.setManualText(e.target.value); invalidate(); }} />
+            </div>
+            <div className="space-y-2"><Label htmlFor="plot-wishes">Дополнительные пожелания</Label>
+              <Textarea id="plot-wishes" rows={3} value={userRefinements} onChange={(e) => { setUserRefinements(e.target.value); setSceneBuilt(false); }} />
+            </div>
+          </> : <SourceImageInput images={attachedImages} onChange={(urls) => { source.removeImage(0); if (urls.length) source.addImages(urls); invalidate(); }} />}
+        </fieldset>
+      ) : <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-base">Модель</CardTitle>
@@ -184,12 +207,12 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements }
             onRemoveDocument={source.removeDocument}
           />
         </CardContent>
-      </Card>
+      </Card>}
 
       <Button
         type="button"
         className="w-full"
-        disabled={!hasSource || analyzing}
+        disabled={!hasSource || analyzing || drawing}
         onClick={() => void onAnalyze()}
       >
         {analyzing ? (
@@ -237,7 +260,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements }
                     : "числовая прямая"}
               </p>
             )}
-            <div className="space-y-2">
+            {!simplified && <div className="space-y-2">
               <Label className="text-xs">Дополнительные пожелания или изменения</Label>
               <Textarea
                 rows={3}
@@ -245,7 +268,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements }
                 value={userRefinements}
                 onChange={(e) => setUserRefinements(e.target.value)}
               />
-            </div>
+            </div>}
             {analysis.canDraw && (
               <Button
                 type="button"
