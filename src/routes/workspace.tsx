@@ -19,6 +19,8 @@ import type { PlotAiPanelProps } from "@/components/plotting/ai/PlotAiPanel";
 import { usePlotStore } from "@/lib/plotting/store";
 import type { PlotScene } from "@/lib/plotting/types";
 import { previousParagraph, withoutPlotImages } from "@/lib/workspace/plot-context";
+import { AnalogTaskDialog, type AnalogTaskResult } from "@/components/workspace/AnalogTaskDialog";
+import { buildAnalogBlock } from "@/lib/workspace/analog-block";
 
 export const Route = createFileRoute("/workspace")({
   head: () => ({
@@ -88,6 +90,24 @@ function WorkspacePage() {
   const [sessionKey, setSessionKey] = useState(0);
   const [aiInitial, setAiInitial] = useState<PlotAiPanelProps | undefined>();
   const [target, setTarget] = useState<PlotTarget | null>(null);
+  const [analogOpen, setAnalogOpen] = useState(false);
+  const [analogKey, setAnalogKey] = useState(0);
+
+  function onAnalogCreate(r: AnalogTaskResult) {
+    const ids: Record<string, string> = {};
+    const imageIdOf = (fig: string) => (ids[fig] ??= uid());
+    const built = new Set(Object.keys(r.images));
+    const b = buildAnalogBlock({ task: r.task, figures: r.figures, built, imageIdOf });
+    const block: Block = { ...newBlock(b.type), text: b.text, answer: b.answer };
+    if (b.type === "choice") block.options = b.options.map((o) => ({ id: uid(), ...o }));
+    if (b.options.length && b.options.every((o) => o.imageId)) block.answerLayout = b.options.length === 4 ? "grid" : "horizontal";
+    setImages((m) => {
+      const next = { ...m };
+      for (const [fig, img] of Object.entries(r.images)) next[imageIdOf(fig)] = img;
+      return next;
+    });
+    setBlocks((bs) => [...bs, block]);
+  }
   const textRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
 
   const patch = (id: string, p: Partial<Block>) =>
@@ -219,7 +239,7 @@ function WorkspacePage() {
           <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => setBlocks((bs) => [...bs, newBlock("text")])}><FileText className="size-4 shrink-0" /> Текст</Button>
           <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => setBlocks((bs) => [...bs, newBlock("input")])}><TextCursorInput className="size-4 shrink-0" /> Вопрос с вводом</Button>
           <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => setBlocks((bs) => [...bs, newBlock("choice")])}><ListChecks className="size-4 shrink-0" /> Вопрос с вариантами</Button>
-          <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => openPlot({ blockId: "", newTask: true }, "ai-analog")}><Copy className="size-4 shrink-0" /> Аналог по скриншоту</Button>
+          <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => { setAnalogKey((k) => k + 1); setAnalogOpen(true); }}><Copy className="size-4 shrink-0" /> Аналог по скриншоту</Button>
         </aside>}
       <main className="mx-auto min-w-0 w-full max-w-3xl flex-1 space-y-4 p-4 lg:p-6">
         {preview ? (
@@ -352,6 +372,7 @@ function WorkspacePage() {
 
       <PlotEditorDialog key={sessionKey} open={dialogOpen} onOpenChange={setDialogOpen} aiInitial={aiInitial}
         sessionKey={sessionKey} onInsert={onInsert} />
+      <AnalogTaskDialog key={analogKey} open={analogOpen} onOpenChange={setAnalogOpen} onCreate={onAnalogCreate} />
     </div>
   );
 }
