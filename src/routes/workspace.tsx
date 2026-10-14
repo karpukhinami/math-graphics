@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import { Bold, Eye, Italic, Pencil, Plus, Send, Sigma, Trash2, X } from "lucide-react";
+import { Bold, Eye, Italic, Pencil, Plus, Copy, FileText, ListChecks, TextCursorInput, Send, Sigma, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import { PlotEditorDialog, type PlotInsertResult } from "@/components/workspace/
 import type { PlotAiPanelProps } from "@/components/plotting/ai/PlotAiPanel";
 import { usePlotStore } from "@/lib/plotting/store";
 import type { PlotScene } from "@/lib/plotting/types";
+import { previousParagraph, withoutPlotImages } from "@/lib/workspace/plot-context";
 
 export const Route = createFileRoute("/workspace")({
   head: () => ({
@@ -35,7 +36,7 @@ type BlockType = "text" | "input" | "choice";
 interface ChoiceOption { id: string; text: string; correct: boolean; imageId?: string }
 interface Block { id: string; type: BlockType; text: string; answer: string; options: ChoiceOption[] }
 interface TaskImage { src: string; scene?: PlotScene }
-interface PlotTarget { blockId: string; optionId?: string; imageId?: string }
+interface PlotTarget { blockId: string; optionId?: string; imageId?: string; position?: number; syncText?: boolean; newTask?: boolean }
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 const IMG_RE = /!\[[^\]]*\]\(plot:([a-z0-9]+)\)/g;
@@ -94,12 +95,12 @@ function WorkspacePage() {
       bs.map((b) => (b.id === blockId ? { ...b, options: b.options.map((o) => (o.id === optId ? { ...o, ...p } : o)) } : b)),
     );
 
-  function insertToken(blockId: string, imageId: string) {
+  function insertToken(blockId: string, imageId: string, position?: number) {
     const el = textRefs.current[blockId];
     setBlocks((bs) =>
       bs.map((b) => {
         if (b.id !== blockId) return b;
-        const pos = el?.selectionStart ?? b.text.length;
+        const pos = position ?? el?.selectionStart ?? b.text.length;
         const token = `\n![Чертёж](plot:${imageId})\n`;
         return { ...b, text: b.text.slice(0, pos) + token + b.text.slice(pos) };
       }),
@@ -111,7 +112,7 @@ function WorkspacePage() {
     setImages((m) => ({ ...m, [id]: img }));
     if (t.imageId) return;
     if (t.optionId) patchOption(t.blockId, t.optionId, { imageId: id });
-    else insertToken(t.blockId, id);
+    else insertToken(t.blockId, id, t.position);
   }
 
   function wrapSelection(blockId: string, left: string, right = left) {
@@ -122,10 +123,11 @@ function WorkspacePage() {
     patch(blockId, { text: b.text.slice(0, s) + left + b.text.slice(s, e) + right + b.text.slice(e) });
   }
 
-  function openPlot(t: PlotTarget, action: PlotInsertAction, existing?: PlotScene) {
+  function openPlot(t: PlotTarget, action: PlotInsertAction | "ai-analog", existing?: PlotScene) {
     const block = blocks.find((b) => b.id === t.blockId);
-    // Текст задания без служебных ссылок на картинки.
-    const taskText = (block?.text ?? "").replace(IMG_RE, "").trim();
+    const position = textRefs.current[t.blockId]?.selectionStart ?? block?.text.length ?? 0;
+    const isTask = block?.type !== "text";
+    const taskText = isTask ? withoutPlotImages(block?.text ?? "").trim() : previousParagraph(block?.text ?? "", position);
     if (existing) {
       importScene(existing);
       setInputMode("manual");
@@ -134,24 +136,37 @@ function WorkspacePage() {
       resetScene();
       setInputMode(action === "manual" ? "manual" : "ai");
       setAiInitial(
-        action === "ai-draw" || action === "ai-draw-wish"
-          ? { initialScenario: "draw", initialText: taskText }
+        action === "ai-draw"
+          ? { initialScenario: "draw", initialText: taskText, textLabel: isTask ? "Текст задания" : "Текст" }
           : action === "ai-reproduce"
             ? { initialScenario: "reproduce" }
-            : action === "ai-analog"
-              ? { initialScenario: "analog" }
-              : undefined,
+            : action === "ai-analog" ? { initialScenario: "analog" } : undefined,
       );
-      if (action === "ai-draw-wish") toast.info("Опишите пожелания в поле уточнений после анализа");
-      if (action === "ai-reproduce" || action === "ai-analog") toast.info("Приложите картинку или скриншот задания");
     }
-    setTarget(t);
+    setTarget({ ...t, position, syncText: isTask && action === "ai-draw" });
     setSessionKey((k) => k + 1);
     setDialogOpen(true);
   }
 
   function onInsert(r: PlotInsertResult) {
-    if (target) placeImage(target, { src: r.src, scene: r.scene });
+    if (!target) return;
+    if (target.newTask) {
+      const block = newBlock("input");
+      const imageId = uid();
+      block.text = `${r.newTaskText ?? ""}\n![Чертёж](plot:${imageId})\n`;
+      setImages((m) => ({ ...m, [imageId]: { src: r.src, scene: r.scene } }));
+      setBlocks((bs) => [...bs, block]);
+      return;
+    }
+    if (target.syncText && r.text !== undefined) {
+      // Сохраняем уже вставленные изображения, меняем только текст вопроса.
+      setBlocks((bs) => bs.map((b) => {
+        if (b.id !== target.blockId) return b;
+        const tokens = b.text.match(IMG_RE) ?? [];
+        return { ...b, text: [r.text, ...tokens].join("\n") };
+      }));
+      placeImage({ ...target, position: Number.MAX_SAFE_INTEGER }, { src: r.src, scene: r.scene });
+    } else placeImage(target, { src: r.src, scene: r.scene });
   }
 
   function imagesOf(text: string) {
@@ -197,7 +212,14 @@ function WorkspacePage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 space-y-4 overflow-y-auto p-4 lg:p-6">
+      <div className="flex min-h-0 flex-1 overflow-y-auto">
+        {!preview && <aside aria-label="Добавить блок" className="sticky top-0 h-fit w-44 shrink-0 space-y-2 border-r border-border p-3 lg:w-56">
+          <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => setBlocks((bs) => [...bs, newBlock("text")])}><FileText className="size-4 shrink-0" /> Текст</Button>
+          <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => setBlocks((bs) => [...bs, newBlock("input")])}><TextCursorInput className="size-4 shrink-0" /> Вопрос с вводом</Button>
+          <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => setBlocks((bs) => [...bs, newBlock("choice")])}><ListChecks className="size-4 shrink-0" /> Вопрос с вариантами</Button>
+          <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => openPlot({ blockId: "", newTask: true }, "ai-analog")}><Copy className="size-4 shrink-0" /> Аналог по скриншоту</Button>
+        </aside>}
+      <main className="mx-auto min-w-0 w-full max-w-3xl flex-1 space-y-4 p-4 lg:p-6">
         {preview ? (
           <h1 className="text-2xl font-semibold">{title}</h1>
         ) : (
@@ -248,7 +270,7 @@ function WorkspacePage() {
                     <Button size="icon" variant="ghost" className="size-8" title="Формула" onClick={() => wrapSelection(block.id, "$")}>
                       <Sigma className="size-4" />
                     </Button>
-                    <PlotInsertMenu
+                    <PlotInsertMenu context={block.type === "text" ? "text" : "task"}
                       onFile={(src) => placeImage({ blockId: block.id }, { src })}
                       onPlot={(a) => openPlot({ blockId: block.id }, a)}
                     />
@@ -280,7 +302,7 @@ function WorkspacePage() {
                               onCheckedChange={(v) => patchOption(block.id, o.id, { correct: v === true })} />
                             <Input value={o.text} onChange={(e) => patchOption(block.id, o.id, { text: e.target.value })}
                               placeholder={`Вариант ${i + 1}`} />
-                            <PlotInsertMenu size="icon"
+                            <PlotInsertMenu size="icon" context="task"
                               onFile={(src) => placeImage({ blockId: block.id, optionId: o.id }, { src })}
                               onPlot={(a) => openPlot({ blockId: block.id, optionId: o.id }, a)} />
                             <Button size="icon" variant="ghost" title="Удалить вариант"
@@ -306,22 +328,10 @@ function WorkspacePage() {
           </Card>
         ))}
 
-        {!preview && (
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => setBlocks((b) => [...b, newBlock("text")])}>
-              <Plus className="size-4" /> Текст
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setBlocks((b) => [...b, newBlock("input")])}>
-              <Plus className="size-4" /> Вопрос с вводом
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setBlocks((b) => [...b, newBlock("choice")])}>
-              <Plus className="size-4" /> Вопрос с вариантами
-            </Button>
-          </div>
-        )}
       </main>
+      </div>
 
-      <PlotEditorDialog open={dialogOpen} onOpenChange={setDialogOpen} aiInitial={aiInitial}
+      <PlotEditorDialog key={sessionKey} open={dialogOpen} onOpenChange={setDialogOpen} aiInitial={aiInitial}
         sessionKey={sessionKey} onInsert={onInsert} />
     </div>
   );
