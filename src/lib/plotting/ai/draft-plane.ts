@@ -505,7 +505,7 @@ export function expandPlaneDraft(raw: unknown, options: DraftOptions = {}): Draf
       gridStep: xStep,
       labelStep: "",
       labelFormat: xFormat,
-      markRule: "all",
+      markRule: "zeroAndFirst",
       selectedMarks: "",
     },
     yAxis: {
@@ -516,7 +516,7 @@ export function expandPlaneDraft(raw: unknown, options: DraftOptions = {}): Draf
       gridStep: yStep,
       labelStep: "",
       labelFormat: yFormat,
-      markRule: "all",
+      markRule: "zeroAndFirst",
       selectedMarks: "",
     },
     grid: { visible: flag(root.grid, true) },
