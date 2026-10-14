@@ -254,6 +254,61 @@ export function serializeSpaceSceneData(data: SpaceSceneData): SpaceSceneDataJso
   } as unknown as SpaceSceneDataJson;
 }
 
+/** Пропущенные в JSON номер, подпись, стиль и флаг построения — значения по умолчанию. */
+function withDefaults<T extends { index: number; label: string; built: boolean }>(raw: T, position: number): T {
+  return {
+    ...raw,
+    index: raw.index ?? position + 1,
+    label: raw.label ?? "",
+    built: raw.built ?? true,
+    style: (raw as { style?: object }).style ?? {},
+  };
+}
+
+function restoreSpacePoint(input: SpaceSceneDataJson["points"][number], position: number): SpacePoint {
+  const raw = withDefaults(input, position);
+  const definition = restorePointDefinition(raw.definition);
+  const base = createSpacePoint(raw.index, definition, raw.label);
+  return {
+    ...base,
+    id: raw.id ?? base.id,
+    style: { ...base.style, ...raw.style },
+    built: raw.built,
+    geometry: null,
+    lastBuilt: null,
+    dirty: raw.built,
+    error: null,
+  };
+}
+
+function restoreSpaceLine(input: SpaceSceneDataJson["lines"][number], position: number): SpaceLine {
+  const raw = withDefaults(input, position);
+  const base = createSpaceLine(raw.index, raw.definition, raw.label);
+  return {
+    ...base,
+    id: raw.id ?? base.id,
+    style: { ...base.style, ...raw.style },
+    built: raw.built,
+    dirty: raw.built,
+    error: null,
+    lastOk: false,
+  };
+}
+
+function restoreSpacePlane(input: SpaceSceneDataJson["planes"][number], position: number): SpacePlane {
+  const raw = withDefaults(input, position);
+  const base = createSpacePlane(raw.index, raw.definition, raw.label);
+  return {
+    ...base,
+    id: raw.id ?? base.id,
+    style: { ...base.style, ...raw.style },
+    built: raw.built,
+    dirty: raw.built,
+    error: null,
+    lastOk: false,
+  };
+}
+
 /** Загрузка: восстанавливает figure из ввода и constraints, затем объекты по id. */
 export function deserializeSpaceSceneData(raw: unknown): SpaceSceneData {
   const base = createSpaceSceneData();

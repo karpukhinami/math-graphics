@@ -258,7 +258,7 @@ function solutionStubs(raw: Record<string, unknown>): PointSolution[] | null {
   }));
 }
 
-type RawScene = Partial<PlotScene> & {
+type RawScene = Omit<Partial<PlotScene>, "grid" | "line"> & {
   grid?: Partial<GridSpec> & { followAxisStep?: boolean; stepX?: string; stepY?: string };
   space3d?: unknown;
   line?: Partial<LineSceneData> | null;
