@@ -30,7 +30,14 @@ export function PlotWorkbench({
   const commitInputs = usePlotStore((state) => state.commitInputs);
   const sessionVersion = usePlotStore((state) => state.sessionVersion);
 
-  useEffect(() => () => { usePlotStore.getState().resetScene(); }, []);
+  useEffect(() => {
+    const version = usePlotStore.getState().sessionVersion;
+    return () => {
+      const state = usePlotStore.getState();
+      // A replacement dialog may already have started and loaded its own scene.
+      if (state.sessionVersion === version) state.resetScene();
+    };
+  }, []);
 
   const [aiSessionKey, setAiSessionKey] = useState(0);
   const [aiResultReady, setAiResultReady] = useState(false);
