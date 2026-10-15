@@ -18,5 +18,6 @@
 - Document parsing (PDF/DOCX) for AI source material is done in `/api/extract-document`. Why: those parsers need the server runtime.
 - Scene JSON save/load lives in `src/lib/plotting/scene-json.ts` (`sceneToJson` / `sceneFromJson`, space part in `space/serialize.ts`): save only user/AI input, omit defaults and anything the builder recomputes; a missing field means "auto". Loading must keep accepting the old full format, covered by `tests/scene-json.test.ts`. Why: compact, AI-friendly files that always rebuild to the same picture.
 - Plane axis intersection targets use reserved `axis:x=0` / `axis:y=0` references resolved only for solving, never added to scene graphs; separate intersection cards persist an optional solution index. Why: axis points stay dependent and rebuild without duplicate solutions or extra rendered lines.
+- Axis intersections of analytic and smooth point-defined graphs solve the source equation with residual-checked sign roots and local minima in `axis-intersections.ts`; other pairs retain segment solving. Why: tangencies between sampled vertices must be found without mistaking nearby curves or asymptotes for intersections.
 
 - Subdirectories may have their own `AGENTS.md` (e.g. `src/lib/plotting/ai/`); read it before changing files there.
