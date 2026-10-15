@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileJson, Hammer, Sparkles, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { usePlotStore } from "@/lib/plotting/store";
-import { usePlotSvg } from "@/lib/plotting/use-plot-svg";
+import { sceneToSvg, usePlotSvg } from "@/lib/plotting/use-plot-svg";
 import { generatePlotBeautifiedImage } from "@/lib/plotting/beautify";
 import { downloadPng, downloadSceneJson, downloadSvg, readSceneJson } from "@/lib/plotting/export";
 import { PlotBeautifyDialog } from "@/components/plotting/PlotBeautifyDialog";
@@ -29,9 +29,11 @@ export function PlotPreview({ simplified = false, onBeautifiedImageChange, onBea
   const [beautifiedResult, setBeautifiedResult] = useState<{ src: string; svg: string } | null>(null);
 
   const svg = usePlotSvg();
-  const svgRef = useRef(svg);
-  svgRef.current = svg;
-  const beautifiedImage = beautifiedResult?.svg === svg ? beautifiedResult.src : null;
+  // Temporary point drafts are not changes to the inserted construction.
+  const committedSvg = useMemo(() => sceneToSvg(scene), [scene]);
+  const svgRef = useRef(committedSvg);
+  svgRef.current = committedSvg;
+  const beautifiedImage = beautifiedResult?.svg === committedSvg ? beautifiedResult.src : null;
 
   useEffect(() => {
     onBeautifiedImageChange?.(beautifiedImage);
@@ -43,15 +45,16 @@ export function PlotPreview({ simplified = false, onBeautifiedImageChange, onBea
 
   async function onBeautifyDraw(wishes: string) {
     const container = previewRef.current;
-    if (!container || !svg) {
+    if (!container || !svg || !committedSvg) {
       toast.error("Сначала постройте чертёж");
       return;
     }
     setBeautifying(true);
     try {
       const dataUrl = await generatePlotBeautifiedImage({ previewEl: container, userWishes: wishes });
-      if (svgRef.current !== svg) return;
-      setBeautifiedResult({ src: dataUrl, svg });
+      if (svgRef.current !== committedSvg) return;
+      setBeautifiedResult({ src: dataUrl, svg: committedSvg });
+      onBeautifiedImageChange?.(dataUrl);
       setBeautifyOpen(false);
       toast.success("Дорисованная версия готова");
     } catch (error) {

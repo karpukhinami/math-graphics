@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { InlineImageTextEditor, type InlineImageTextEditorHandle } from "@/components/workspace/InlineImageTextEditor";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { answerColumnCount, type AnswerLayout } from "@/lib/workspace/answer-layout";
@@ -111,7 +111,7 @@ function WorkspacePage() {
     setImages((m) => ({ ...m, ...newImages }));
     setBlocks((bs) => [...bs, ...newBlocks]);
   }
-  const textRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
+  const textRefs = useRef<Record<string, InlineImageTextEditorHandle | null>>({});
 
   const patch = (id: string, p: Partial<Block>) =>
     setBlocks((bs) => bs.map((b) => (b.id === id ? { ...b, ...p } : b)));
@@ -166,6 +166,7 @@ function WorkspacePage() {
     if (!el || !b) return;
     const { selectionStart: s, selectionEnd: e } = el;
     patch(blockId, { text: b.text.slice(0, s) + left + b.text.slice(s, e) + right + b.text.slice(e) });
+    requestAnimationFrame(() => textRefs.current[blockId]?.focusRange(s + left.length, e + left.length));
   }
 
   function openPlot(t: PlotTarget, action: PlotInsertAction | "ai-analog", existing?: PlotScene) {
@@ -228,7 +229,7 @@ function WorkspacePage() {
     return (
       <div className="group relative w-full min-w-0 rounded-md border border-border bg-card p-1">
         <img src={img.src} alt="Чертёж" className="block h-auto w-full" />
-        <div className="absolute right-1 top-1 flex gap-1 opacity-0 transition group-hover:opacity-100">
+        <div className="absolute right-1 top-1 flex gap-1 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
           {img.scene && (
             <Button size="icon" variant="secondary" className="size-7" title="Редактировать чертёж"
               onClick={() => openPlot({ blockId, imageId }, "manual", img.scene)}>
@@ -325,21 +326,15 @@ function WorkspacePage() {
                       onPlot={(a) => openPlot({ blockId: block.id }, a)}
                     />
                   </div>
-                  <Textarea
+                  <InlineImageTextEditor
                     ref={(el) => { textRefs.current[block.id] = el; }}
                     value={block.text}
-                    onChange={(e) => patch(block.id, { text: e.target.value })}
+                    onChange={(text) => patch(block.id, { text })}
                     placeholder={block.type === "text" ? "Текст. Формулы — в $...$" : "Текст вопроса. Формулы — в $...$"}
-                    className="min-h-28 font-mono text-sm"
+                    hasImage={(id) => Boolean(images[id])}
+                    renderImage={(id) => <ImageThumb blockId={block.id} imageId={id}
+                      onRemove={() => patch(block.id, { text: block.text.replace(new RegExp(`\\n?!\\[[^\\]]*\\]\\(plot:${id}\\)\\n?`, "g"), "") })} />}
                   />
-                  {imagesOf(block.text).length > 0 && (
-                    <div className="space-y-2">
-                      {imagesOf(block.text).map((id) => (
-                        <ImageThumb key={id} blockId={block.id} imageId={id}
-                          onRemove={() => patch(block.id, { text: block.text.replace(new RegExp(`\\n?!\\[[^\\]]*\\]\\(plot:${id}\\)\\n?`, "g"), "") })} />
-                      ))}
-                    </div>
-                  )}
                   {block.type === "input" && (
                     <Input value={block.answer} onChange={(e) => patch(block.id, { answer: e.target.value })} placeholder="Правильный ответ" />
                   )}
