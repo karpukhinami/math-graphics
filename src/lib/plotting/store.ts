@@ -129,6 +129,9 @@ export interface BuildStatus {
 
 interface PlotStore {
   scene: PlotScene;
+  /** Invalidates previews and in-flight work from previous sessions. */
+  sessionVersion: number;
+  startSession: (mode?: PlotInputMode) => void;
   inputMode: PlotInputMode;
   spaceTab: PlotSpaceTab;
   status: BuildStatus | null;
@@ -203,7 +206,9 @@ interface PlotStore {
   commitInputs: () => void;
   importScene: (raw: unknown) => void;
   importAiScene: (raw: unknown) => void;
-  resetScene: () => void;
+  resetScene: () =>
+    set((state) => freshSession(state.spaceTab, state.sessionVersion + 1)),
+
   setSpaceShapeKind: (kind: SpaceShapeKind) => void;
   setSpaceBaseInput: (input: string) => void;
   buildSpaceFigure: () => void;
@@ -363,7 +368,22 @@ function commitImportedScene(
   });
 }
 
+function freshSession(spaceTab: PlotSpaceTab, sessionVersion: number): Partial<PlotStore> {
+  return {
+    sessionVersion, spaceTab,
+    scene: spaceTab === "line" ? createLineScene() : spaceTab === "space" ? createSpacePlotScene() : createScene(),
+    status: null, activeAxisRow: 0,
+    pointDraft: null, pointDraftError: null,
+    setDraft: null, setDraftError: null,
+    linePointDraft: null, linePointDraftError: null,
+    spacePointDraft: null, spacePointDraftError: null,
+    spaceLineDraft: null, spaceLineDraftError: null,
+    spacePlaneDraft: null, spacePlaneDraftError: null,
+  };
+}
+
 export const usePlotStore = create<PlotStore>((set, get) => ({
+  sessionVersion: 0,
   scene: createScene(),
   inputMode: "manual",
   spaceTab: "plane",
@@ -432,61 +452,17 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
     }
   },
 
-  setInputMode: (inputMode) => set({ inputMode }),
+  startSession: (inputMode = "manual") =>
+    set((state) => ({ ...freshSession("plane", state.sessionVersion + 1), inputMode })),
+
+  setInputMode: (inputMode) =>
+    set((state) => state.inputMode === inputMode ? state : {
+      ...freshSession(state.spaceTab, state.sessionVersion + 1), inputMode,
+    }),
 
   setSpaceTab: (spaceTab) =>
-    set((state) => {
-      if (spaceTab === state.spaceTab) return state;
-      if (spaceTab === "line") {
-        return {
-          spaceTab,
-          scene: createLineScene(),
-          status: null,
-          pointDraft: null,
-          pointDraftError: null,
-          setDraft: null,
-          setDraftError: null,
-          linePointDraft: null,
-          linePointDraftError: null,
-          activeAxisRow: 0,
-        };
-      }
-      if (spaceTab === "plane") {
-        return {
-          spaceTab,
-          scene: createScene(),
-          status: null,
-          pointDraft: null,
-          pointDraftError: null,
-          setDraft: null,
-          setDraftError: null,
-          linePointDraft: null,
-          linePointDraftError: null,
-          activeAxisRow: 0,
-        };
-      }
-      if (spaceTab === "space") {
-        return {
-          spaceTab,
-          scene: createSpacePlotScene(),
-          status: null,
-          pointDraft: null,
-          pointDraftError: null,
-          setDraft: null,
-          setDraftError: null,
-          linePointDraft: null,
-          linePointDraftError: null,
-          spacePointDraft: null,
-          spacePointDraftError: null,
-          spaceLineDraft: null,
-          spaceLineDraftError: null,
-          spacePlaneDraft: null,
-          spacePlaneDraftError: null,
-          activeAxisRow: 0,
-        };
-      }
-      return { spaceTab };
-    }),
+    set((state) => state.spaceTab === spaceTab ? state :
+      freshSession(spaceTab, state.sessionVersion + 1)),
 
   updateLineAxis: (patch) =>
     set((state) => {
