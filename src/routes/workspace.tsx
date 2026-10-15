@@ -101,6 +101,7 @@ function WorkspacePage() {
     } finally { setExporting(false); }
   }
   const [images, setImages] = useState<Record<string, TaskImage>>({});
+  const [imageWidths, setImageWidths] = useState<Record<string, number>>({});
   const wordInputRef = useRef<HTMLInputElement>(null);
   async function onWordFile(file: File) {
     try {
@@ -385,6 +386,8 @@ function WorkspacePage() {
                     placeholder={block.type === "text" ? "Текст. Формулы — в $...$" : "Текст вопроса. Формулы — в $...$"}
                     hasImage={(id) => Boolean(images[id])}
                     renderImage={(id) => <ImageThumb blockId={block.id} imageId={id}
+                      widthPct={imageWidths[id] ?? 50}
+                      onWidthChange={(pct) => setImageWidths((m) => ({ ...m, [id]: pct }))}
                       onRemove={() => patch(block.id, { text: block.text.replace(new RegExp(`\\n?!\\[[^\\]]*\\]\\(plot:${id}\\)\\n?`, "g"), "") })} />}
                   />
                   {block.type === "input" && (
