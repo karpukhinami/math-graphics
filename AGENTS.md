@@ -23,3 +23,4 @@
 - Subdirectories may have their own `AGENTS.md` (e.g. `src/lib/plotting/ai/`); read it before changing files there.
 - Workspace inline-image editing uses presentation-only Markdown ranges in `workspace/text-segments.ts` and a selection handle mapping local text offsets to the full source. Why: images appear in place without changing stored plot tokens, formulas or generation input.
 - Line batch building assigns completed sets after boundary synchronization updates the scene. Why: reassigning the scene inside a map must not discard built sets while preserving their boundary points.
+- Workspace Word export is built in the browser by `workspace/docx-export.ts` (docx + temml + mathml2omml; images rasterized to PNG). Why: LaTeX becomes native Word equations without a server round-trip.
