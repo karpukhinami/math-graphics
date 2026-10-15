@@ -18,7 +18,7 @@ import { PlotEditorDialog, type PlotInsertResult } from "@/components/workspace/
 import type { PlotAiPanelProps } from "@/components/plotting/ai/PlotAiPanel";
 import { usePlotStore } from "@/lib/plotting/store";
 import type { PlotScene } from "@/lib/plotting/types";
-import { textGenerationSource, withoutPlotImages } from "@/lib/workspace/plot-context";
+import { textGenerationSource, textInsertionPosition, withoutPlotImages } from "@/lib/workspace/plot-context";
 import { AnalogTaskDialog, type AnalogTaskResult } from "@/components/workspace/AnalogTaskDialog";
 import { buildAnalogBlock } from "@/lib/workspace/analog-block";
 import { plotInsertionImages, insertPlotImageTokens } from "@/lib/workspace/plot-insertion";
@@ -125,7 +125,7 @@ function WorkspacePage() {
     setBlocks((bs) =>
       bs.map((b) => {
         if (b.id !== blockId) return b;
-        const pos = position ?? el?.selectionStart ?? b.text.length;
+        const pos = textInsertionPosition(b.text, position ?? el?.selectionEnd);
         const token = `\n![Чертёж](plot:${imageId})\n`;
         return { ...b, text: b.text.slice(0, pos) + token + b.text.slice(pos) };
       }),
@@ -172,11 +172,13 @@ function WorkspacePage() {
   function openPlot(t: PlotTarget, action: PlotInsertAction | "ai-analog", existing?: PlotScene) {
     const block = blocks.find((b) => b.id === t.blockId);
     const textInput = textRefs.current[t.blockId];
-    const position = textInput?.selectionStart ?? block?.text.length ?? 0;
+    const selectionStart = textInput?.selectionStart ?? block?.text.length ?? 0;
+    const selectionEnd = textInput?.selectionEnd ?? selectionStart;
+    const position = textInsertionPosition(block?.text ?? "", selectionEnd);
     const isTask = block?.type !== "text";
     const taskText = isTask
       ? withoutPlotImages(block?.text ?? "").trim()
-      : textGenerationSource(block?.text ?? "", position, textInput?.selectionEnd ?? position);
+      : textGenerationSource(block?.text ?? "", selectionStart, selectionEnd);
     if (existing) {
       importScene(existing);
       setInputMode("manual");
@@ -311,7 +313,7 @@ function WorkspacePage() {
                       <Trash2 className="size-4" />
                     </Button>
                   </div>
-                  <div className="flex items-center gap-1 rounded-md border border-border bg-muted/40 p-1">
+                  <div role="toolbar" aria-label="Форматирование текста" className="sticky top-0 z-10 flex items-center gap-1 rounded-md border border-border bg-card p-1 shadow-sm">
                     <Button size="icon" variant="ghost" className="size-8" title="Жирный" onClick={() => wrapSelection(block.id, "**")}>
                       <Bold className="size-4" />
                     </Button>

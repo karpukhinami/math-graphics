@@ -1,7 +1,16 @@
 import { describe, expect, test } from "bun:test";
-import { previousParagraph, textGenerationSource, withoutPlotImages, cropRect } from "../src/lib/workspace/plot-context";
+import { previousParagraph, textGenerationSource, textInsertionPosition, withoutPlotImages, cropRect } from "../src/lib/workspace/plot-context";
+import { insertPlotImageTokens } from "../src/lib/workspace/plot-insertion";
 
 describe("workspace plot context", () => {
+  test("image insertion follows the selected text without replacing it", () => {
+    const text = "До Выделено После";
+    expect(insertPlotImageTokens(text, ["image"], textInsertionPosition(text, 11))).toBe("До Выделено\n![Чертёж](plot:image)\n После");
+  });
+  test("without selection image insertion stays at the cursor", () => {
+    expect(textInsertionPosition("ДоПосле", 2)).toBe(2);
+    expect(textInsertionPosition("ДоПосле")).toBe(7);
+  });
   test("text generation uses all selected text across paragraph boundaries without trimming", () => {
     const selected = " $y=x^2$\n\nТочка A при x=2. ";
     const text = "До выделения\n\n" + selected + "\n\nПосле выделения";
