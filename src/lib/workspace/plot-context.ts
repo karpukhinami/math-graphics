@@ -5,6 +5,12 @@ export function previousParagraph(text: string, cursor: number): string {
   return before.split(/\n\s*\n/).at(-1)?.trim() ?? "";
 }
 
+export function textGenerationSource(text: string, selectionStart: number, selectionEnd: number): string {
+  const start = Math.max(0, Math.min(text.length, selectionStart));
+  const end = Math.max(start, Math.min(text.length, selectionEnd));
+  return end > start ? text.slice(start, end) : previousParagraph(text, start);
+}
+
 export interface CropRect { x: number; y: number; width: number; height: number }
 export function cropRect(start: { x: number; y: number }, end: { x: number; y: number }): CropRect {
   const clamp = (n: number) => Math.max(0, Math.min(1, n));

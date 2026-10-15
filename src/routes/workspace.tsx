@@ -18,7 +18,7 @@ import { PlotEditorDialog, type PlotInsertResult } from "@/components/workspace/
 import type { PlotAiPanelProps } from "@/components/plotting/ai/PlotAiPanel";
 import { usePlotStore } from "@/lib/plotting/store";
 import type { PlotScene } from "@/lib/plotting/types";
-import { previousParagraph, withoutPlotImages } from "@/lib/workspace/plot-context";
+import { textGenerationSource, withoutPlotImages } from "@/lib/workspace/plot-context";
 import { AnalogTaskDialog, type AnalogTaskResult } from "@/components/workspace/AnalogTaskDialog";
 import { buildAnalogBlock } from "@/lib/workspace/analog-block";
 
@@ -149,9 +149,12 @@ function WorkspacePage() {
 
   function openPlot(t: PlotTarget, action: PlotInsertAction | "ai-analog", existing?: PlotScene) {
     const block = blocks.find((b) => b.id === t.blockId);
-    const position = textRefs.current[t.blockId]?.selectionStart ?? block?.text.length ?? 0;
+    const textInput = textRefs.current[t.blockId];
+    const position = textInput?.selectionStart ?? block?.text.length ?? 0;
     const isTask = block?.type !== "text";
-    const taskText = isTask ? withoutPlotImages(block?.text ?? "").trim() : previousParagraph(block?.text ?? "", position);
+    const taskText = isTask
+      ? withoutPlotImages(block?.text ?? "").trim()
+      : textGenerationSource(block?.text ?? "", position, textInput?.selectionEnd ?? position);
     if (existing) {
       importScene(existing);
       setInputMode("manual");
