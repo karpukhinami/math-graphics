@@ -15,7 +15,7 @@ export function PlotWorkbench({ aiInitial, title, simplified = false, resultRead
   const spaceTab = usePlotStore((state) => state.spaceTab);
   const setSpaceTab = usePlotStore((state) => state.setSpaceTab);
   const resetScene = usePlotStore((state) => state.resetScene);
-  const scene = usePlotStore((state) => state.scene);
+  const commitInputs = usePlotStore((state) => state.commitInputs);
 
   const [aiSessionKey, setAiSessionKey] = useState(0);
   const [aiResultReady, setAiResultReady] = useState(false);
@@ -53,7 +53,7 @@ export function PlotWorkbench({ aiInitial, title, simplified = false, resultRead
       )}
 
       <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto lg:grid-cols-2 lg:overflow-hidden">
-        <div className="min-h-0 space-y-4 overflow-y-auto lg:pr-2">
+        <div className="min-h-0 space-y-4 overflow-y-auto lg:pr-2" onBlurCapture={commitInputs}>
           {isAi ? <PlotAiPanel key={aiSessionKey} {...aiInitial} simplified={simplified}
             onBuiltChange={(built) => { setAiResultReady(built); aiInitial?.onBuiltChange?.(built); }} /> : <PlotManualPanel />}
         </div>
