@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PlotRouteImport } from './routes/plot'
 import { Route as WorkspaceRouteImport } from './routes/workspace'
 import { Route as ApiExtractDocumentRouteImport } from './routes/api/extract-document'
 import { Route as ApiAiImageRouteImport } from './routes/api/ai/image'
@@ -18,6 +19,11 @@ import { Route as ApiAiTextRouteImport } from './routes/api/ai/text'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlotRoute = PlotRouteImport.update({
+  id: '/plot',
+  path: '/plot',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WorkspaceRoute = WorkspaceRouteImport.update({
@@ -43,6 +49,7 @@ const ApiAiTextRoute = ApiAiTextRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/plot': typeof PlotRoute
   '/workspace': typeof WorkspaceRoute
   '/api/extract-document': typeof ApiExtractDocumentRoute
   '/api/ai/image': typeof ApiAiImageRoute
@@ -50,6 +57,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/plot': typeof PlotRoute
   '/workspace': typeof WorkspaceRoute
   '/api/extract-document': typeof ApiExtractDocumentRoute
   '/api/ai/image': typeof ApiAiImageRoute
@@ -58,6 +66,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/plot': typeof PlotRoute
   '/workspace': typeof WorkspaceRoute
   '/api/extract-document': typeof ApiExtractDocumentRoute
   '/api/ai/image': typeof ApiAiImageRoute
@@ -67,6 +76,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/plot'
     | '/workspace'
     | '/api/extract-document'
     | '/api/ai/image'
@@ -74,6 +84,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/plot'
     | '/workspace'
     | '/api/extract-document'
     | '/api/ai/image'
@@ -81,6 +92,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/plot'
     | '/workspace'
     | '/api/extract-document'
     | '/api/ai/image'
@@ -89,6 +101,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PlotRoute: typeof PlotRoute
   WorkspaceRoute: typeof WorkspaceRoute
   ApiExtractDocumentRoute: typeof ApiExtractDocumentRoute
   ApiAiImageRoute: typeof ApiAiImageRoute
@@ -102,6 +115,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plot': {
+      id: '/plot'
+      path: '/plot'
+      fullPath: '/plot'
+      preLoaderRoute: typeof PlotRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/workspace': {
@@ -137,6 +157,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PlotRoute: PlotRoute,
   WorkspaceRoute: WorkspaceRoute,
   ApiExtractDocumentRoute: ApiExtractDocumentRoute,
   ApiAiImageRoute: ApiAiImageRoute,
