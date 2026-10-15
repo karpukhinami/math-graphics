@@ -1,5 +1,6 @@
 /** Сборка промптов режима ИИ-рисования из отдельных файлов. */
 import sharedSourceRules from "@/lib/plotting/ai/templates/shared-source-rules.txt?raw";
+import analysisPrecisionRules from "@/lib/plotting/ai/templates/analysis-precision-rules.txt?raw";
 import mathNotationRules from "@/lib/plotting/ai/templates/math-notation-rules.txt?raw";
 import lineFractionRules from "@/lib/plotting/ai/templates/line-fraction-rules.txt?raw";
 import analyzeDraw from "@/lib/plotting/ai/templates/analyze-draw.txt?raw";
@@ -77,7 +78,7 @@ export function buildAnalyzePrompt(opts: {
     const source = sourceText.trim() || "(текста задания нет)";
     return (withTechBlocks(taskAnalyze)
       .replaceAll("{{SOURCE_TEXT}}", () => source)
-      .replaceAll("{{USER_REFINEMENTS}}", () => refinements)) + "\n\n" + lineFractionRules;
+      .replaceAll("{{USER_REFINEMENTS}}", () => refinements)) + "\n\n" + lineFractionRules + "\n\n" + analysisPrecisionRules;
   }
   let template: string;
   switch (scenario) {
@@ -94,7 +95,7 @@ export function buildAnalyzePrompt(opts: {
       template = analyzeAnalog;
       break;
   }
-  return injectShared(template, sourceText);
+  return injectShared(template, sourceText) + "\n\n" + analysisPrecisionRules;
 }
 
 export function buildGeneratePrompt(opts: {
@@ -197,13 +198,13 @@ export function generateSchemaHint(scenario: PlotAiScenario, sceneType?: PlotSce
 export function buildAnalogTaskAnalyzePrompt(userRefinements: string): string {
   const refinements = userRefinements.trim() || "(нет)";
   return withTechBlocks(analogTaskAnalyze).replaceAll("{{USER_REFINEMENTS}}", () => refinements) +
-    "\n\n" + lineFractionRules;
+    "\n\n" + lineFractionRules + "\n\n" + analysisPrecisionRules;
 }
 
 /** «Задание по запросу», этап 1: идея и шаблон по свободному описанию (дальше — как у аналога). */
 export function buildRequestTaskAnalyzePrompt(request: string): string {
   return withTechBlocks(requestTaskAnalyze).replaceAll("{{USER_REQUEST}}", () => request.trim() || "(пусто)") +
-    "\n\n" + lineFractionRules;
+    "\n\n" + lineFractionRules + "\n\n" + analysisPrecisionRules;
 }
 
 /** «Аналог по скриншоту», этап 2: N конкретных вариантов с планами чертежей по шаблону. */
@@ -235,7 +236,7 @@ export function buildAnalogTaskVariantsPrompt(opts: {
     .replaceAll("{{TEMPLATE}}", () => JSON.stringify(opts.template, null, 2))
     .replaceAll("{{FIGURES}}", () => figs)
     .replaceAll("{{USER_REFINEMENTS}}", () => opts.userRefinements.trim() || "(нет)") +
-    (opts.sceneType === "line" ? "\n\n" + lineFractionRules : "");
+    (opts.sceneType === "line" ? "\n\n" + lineFractionRules : "") + "\n\n" + analysisPrecisionRules;
 }
 
 /** «Аналог по скриншоту», этап 3: все однотипные чертежи одного варианта одним запросом. */
