@@ -1,6 +1,5 @@
 # Project rules
 
-- Workspace image-only answer layouts share `workspace/answer-layout.ts` for eligibility and column counts in editing and preview. Why: the selected layout must remain identical across both views.
 - Embedded plot SVGs pass through `plotting/standalone-svg.ts`, which includes KaTeX CSS and inline font assets. Why: SVG images cannot inherit page styles, and fractions must match the live construction.
 
 - Number-line labels use exact rational arithmetic in `line/numeric-labels.ts`, deriving tick labels from the original minimum and step; parsed interval endpoints retain source expressions through normalization and boundary edits. Why: coordinates remain exact and fraction/decimal presentation never relies on rounded geometry or saved label layout.
@@ -11,7 +10,6 @@
 - The plotting UI lives in `PlotWorkbench` and is reused by `/` and the `/workspace` plot dialog (entry points in `components/workspace/PlotInsertMenu`); never fork plotting logic for the editor. Why: plotting improvements must reach every embedding.
 - Configure embedded plotting through presentation props on the shared workbench, AI panel, and preview; pass source text and generation readiness back through callbacks, keeping them scoped to the dialog session. Why: the editor can simplify individual scenarios without duplicating plotting logic or leaking text between sessions.
 - Pass beautification result and busy state through the workbench to insertion dialogs; validate against committed SVG, ignoring point drafts, and batch via `workspace/plot-insertion.ts`, with scene only on the original. Why: insert both images without losing artwork to temporary input.
-- Keep insertion-context, selected-text generation source and normalized crop geometry helpers in `src/lib/workspace/plot-context.ts`; read the text area's selection for text blocks and crop source images in the browser before passing them to the existing AI pipeline. Why: only the selected fragment is submitted and no new server or AI protocol is needed.
 - All AI calls go through `src/lib/ai/client.ts` -> `/api/ai/text` and `/api/ai/image` (OpenRouter, key `OPENROUTER_API_KEY` read server-side in `openrouter.server.ts`). Why: one thin, provider-specific layer instead of scattered fetches.
 - Plotting analysis and verbal construction plans share one structure template injected by prompt builders into existing text fields. Why: text generation, task generation and image reproduction must list future constructions consistently without changing JSON contracts.
 - Point-defined graphs share anchors and extendEnds; preserve qualitative for saved smooth graphs and use piecewise-linear with exact sorted vertices for straight segments. Why: JSON compatibility and exact corners across rendering and point solving.
@@ -20,6 +18,6 @@
 - Plane axis intersection targets use reserved `axis:x=0` / `axis:y=0` references resolved only for solving, never added to scene graphs; separate intersection cards persist an optional solution index. Why: axis points stay dependent and rebuild without duplicate solutions or extra rendered lines.
 - Axis intersections of analytic and smooth point-defined graphs solve the source equation with residual-checked sign roots and local minima in `axis-intersections.ts`; other pairs retain segment solving. Why: tangencies between sampled vertices must be found without mistaking nearby curves or asymptotes for intersections.
 
-- Subdirectories may have their own `AGENTS.md` (e.g. `src/lib/plotting/ai/`); read it before changing files there.
+- Subdirectories may have their own `AGENTS.md` (e.g. `src/lib/plotting/ai/`, `src/lib/workspace/`); read it before changing files there.
 - Workspace inline-image editing uses presentation-only Markdown ranges in `workspace/text-segments.ts` and a selection handle mapping local text offsets to the full source. Why: images appear in place without changing stored plot tokens, formulas or generation input.
 - Line batch building assigns completed sets after boundary synchronization updates the scene. Why: reassigning the scene inside a map must not discard built sets while preserving their boundary points.

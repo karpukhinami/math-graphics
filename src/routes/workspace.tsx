@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import { Bold, Eye, Italic, Pencil, Plus, Copy, FileText, ListChecks, TextCursorInput, Send, Sigma, Trash2, X, Rows3, Columns3, Grid2X2, Sparkles } from "lucide-react";
+import { Bold, Eye, Italic, Pencil, Plus, Copy, FileText, ListChecks, TextCursorInput, Download, Sigma, Trash2, X, Rows3, Columns3, Grid2X2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,6 +21,7 @@ import type { PlotScene } from "@/lib/plotting/types";
 import { textGenerationSource, textInsertionPosition, withoutPlotImages } from "@/lib/workspace/plot-context";
 import { AnalogTaskDialog, type AnalogTaskResult } from "@/components/workspace/AnalogTaskDialog";
 import { buildAnalogBlock } from "@/lib/workspace/analog-block";
+import { exportTaskDocx } from "@/lib/workspace/docx-export";
 import { plotInsertionImages, insertPlotImageTokens } from "@/lib/workspace/plot-insertion";
 
 export const Route = createFileRoute("/workspace")({
@@ -84,6 +85,21 @@ function WorkspacePage() {
 
   const [title, setTitle] = useState("Новое задание");
   const [blocks, setBlocks] = useState<Block[]>([newBlock("text")]);
+  const [exporting, setExporting] = useState(false);
+  async function downloadDocx() {
+    setExporting(true);
+    try {
+      const sources = Object.fromEntries(Object.entries(images).map(([id, img]) => [id, img.src]));
+      const blob = await exportTaskDocx(title, blocks, sources);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `${(title || "zadanie").replace(/[\\/:*?"<>|]/g, "_")}.docx`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 30_000);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Не удалось подготовить документ");
+    } finally { setExporting(false); }
+  }
   const [images, setImages] = useState<Record<string, TaskImage>>({});
   const [preview, setPreview] = useState(false);
 
@@ -258,8 +274,8 @@ function WorkspacePage() {
           <Button variant={preview ? "default" : "outline"} size="sm" onClick={() => setPreview((p) => !p)}>
             <Eye className="size-4" /> {preview ? "Редактировать" : "Предпросмотр"}
           </Button>
-          <Button size="sm" onClick={() => toast.success("Задание выдано (демо)")}>
-            <Send className="size-4" /> Выдать
+          <Button size="sm" disabled={exporting} onClick={downloadDocx}>
+            <Download className="size-4" /> {exporting ? "Готовлю…" : "Скачать"}
           </Button>
         </div>
       </header>
