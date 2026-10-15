@@ -259,8 +259,8 @@ function WorkspacePage() {
     const img = images[imageId];
     if (!img) return null;
     return (
-      <div className="group relative w-full min-w-0 rounded-md border border-border bg-card p-1">
-        <img src={img.src} alt="Чертёж" className="block h-auto w-full" />
+      <div className="group relative mx-auto w-fit min-w-0 max-w-full rounded-md border border-border bg-card p-1">
+        <img src={img.src} alt="Чертёж" className="block h-auto w-auto max-w-full" style={{ width: "min(24rem, 100%)" }} />
         <div className="absolute right-1 top-1 flex gap-1 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
           {img.scene && (
             <Button size="icon" variant="secondary" className="size-7" title="Редактировать чертёж"
