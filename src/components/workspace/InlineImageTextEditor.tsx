@@ -38,7 +38,9 @@ export const InlineImageTextEditor = forwardRef<InlineImageTextEditorHandle, {
   const readSelection = (edge: "start" | "end") => {
     const current = selection.current;
     const part = parts.find((part) => part.kind === "text" && part.key === current?.key);
-    return current && part ? Math.min(part.end, part.start + current[edge]) : value.length;
+    const input = current ? inputs.current[current.key] : null;
+    const offset = input ? (edge === "start" ? input.selectionStart : input.selectionEnd) : current?.[edge];
+    return part && offset !== undefined ? Math.min(part.end, part.start + offset) : value.length;
   };
   useImperativeHandle(ref, () => ({
     get selectionStart() { return readSelection("start"); },
