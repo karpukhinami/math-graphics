@@ -21,3 +21,4 @@
 - Subdirectories may have their own `AGENTS.md` (e.g. `src/lib/plotting/ai/`, `src/lib/workspace/`); read it before changing files there.
 - Workspace inline-image editing uses presentation-only Markdown ranges in `workspace/text-segments.ts` and a selection handle mapping local text offsets to the full source. Why: images appear in place without changing stored plot tokens, formulas or generation input.
 - Line batch building assigns completed sets after boundary synchronization updates the scene. Why: reassigning the scene inside a map must not discard built sets while preserving their boundary points.
+- Store input actions rebuild committed constructions and dependencies; spatial vertex text commits on blur, with drafts excluded. Why: every workbench updates geometry without a build-all button or premature draft insertion.
