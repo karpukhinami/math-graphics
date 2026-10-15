@@ -34,7 +34,7 @@ describe("пересечения с осями", () => {
   test("не считает близкий минимум или асимптоту пересечением", () => {
     expect(hits("(x-0.123)^2+0.00000001")).toHaveLength(0);
     expect(hits("1/(x-0.123)")).toHaveLength(0);
-    expect(hits("sign(x-0.123)")).toHaveLength(0);
+    expect(hits("sign(x-0.123)+0.5")).toHaveLength(0);
   });
   test("неявная окружность касается обеих осей между узлами сетки", () => {
     for (const [axis, equation, x, y] of [
