@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import { Bold, Eye, Italic, Pencil, Plus, Copy, FileText, ListChecks, TextCursorInput, Download, Sigma, Trash2, X, Rows3, Columns3, Grid2X2, Sparkles } from "lucide-react";
+import { Bold, Eye, Italic, Pencil, Plus, Copy, FileText, Home, ListChecks, TextCursorInput, Download, Sigma, Trash2, X, Rows3, Columns3, Grid2X2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -262,12 +262,13 @@ function WorkspacePage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-muted/30">
-      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border bg-background px-4 py-3 sm:flex sm:justify-between">
-        <div className="min-w-0 truncate text-sm text-muted-foreground">
-          <Link to="/plot" className="hover:text-foreground">Конструктор графиков</Link>
-          <span className="mx-2">/</span>
-          <span className="text-foreground">{title || "Без названия"}</span>
-        </div>
+      <header className="flex items-center justify-between gap-3 border-b border-border bg-background px-4 py-3">
+        <Button asChild variant="outline" size="sm" className="shrink-0">
+          <Link to="/">
+            <Home className="size-4" />
+            На главную
+          </Link>
+        </Button>
         <div className="flex shrink-0 items-center gap-2">
           <Button variant={preview ? "default" : "outline"} size="sm" onClick={() => setPreview((p) => !p)}>
             <Eye className="size-4" /> {preview ? "Редактировать" : "Предпросмотр"}
