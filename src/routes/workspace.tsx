@@ -265,9 +265,10 @@ function WorkspacePage() {
     const resizable = widthPct !== undefined && onWidthChange !== undefined;
     const step = (delta: number) => onWidthChange?.(Math.min(100, Math.max(20, widthPct! + delta)));
     return (
-      <div className="group relative mx-auto w-fit min-w-0 max-w-full rounded-md border border-border bg-card p-1">
-        <img src={img.src} alt="Чертёж" className="block h-auto w-auto max-w-full"
-          style={{ width: resizable ? `${widthPct}%` : "min(24rem, 100%)" }} />
+      <div className="group relative mx-auto min-w-0 max-w-full rounded-md border border-border bg-card p-1"
+        style={resizable ? { width: `${widthPct}%` } : { width: "fit-content" }}>
+        <img src={img.src} alt="Чертёж" className="block h-auto max-w-full"
+          style={{ width: resizable ? "100%" : "min(24rem, 100%)" }} />
         <div className="absolute right-1 top-1 flex gap-1 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
           {resizable && (
             <>
