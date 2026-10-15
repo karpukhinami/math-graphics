@@ -21,3 +21,4 @@
 - Axis intersections of analytic and smooth point-defined graphs solve the source equation with residual-checked sign roots and local minima in `axis-intersections.ts`; other pairs retain segment solving. Why: tangencies between sampled vertices must be found without mistaking nearby curves or asymptotes for intersections.
 
 - Subdirectories may have their own `AGENTS.md` (e.g. `src/lib/plotting/ai/`); read it before changing files there.
+- Workspace inline-image editing uses presentation-only Markdown ranges in `workspace/text-segments.ts` and a selection handle mapping local text offsets to the full source. Why: images appear in place without changing stored plot tokens, formulas or generation input.
