@@ -197,6 +197,7 @@ interface PlotStore {
   buildGraph: (id: string) => void;
   buildPoint: (id: string) => void;
   buildAll: () => void;
+  commitInputs: () => void;
   importScene: (raw: unknown) => void;
   importAiScene: (raw: unknown) => void;
   resetScene: () => void;
@@ -252,6 +253,17 @@ function applySpaceBuild(scene: PlotScene): { scene: PlotScene; status: BuildSta
     scene: { ...scene, space3d: report.data },
     status: { built: report.built, errors: report.errors, at: Date.now() },
   };
+}
+
+/** Rebuild committed inputs only; drafts stay outside the construction. */
+function rebuildPlotScene(scene: PlotScene): { scene: PlotScene; status: BuildStatus } {
+  if (scene.space === "space") return applySpaceBuild(scene);
+  if (scene.space === "line" && scene.line) {
+    const report = buildLineScene(scene.line);
+    return { scene: { ...scene, line: report.line }, status: { built: report.built, errors: report.errors, at: Date.now() } };
+  }
+  const report = buildScene(scene);
+  return { scene: report.scene, status: { built: report.built, errors: report.errors, at: Date.now() } };
 }
 
 function withSpaceData(
@@ -462,12 +474,11 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
   updateLineAxis: (patch) =>
     set((state) => {
       if (!state.scene.line) return state;
-      return {
-        scene: {
+      return rebuildPlotScene( {
           ...state.scene,
           line: { ...state.scene.line, axis: { ...state.scene.line.axis, ...patch } },
-        },
-      };
+        }
+      );
     }),
 
   updateLineTicks: (patch) =>
@@ -541,8 +552,7 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
   updateSetMath: (id, patch) =>
     set((state) => {
       if (!state.scene.line) return state;
-      return {
-        scene: {
+      return rebuildPlotScene( {
           ...state.scene,
           line: {
             ...state.scene.line,
@@ -552,8 +562,8 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
                 : set,
             ),
           },
-        },
-      };
+        }
+      );
     }),
 
   updateSetStyle: (id, patch) =>
@@ -672,8 +682,7 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
   updateLinePointMath: (id, patch) =>
     set((state) => {
       if (!state.scene.line) return state;
-      return {
-        scene: {
+      return rebuildPlotScene( {
           ...state.scene,
           line: {
             ...state.scene.line,
@@ -683,8 +692,8 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
                 : point,
             ),
           },
-        },
-      };
+        }
+      );
     }),
 
   updateLinePointStyle: (id, patch) =>
@@ -775,7 +784,7 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
       if (patch.name !== undefined) {
         scene.graphs = scene.graphs.map((graph) => ({ ...graph, dirty: true }));
       }
-      return { scene };
+      return rebuildPlotScene(scene);
     }),
 
   updateAxisScale: (patch) =>
@@ -795,7 +804,7 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
         };
       }
 
-      return { scene };
+      return rebuildPlotScene(scene);
     }),
 
   updateGrid: (patch) =>
@@ -825,20 +834,18 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
     })),
 
   updateGraphMath: (id, patch) =>
-    set((state) => ({
-      scene: {
+    set((state) => rebuildPlotScene( {
         ...state.scene,
         graphs: state.scene.graphs.map((graph) =>
           graph.id === id
             ? { ...graph, math: { ...graph.math, ...patch }, dirty: true, error: null }
             : graph,
         ),
-      },
-    })),
+      }
+    )),
 
   removeGraphAnchor: (id, index) =>
-    set((state) => ({
-      scene: {
+    set((state) => rebuildPlotScene( {
         ...state.scene,
         graphs: state.scene.graphs.map((graph) =>
           graph.id === id
@@ -856,8 +863,8 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
           const anchorIndex = ref === index ? null : ref - 1;
           return { ...point, math: { ...point.math, anchorIndex }, dirty: true };
         }),
-      },
-    })),
+      }
+    )),
 
   updateGraphStyle: (id, patch) =>
     set((state) => ({
@@ -870,8 +877,7 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
     })),
 
   removeGraph: (id) =>
-    set((state) => ({
-      scene: {
+    set((state) => rebuildPlotScene( {
         ...state.scene,
         graphs: reindex(state.scene.graphs.filter((graph) => graph.id !== id)) as SceneGraph[],
         points: state.scene.points.map((point) =>
@@ -887,23 +893,22 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
               }
             : point,
         ),
-      },
-    })),
+      }
+    )),
 
 
 
 
   updatePointMath: (id, patch) =>
-    set((state) => ({
-      scene: {
+    set((state) => rebuildPlotScene( {
         ...state.scene,
         points: state.scene.points.map((point) =>
           point.id === id
             ? { ...point, math: { ...point.math, ...patch }, dirty: true, error: null }
             : point,
         ),
-      },
-    })),
+      }
+    )),
 
   updatePointStyle: (id, patch) =>
     set((state) => ({
@@ -974,6 +979,11 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
   buildPoint: (id) => {
     const report = buildScene(get().scene, { pointId: id });
     set({ scene: report.scene, status: { built: report.built, errors: report.errors, at: Date.now() } });
+  },
+
+  commitInputs: () => {
+    const state = get();
+    if (state.scene.space3d?.figureDirty) state.buildSpaceFigure();
   },
 
   buildAll: () => {
@@ -1260,7 +1270,7 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
 
   updateSpacePoint: (id, patch) =>
     set((state) =>
-      patchSpaceData(state, (data) => ({
+      withSpaceData(state, (data) => ({
         ...data,
         points: data.points.map((p) => (p.id === id ? { ...p, ...patch, dirty: true } : p)),
       })),
@@ -1278,7 +1288,7 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
 
   updateSpacePointOnLine: (id, patch) =>
     set((state) =>
-      patchSpaceData(state, (data) => ({
+      withSpaceData(state, (data) => ({
         ...data,
         points: data.points.map((p) => {
           if (p.id !== id || p.definition.kind !== "onLine") return p;
@@ -1423,7 +1433,7 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
 
   updateSpaceLine: (id, patch) =>
     set((state) =>
-      patchSpaceData(state, (data) => ({
+      withSpaceData(state, (data) => ({
         ...data,
         lines: data.lines.map((l) => (l.id === id ? { ...l, ...patch, dirty: true } : l)),
       })),
@@ -1431,7 +1441,7 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
 
   updateSpaceLineStyle: (id, patch) =>
     set((state) =>
-      patchSpaceData(state, (data) => ({
+      withSpaceData(state, (data) => ({
         ...data,
         lines: data.lines.map((l) =>
           l.id === id ? { ...l, style: { ...l.style, ...patch }, dirty: patch.visualKind ? true : l.dirty } : l,
@@ -1522,7 +1532,7 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
 
   updateSpacePlane: (id, patch) =>
     set((state) =>
-      patchSpaceData(state, (data) => ({
+      withSpaceData(state, (data) => ({
         ...data,
         planes: data.planes.map((p) => (p.id === id ? { ...p, ...patch, dirty: true } : p)),
       })),
