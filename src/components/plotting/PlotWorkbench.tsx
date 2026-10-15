@@ -2,7 +2,7 @@
  * Полный конструктор чертежей (ручной + ИИ-режим + превью).
  * Используется и на главной странице, и в редакторе заданий — доработки построений общие.
  */
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlotPreview, type PlotPreviewResultProps } from "@/components/plotting/PlotPreview";
 import { PlotManualPanel } from "@/components/plotting/PlotManualPanel";
@@ -28,6 +28,9 @@ export function PlotWorkbench({
   const setSpaceTab = usePlotStore((state) => state.setSpaceTab);
   const resetScene = usePlotStore((state) => state.resetScene);
   const commitInputs = usePlotStore((state) => state.commitInputs);
+  const sessionVersion = usePlotStore((state) => state.sessionVersion);
+
+  useEffect(() => () => { usePlotStore.getState().resetScene(); }, []);
 
   const [aiSessionKey, setAiSessionKey] = useState(0);
   const [aiResultReady, setAiResultReady] = useState(false);
@@ -47,7 +50,13 @@ export function PlotWorkbench({
           <div className="flex items-center gap-2">
             <Tabs
               value={inputMode}
-              onValueChange={(value) => setInputMode(value as "manual" | "ai")}
+              onValueChange={(value) => {
+                if (value === inputMode) return;
+                setAiResultReady(false);
+                onBeautifiedImageChange?.(null);
+                onBeautifyingChange?.(false);
+                setInputMode(value as "manual" | "ai");
+              }}
             >
               <TabsList className="h-11 border border-primary/30 bg-primary/10 p-1 text-foreground">
                 <TabsTrigger
@@ -101,6 +110,7 @@ export function PlotWorkbench({
         {(!isAi || (simplified ? resultReady : aiResultReady)) && (
           <div className="min-h-0 overflow-y-auto lg:pl-1">
             <PlotPreview
+              key={sessionVersion}
               simplified={simplified}
               onReset={handleReset}
               onBeautifiedImageChange={onBeautifiedImageChange}

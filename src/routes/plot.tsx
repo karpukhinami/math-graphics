@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Home } from "lucide-react";
 import { PlotWorkbench } from "@/components/plotting/PlotWorkbench";
+import { useEffect, useState } from "react";
+import { usePlotStore } from "@/lib/plotting/store";
 
 export const Route = createFileRoute("/plot")({
   head: () => ({
@@ -26,6 +28,12 @@ export const Route = createFileRoute("/plot")({
 });
 
 function PlottingPage() {
+  const [sessionReady, setSessionReady] = useState(false);
+  useEffect(() => {
+    usePlotStore.getState().startSession();
+    setSessionReady(true);
+  }, []);
+  if (!sessionReady) return null;
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
       <div className="mx-auto flex min-h-0 w-full max-w-[1400px] flex-1 flex-col p-4 lg:p-6">

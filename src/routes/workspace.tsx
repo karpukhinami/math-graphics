@@ -79,9 +79,8 @@ function RichView({ text, images }: { text: string; images: Record<string, TaskI
 }
 
 function WorkspacePage() {
-  const resetScene = usePlotStore((s) => s.resetScene);
+  const startSession = usePlotStore((s) => s.startSession);
   const importScene = usePlotStore((s) => s.importScene);
-  const setInputMode = usePlotStore((s) => s.setInputMode);
 
   const [title, setTitle] = useState("Новое задание");
   const [blocks, setBlocks] = useState<Block[]>([newBlock("text")]);
@@ -196,12 +195,11 @@ function WorkspacePage() {
       ? withoutPlotImages(block?.text ?? "").trim()
       : textGenerationSource(block?.text ?? "", selectionStart, selectionEnd);
     if (existing) {
+      startSession("manual");
       importScene(existing);
-      setInputMode("manual");
       setAiInitial(undefined);
     } else {
-      resetScene();
-      setInputMode(action === "manual" ? "manual" : "ai");
+      startSession(action === "manual" ? "manual" : "ai");
       setAiInitial(
         action === "ai-draw"
           ? { initialScenario: "task", initialText: taskText, textLabel: isTask ? "Текст задания" : "Текст" }

@@ -24,6 +24,11 @@ export function PlotPreview({
   const status = usePlotStore((state) => state.status);
   const importScene = usePlotStore((state) => state.importScene);
   const fileRef = useRef<HTMLInputElement>(null);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   const previewRef = useRef<HTMLDivElement>(null);
 
   const spaceTab = usePlotStore((state) => state.spaceTab);
@@ -56,20 +61,22 @@ export function PlotPreview({
       return;
     }
     setBeautifying(true);
+    const version = usePlotStore.getState().sessionVersion;
     try {
       const dataUrl = await generatePlotBeautifiedImage({
         previewEl: container,
         userWishes: wishes,
       });
-      if (svgRef.current !== committedSvg) return;
+      if (!mounted.current || usePlotStore.getState().sessionVersion !== version || svgRef.current !== committedSvg) return;
       setBeautifiedResult({ src: dataUrl, svg: committedSvg });
       onBeautifiedImageChange?.(dataUrl);
       setBeautifyOpen(false);
       toast.success("Дорисованная версия готова");
     } catch (error) {
+      if (!mounted.current || usePlotStore.getState().sessionVersion !== version) return;
       toast.error(error instanceof Error ? error.message : "Не удалось дорисовать чертёж");
     } finally {
-      setBeautifying(false);
+      if (mounted.current) setBeautifying(false);
     }
   }
 
