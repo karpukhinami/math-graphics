@@ -206,9 +206,7 @@ interface PlotStore {
   commitInputs: () => void;
   importScene: (raw: unknown) => void;
   importAiScene: (raw: unknown) => void;
-  resetScene: () =>
-    set((state) => freshSession(state.spaceTab, state.sessionVersion + 1)),
-
+  resetScene: () => void;
   setSpaceShapeKind: (kind: SpaceShapeKind) => void;
   setSpaceBaseInput: (input: string) => void;
   buildSpaceFigure: () => void;
@@ -1023,28 +1021,7 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
   },
 
   resetScene: () =>
-    set((state) => ({
-      scene:
-        state.spaceTab === "line"
-          ? createLineScene()
-          : state.spaceTab === "space"
-            ? createSpacePlotScene()
-            : createScene(),
-      status: null,
-      pointDraft: null,
-      pointDraftError: null,
-      setDraft: null,
-      setDraftError: null,
-      linePointDraft: null,
-      linePointDraftError: null,
-      spacePointDraft: null,
-      spacePointDraftError: null,
-      spaceLineDraft: null,
-      spaceLineDraftError: null,
-      spacePlaneDraft: null,
-      spacePlaneDraftError: null,
-      activeAxisRow: 0,
-    })),
+    set((state) => freshSession(state.spaceTab, state.sessionVersion + 1)),
 
   setSpaceShapeKind: (kind) =>
     set((state) =>
