@@ -1,5 +1,6 @@
-// @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
+import { Window } from "happy-dom";
+(globalThis as unknown as { DOMParser: unknown }).DOMParser ??= new Window().DOMParser;
 import { Packer } from "docx";
 import { buildTaskDocument } from "@/lib/workspace/docx-export";
 import { importDocx } from "@/lib/workspace/docx-import";
