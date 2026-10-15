@@ -59,4 +59,24 @@ describe("общие математические правила анализа"
     ];
     for (const prompt of prompts) expect(prompt).not.toContain(precisionRules);
   });
+
+  test("техническая часть объясняет построение функции на промежутке, а не на всём поле", () => {
+    const planeDraw = buildDrawScenePrompt({
+      sceneType: "plane",
+      drawPlan: "y = sqrt(x) на промежутке 0 ≤ x < 4",
+      userRefinements: "",
+    });
+    expect(planeDraw).toContain("ПОСТРОЕНИЕ НА ПРОМЕЖУТКЕ");
+    expect(planeDraw).toContain("Вне этого промежутка линия не появляется");
+    expect(planeDraw).toContain('"domain"');
+    const planeScene = buildGeneratePrompt({
+      scenario: "reproduce",
+      sourceText: "",
+      sceneType: "plane",
+      analysis: { canDraw: true, analysisText: "y = sqrt(x)", stageData: {} },
+      userRefinements: "",
+    });
+    expect(planeScene).toContain("domainFrom/domainTo");
+    expect(planeScene).toContain("вне него линия не рисуется");
+  });
 });
