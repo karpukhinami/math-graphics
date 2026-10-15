@@ -68,7 +68,7 @@ export function PlotEditorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[92vh] max-w-[95vw] flex-col gap-3 sm:max-w-[95vw]">
+      <DialogContent className="flex h-[92vh] max-w-[95vw] flex-col gap-3 lg:max-w-[66vw]">
         <DialogTitle className="sr-only">Конструктор чертежа</DialogTitle>
         <PlotWorkbench
           key={sessionKey}
