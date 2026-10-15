@@ -5,33 +5,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ModelPicker } from "./ModelPicker";
 import { Markdown } from "@/components/plotting/Markdown";
 import { DEFAULT_REPRODUCE_MODEL, DEFAULT_TEXT_MODEL } from "@/lib/ai/models";
 import { hasSourceMaterials } from "@/lib/plotting/ai/source-files";
 import { analyzePlotMaterial, generatePlotScene } from "@/lib/plotting/ai/pipeline";
 import type { PlotAiScenario, PlotAnalysisResult } from "@/lib/plotting/ai/types";
 import { usePlotStore } from "@/lib/plotting/store";
-import {
-  PlotSourceInput,
-  importPlotSourceFiles,
-  usePlotSourceState,
-} from "./PlotSourceInput";
+import { usePlotSourceState } from "./PlotSourceInput";
 import { PlotManualPanel } from "../PlotManualPanel";
 import { cn } from "@/lib/utils";
 import { SourceImageInput } from "@/components/workspace/SourceImageInput";
-
-const SCENARIOS: Array<{ id: PlotAiScenario; label: string }> = [
-  { id: "draw", label: "Нарисовать по заданию" },
-  { id: "reproduce", label: "Воспроизвести изображение" },
-  { id: "analog", label: "Создать аналогичное задание с изображением" },
-];
 
 export interface PlotAiPanelProps {
   /** Предзаполнение извне (встраивание в редактор заданий). */
@@ -45,12 +34,12 @@ export interface PlotAiPanelProps {
   initialRefinements?: string;
 }
 
-export function PlotAiPanel({ initialText, initialScenario, initialRefinements, simplified = false, textLabel = "Текст", onTextChange, onBuiltChange, onAnalogText }: PlotAiPanelProps = {}) {
+export function PlotAiPanel({ initialText, initialScenario, initialRefinements, simplified = false, textLabel = "Текст задания", onTextChange, onBuiltChange, onAnalogText }: PlotAiPanelProps = {}) {
   const importAiScene = usePlotStore((s) => s.importAiScene);
 
   const source = usePlotSourceState(initialText ?? "");
   const [model, setModel] = useState(initialScenario === "reproduce" ? DEFAULT_REPRODUCE_MODEL : DEFAULT_TEXT_MODEL);
-  const [scenario, setScenario] = useState<PlotAiScenario>(initialScenario ?? "draw");
+  const [scenario, setScenario] = useState<PlotAiScenario>(initialScenario ?? "task");
   const [analysis, setAnalysis] = useState<PlotAnalysisResult | null>(null);
   const [userRefinements, setUserRefinements] = useState(initialRefinements ?? "");
   const [analogTaskText, setAnalogTaskText] = useState<string | null>(null);
@@ -59,7 +48,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
   const [sceneBuilt, setSceneBuilt] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
-  const { manualText, attachedImages, documents } = source;
+  const { manualText, attachedImages } = source;
   useEffect(() => { onTextChange?.(manualText); }, [manualText, onTextChange]);
   useEffect(() => { onBuiltChange?.(sceneBuilt); }, [sceneBuilt, onBuiltChange]);
   function invalidate() { setAnalysis(null); setSceneBuilt(false); setAnalogTaskText(null); }
@@ -67,29 +56,6 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
   const hasSource =
     hasSourceMaterials(manualText, source.state.uploadedSourceText, attachedImages) ||
     (scenario === "task" && userRefinements.trim().length > 0);
-
-  async function handleAttachFiles(files: File[]) {
-    await importPlotSourceFiles(files, {
-      addDocument: source.addDocument,
-      addImages: source.addImages,
-    });
-  }
-
-  async function handlePasteImages(files: File[]) {
-    const dataUrls = await Promise.all(
-      files.map(
-        (file) =>
-          new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(String(reader.result));
-            reader.onerror = () => reject(reader.error);
-            reader.readAsDataURL(file);
-          }),
-      ),
-    );
-    source.addImages(dataUrls);
-    toast.success("Изображение вставлено из буфера обмена");
-  }
 
   async function onAnalyze() {
     if (!hasSource) {
@@ -126,7 +92,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
   async function onDraw() {
     if (!analysis?.canDraw || !analysis.sceneType) return;
     setDrawing(true);
-    if (simplified) setSceneBuilt(false);
+    setSceneBuilt(false);
     try {
       const result = await generatePlotScene({
         model,
@@ -153,35 +119,23 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
 
   return (
     <div className="space-y-4">
-      {!simplified && <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Сценарий</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <RadioGroup
-            value={scenario}
-            onValueChange={(v) => {
-              setScenario(v as PlotAiScenario);
-              if (v === "reproduce") setModel(DEFAULT_REPRODUCE_MODEL);
-              setAnalysis(null);
-              setSceneBuilt(false);
-            }}
-            className="space-y-2"
-          >
-            {SCENARIOS.map((s) => (
-              <label
-                key={s.id}
-                className="flex cursor-pointer items-start gap-2 rounded-md border border-border px-3 py-2 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5"
-              >
-                <RadioGroupItem value={s.id} className="mt-0.5" />
-                <span>{s.label}</span>
-              </label>
-            ))}
-          </RadioGroup>
-        </CardContent>
-      </Card>}
+      {!simplified && <Tabs value={scenario} onValueChange={(value) => {
+        if (value !== "task" && value !== "reproduce") return;
+        setScenario(value);
+        setModel(value === "reproduce" ? DEFAULT_REPRODUCE_MODEL : DEFAULT_TEXT_MODEL);
+        source.setManualText("");
+        attachedImages.forEach((_, index) => source.removeImage(attachedImages.length - index - 1));
+        setUserRefinements("");
+        invalidate();
+        setEditOpen(false);
+      }}>
+        <TabsList className="grid h-auto w-full grid-cols-2">
+          <TabsTrigger value="task" disabled={analyzing || drawing} className="whitespace-normal text-center">Нарисовать по заданию</TabsTrigger>
+          <TabsTrigger value="reproduce" disabled={analyzing || drawing} className="whitespace-normal text-center">Воспроизвести скриншот</TabsTrigger>
+        </TabsList>
+      </Tabs>}
 
-      {simplified ? (
+      {
         <fieldset disabled={analyzing || drawing} className="space-y-4">
           {scenario === "draw" || scenario === "task" ? <>
             <div className="space-y-2"><Label htmlFor="plot-source-text">{textLabel}</Label>
@@ -199,26 +153,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
             </div>
           </>}
         </fieldset>
-      ) : <Card>
-        <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="text-base">Модель</CardTitle>
-            <ModelPicker kind="text" value={model} onChange={setModel} />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <PlotSourceInput
-            manualText={manualText}
-            onManualTextChange={source.setManualText}
-            attachedImages={attachedImages}
-            documents={documents}
-            onAttachFiles={handleAttachFiles}
-            onPasteImages={handlePasteImages}
-            onRemoveImage={source.removeImage}
-            onRemoveDocument={source.removeDocument}
-          />
-        </CardContent>
-      </Card>}
+      }
 
       <Button
         type="button"
@@ -271,15 +206,6 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
                     : "числовая прямая"}
               </p>
             )}
-            {!simplified && <div className="space-y-2">
-              <Label className="text-xs">Дополнительные пожелания или изменения</Label>
-              <Textarea
-                rows={3}
-                placeholder="Уточнения перед построением (имеют приоритет над анализом)"
-                value={userRefinements}
-                onChange={(e) => setUserRefinements(e.target.value)}
-              />
-            </div>}
             {analysis.canDraw && (
               <Button
                 type="button"
