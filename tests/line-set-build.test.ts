@@ -11,7 +11,7 @@ describe("построение множеств сохраняет и грани
     if (!scene.line) throw new Error("Нет прямой");
     const report = buildLineScene(scene.line);
     expect(report.errors).toEqual([]);
-    expect(report.line.sets[0].built?.parts).toEqual([{ left: -2, right: 2, leftInclusive: false, rightInclusive: false }]);
+    expect(report.line.sets[0].built?.parts).toEqual([{ left: -2, right: 2, leftInclusive: false, rightInclusive: false, leftInput: "-2", rightInput: "2" }]);
     expect(report.line.sets[0].dirty).toBe(false);
     expect(report.line.sets[0].kindLocked).toBe(true);
     expect(report.line.points.map((p) => [p.built?.x, p.style.open])).toEqual([[-2, true], [2, true]]);
