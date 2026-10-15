@@ -33,7 +33,9 @@ export function PlotPreview({
   const mounted = useRef(false);
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; };
+    return () => {
+      mounted.current = false;
+    };
   }, []);
   const previewRef = useRef<HTMLDivElement>(null);
 
@@ -41,9 +43,7 @@ export function PlotPreview({
 
   const [beautifyOpen, setBeautifyOpen] = useState(false);
   const [beautifying, setBeautifying] = useState(false);
-  const [beautifiedResult, setBeautifiedResult] = useState<{ src: string; svg: string } | null>(
-    null,
-  );
+  const [beautifiedResult, setBeautifiedResult] = useState<{ src: string; svg: string } | null>(null);
 
   const svg = usePlotSvg();
   // Temporary point drafts are not changes to the inserted construction.
@@ -73,7 +73,8 @@ export function PlotPreview({
         previewEl: container,
         userWishes: wishes,
       });
-      if (!mounted.current || usePlotStore.getState().sessionVersion !== version || svgRef.current !== committedSvg) return;
+      if (!mounted.current || usePlotStore.getState().sessionVersion !== version || svgRef.current !== committedSvg)
+        return;
       setBeautifiedResult({ src: dataUrl, svg: committedSvg });
       onBeautifiedImageChange?.(dataUrl);
       setBeautifyOpen(false);
@@ -91,13 +92,7 @@ export function PlotPreview({
       <CardContent className="space-y-3 p-3">
         {!simplified && (
           <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={!svg}
-              onClick={() => svg && downloadSvg(svg)}
-            >
+            <Button type="button" size="sm" variant="outline" disabled={!svg} onClick={() => svg && downloadSvg(svg)}>
               <Download className="size-4" />
               SVG
             </Button>
@@ -111,41 +106,23 @@ export function PlotPreview({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => svg && downloadPng(svg)}>
-                    Скачать чертёж
-                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => svg && downloadPng(svg)}>Скачать чертёж</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => downloadImageSrc(beautifiedImage)}>
                     Скачать картинку
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={!svg}
-                onClick={() => svg && downloadPng(svg)}
-              >
+              <Button type="button" size="sm" variant="outline" disabled={!svg} onClick={() => svg && downloadPng(svg)}>
                 <Download className="size-4" />
                 PNG
               </Button>
             )}
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => downloadSceneJson(scene)}
-            >
+            <Button type="button" size="sm" variant="outline" onClick={() => downloadSceneJson(scene)}>
               <FileJson className="size-4" />
               Сохранить JSON
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => fileRef.current?.click()}
-            >
+            <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
               <Upload className="size-4" />
               Загрузить JSON
             </Button>
@@ -179,21 +156,15 @@ export function PlotPreview({
           </div>
         )}
 
-        <div
-          ref={previewRef}
-          className="overflow-auto rounded-md border border-border bg-background p-2"
-        >
+        <div ref={previewRef} className="overflow-auto rounded-md border border-border bg-background p-2">
           {svg ? (
-            <div
-              className="[&>svg]:h-auto [&>svg]:w-full"
-              dangerouslySetInnerHTML={{ __html: svg }}
-            />
+            <div className="[&>svg]:h-auto [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
           ) : (
             <p className="p-8 text-center text-sm text-muted-foreground">
               {spaceTab === "line"
                 ? "Заполните пределы оси, чтобы увидеть числовую прямую."
                 : spaceTab === "space"
-                  ? "Выберите фигуру и создайте параллелепипед."
+                  ? "Выберите фигуру и создайте её."
                   : "Заполните пределы обеих осей, чтобы увидеть координатную плоскость."}
             </p>
           )}
