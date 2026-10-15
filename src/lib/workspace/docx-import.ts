@@ -22,6 +22,7 @@ const ACC: Record<string, string> = { "̄": "\\bar", "⃗": "\\vec", "̂": "\\ha
 const FUNCS = new Set(["sin", "cos", "tg", "tan", "ctg", "cot", "log", "ln", "lg", "exp", "arcsin", "arccos", "arctg", "lim", "max", "min"]);
 
 const g = (el: Element | undefined) => (el ? `{${omml(el)}}` : "{}");
+const base = (el: Element | undefined) => { const t = el ? omml(el) : ""; return /^[A-Za-z0-9]$/.test(t) ? t : `{${t}}`; };
 
 export function omml(el: Element): string {
   return kids(el).map(node).join("");
@@ -35,9 +36,9 @@ function node(el: Element): string {
       const num = g(kid(el, "num")), den = g(kid(el, "den"));
       return type === "lin" ? `${num}/${den}` : type === "noBar" ? `\\genfrac{}{}{0pt}{}${num}${den}` : `\\frac${num}${den}`;
     }
-    case "sSup": return `${g(kid(el, "e"))}^${g(kid(el, "sup"))}`;
-    case "sSub": return `${g(kid(el, "e"))}_${g(kid(el, "sub"))}`;
-    case "sSubSup": return `${g(kid(el, "e"))}_${g(kid(el, "sub"))}^${g(kid(el, "sup"))}`;
+    case "sSup": return `${base(kid(el, "e"))}^${g(kid(el, "sup"))}`;
+    case "sSub": return `${base(kid(el, "e"))}_${g(kid(el, "sub"))}`;
+    case "sSubSup": return `${base(kid(el, "e"))}_${g(kid(el, "sub"))}^${g(kid(el, "sup"))}`;
     case "sPre": return `{}_${g(kid(el, "sub"))}^${g(kid(el, "sup"))}${g(kid(el, "e"))}`;
     case "rad": {
       const deg = kid(el, "deg");
