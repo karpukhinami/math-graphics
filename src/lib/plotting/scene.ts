@@ -6,6 +6,7 @@ import { DEFAULT_APPEARANCE, nextId, PLOT_PALETTE, PLOT_PALETTE_GROUPS } from ".
 import { createSpaceSceneData } from "./space/scene";
 import { intersectGraphs, pointsOnGraphAtX } from "./solve";
 import { graphCaption, graphCaptionLatex } from "./graph-labels";
+import { intersectionAxisGraph, pointSourceColor } from "./intersection-targets";
 import type {
   AxisSpec,
   GraphKind,
@@ -360,10 +361,18 @@ export function buildPoint(point: ScenePoint, scene: PlotScene, bounds: PlotBoun
 
   const first = scene.graphs.find((item) => item.id === point.math.graphId);
   const second = scene.graphs.find((item) => item.id === point.math.graphIdB);
-  if (!first || !second) throw new Error("Выберите два графика.");
-  if (first.id === second.id) throw new Error("Выберите два разных графика.");
-  if (!first.built || !second.built) throw new Error("Оба графика должны быть построены.");
-  const hits = intersectGraphs(first.built, second.built).filter((hit) => inside(hit.x, hit.y));
+  const firstAxis = intersectionAxisGraph(point.math.graphId, bounds);
+  const secondAxis = intersectionAxisGraph(point.math.graphIdB, bounds);
+  if ((!first && !firstAxis) || (!second && !secondAxis)) throw new Error("Выберите два графика или график и ось.");
+  if (point.math.graphId === point.math.graphIdB) throw new Error("Выберите разные графики или оси.");
+  if (firstAxis && secondAxis) throw new Error("Выберите хотя бы один график.");
+  const firstBuilt = firstAxis ?? first?.built;
+  const secondBuilt = secondAxis ?? second?.built;
+  if (!firstBuilt || !secondBuilt) throw new Error("Оба графика должны быть построены.");
+  const allHits = intersectGraphs(firstBuilt, secondBuilt).filter((hit) => inside(hit.x, hit.y));
+  const hits = point.math.intersectionIndex === undefined
+    ? allHits
+    : allHits.filter((_hit, index) => index === point.math.intersectionIndex);
   if (!hits.length) throw new Error("Пересечений в текущей области не найдено.");
   return hits.map((hit, index) => ({
     x: hit.x,
@@ -484,7 +493,7 @@ export function draftRenderPoints(scene: PlotScene, math: PointMath | null): Ren
     id,
     x,
     y,
-    color: PLOT_PALETTE[0],
+    color: pointSourceColor(scene, math) ?? PLOT_PALETTE[0],
     open,
     label: "",
     coords: null,
