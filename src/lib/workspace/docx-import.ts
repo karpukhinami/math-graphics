@@ -163,7 +163,7 @@ export async function importDocx(file: File | Blob, newId: () => string): Promis
   const body = doc.getElementsByTagNameNS("*", "body")[0];
   const lines: string[] = [];
   const handle = (el: Element) => {
-    if (el.localName === "p") lines.push(paragraphText(el, embed));
+    if (el.localName === "p") lines.push(paragraphText(el, embed), "");
     else if (el.localName === "tbl") {
       for (const tr of kids(el, "tr")) {
         const cells = kids(tr, "tc").map((tc) => kids(tc, "p").map((p) => paragraphText(p, embed).replace(/\n+/g, " ").trim()).join(" "));

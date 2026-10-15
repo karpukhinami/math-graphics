@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import { Bold, Eye, Italic, Pencil, Plus, Copy, FileText, Home, ListChecks, TextCursorInput, Download, Sigma, Trash2, X, Rows3, Columns3, Grid2X2, Sparkles } from "lucide-react";
+import { Bold, Eye, Italic, Pencil, Plus, Copy, FileText, Home, ListChecks, TextCursorInput, Download, Upload, Sigma, Trash2, X, Rows3, Columns3, Grid2X2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +22,7 @@ import { textGenerationSource, textInsertionPosition, withoutPlotImages } from "
 import { AnalogTaskDialog, type AnalogTaskResult } from "@/components/workspace/AnalogTaskDialog";
 import { buildAnalogBlock } from "@/lib/workspace/analog-block";
 import { exportTaskDocx } from "@/lib/workspace/docx-export";
+import { importDocx } from "@/lib/workspace/docx-import";
 import { plotInsertionImages, insertPlotImageTokens } from "@/lib/workspace/plot-insertion";
 
 export const Route = createFileRoute("/workspace")({
@@ -100,6 +101,21 @@ function WorkspacePage() {
     } finally { setExporting(false); }
   }
   const [images, setImages] = useState<Record<string, TaskImage>>({});
+  const wordInputRef = useRef<HTMLInputElement>(null);
+  async function onWordFile(file: File) {
+    try {
+      const { text, images: imgs } = await importDocx(file, uid);
+      if (!text) { toast.error("В документе нет текста"); return; }
+      setImages((m) => ({ ...m, ...Object.fromEntries(Object.entries(imgs).map(([id, src]) => [id, { src }])) }));
+      setBlocks((bs) => {
+        const block = { ...newBlock("text"), text };
+        return bs.length === 1 && bs[0].type === "text" && !bs[0].text.trim() ? [block] : [...bs, block];
+      });
+      toast.success(`Документ «${file.name}» загружен`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Не удалось прочитать документ");
+    }
+  }
   const [preview, setPreview] = useState(false);
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -286,6 +302,9 @@ function WorkspacePage() {
           <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => setBlocks((bs) => [...bs, newBlock("choice")])}><ListChecks className="size-4 shrink-0" /> Вопрос с вариантами</Button>
           <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => { setAnalogMode("screenshot"); setAnalogKey((k) => k + 1); setAnalogOpen(true); }}><Copy className="size-4 shrink-0" /> Аналог по скриншоту</Button>
           <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => { setAnalogMode("request"); setAnalogKey((k) => k + 1); setAnalogOpen(true); }}><Sparkles className="size-4 shrink-0" /> Задание с чертежом по запросу</Button>
+          <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => wordInputRef.current?.click()}><Upload className="size-4 shrink-0" /> Загрузить Word</Button>
+          <input ref={wordInputRef} type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) void onWordFile(f); e.target.value = ""; }} />
         </aside>}
       <main className="mx-auto min-w-0 w-full max-w-3xl flex-1 space-y-4 p-4 lg:p-6">
         {preview ? (
