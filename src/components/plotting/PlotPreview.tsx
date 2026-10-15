@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, FileJson, Hammer, Sparkles, Upload } from "lucide-react";
+import { Download, FileJson, RotateCcw, Sparkles, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { usePlotStore } from "@/lib/plotting/store";
@@ -14,10 +14,9 @@ export interface PlotPreviewResultProps {
   onBeautifyingChange?: (busy: boolean) => void;
 }
 
-export function PlotPreview({ simplified = false, onBeautifiedImageChange, onBeautifyingChange }: PlotPreviewResultProps & { simplified?: boolean }) {
+export function PlotPreview({ simplified = false, onReset, onBeautifiedImageChange, onBeautifyingChange }: PlotPreviewResultProps & { simplified?: boolean; onReset?: () => void }) {
   const scene = usePlotStore((state) => state.scene);
   const status = usePlotStore((state) => state.status);
-  const buildAll = usePlotStore((state) => state.buildAll);
   const importScene = usePlotStore((state) => state.importScene);
   const fileRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -68,10 +67,6 @@ export function PlotPreview({ simplified = false, onBeautifiedImageChange, onBea
     <Card>
       <CardContent className="space-y-3 p-3">
         {!simplified && <div className="flex flex-wrap gap-2">
-          <Button type="button" size="sm" onClick={buildAll}>
-            <Hammer className="size-4" />
-            Построить всё
-          </Button>
           <Button
             type="button"
             size="sm"
@@ -104,6 +99,10 @@ export function PlotPreview({ simplified = false, onBeautifiedImageChange, onBea
           <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
             <Upload className="size-4" />
             Загрузить JSON
+          </Button>
+          <Button type="button" size="sm" variant="outline" className="ml-auto" onClick={onReset ?? usePlotStore.getState().resetScene}>
+            <RotateCcw className="size-4" />
+            Сбросить
           </Button>
           <input
             ref={fileRef}
