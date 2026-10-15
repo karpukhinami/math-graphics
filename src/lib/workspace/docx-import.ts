@@ -160,7 +160,7 @@ export async function importDocx(file: File | Blob, newId: () => string): Promis
   };
 
   const doc = parser.parseFromString(xml, "application/xml");
-  const body = doc.getElementsByTagNameNS("*", "body")[0];
+  const body = kid(doc.documentElement, "body");
   const lines: string[] = [];
   const handle = (el: Element) => {
     if (el.localName === "p") lines.push(paragraphText(el, embed), "");
