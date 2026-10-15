@@ -276,7 +276,7 @@ export function buildLineScene(line: LineSceneData): LineBuildReport {
   const errors: string[] = [];
   let built = 0;
 
-  current.sets = current.sets.map((set) => {
+  const sets = current.sets.map((set) => {
     if (!set.dirty && set.built?.parts?.length) return set;
     const result = buildSetMath(current, set);
     current = { ...current, points: result.line.points, axisRowCount: result.line.axisRowCount };
@@ -284,6 +284,7 @@ export function buildLineScene(line: LineSceneData): LineBuildReport {
     else built += 1;
     return result.set;
   });
+  current = { ...current, sets };
 
   current.points = current.points.map((point) => {
     if (!point.dirty && point.built) return point;
