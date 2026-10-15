@@ -266,7 +266,7 @@ function WorkspacePage() {
     <div className="flex h-full min-h-0 flex-col bg-muted/30">
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border bg-background px-4 py-3 sm:flex sm:justify-between">
         <div className="min-w-0 truncate text-sm text-muted-foreground">
-          <Link to="/" className="hover:text-foreground">Конструктор графиков</Link>
+          <Link to="/plot" className="hover:text-foreground">Конструктор графиков</Link>
           <span className="mx-2">/</span>
           <span className="text-foreground">{title || "Без названия"}</span>
         </div>
