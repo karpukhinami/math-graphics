@@ -41,6 +41,13 @@ export async function downloadPng(svg: string, filename = "chertezh.png", scale 
   downloadBlob(blob, filename);
 }
 
+/** Скачивает готовое изображение (data URL или blob URL) как PNG. */
+export async function downloadImageSrc(src: string, filename = "kartinka.png") {
+  const response = await fetch(src);
+  const blob = await response.blob();
+  downloadBlob(blob, filename);
+}
+
 export function downloadSceneJson(scene: PlotScene, filename = "scene.json") {
   const payload = sceneToJson(scene);
   downloadBlob(
