@@ -11,6 +11,7 @@ import {
   solvePointMath,
 } from "./scene";
 import { evaluateNumber } from "./math-expr";
+import { pointSourceColor } from "./intersection-targets";
 import { niceStep } from "./ticks";
 import type {
   AxisScaleMode,
@@ -374,17 +375,14 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
       const solutions = solvePointMath(state.scene, draft);
       // Цвет по умолчанию: точка на графике (в т.ч. из опорных точек) берёт цвет
       // своего графика, точка на пересечении — цвет первого выбранного графика.
-      const sourceGraphId =
-        draft.mode === "onGraph" || draft.mode === "anchor" || draft.mode === "intersection"
-          ? draft.graphId
-          : null;
-      const sourceColor = sourceGraphId
-        ? state.scene.graphs.find((graph) => graph.id === sourceGraphId)?.style.color
-        : undefined;
+      const sourceColor = pointSourceColor(state.scene, draft);
       // Каждое найденное решение становится отдельной плашкой точки.
       const created = solutions.map((solution, position) =>
         ({
-          ...createPoint(state.scene.points.length + position + 1, draft, {
+          ...createPoint(state.scene.points.length + position + 1, {
+            ...draft,
+            ...(draft.mode === "intersection" ? { intersectionIndex: position } : {}),
+          }, {
             open: Boolean(solution.style?.open),
             ...(sourceColor ? { color: sourceColor } : {}),
           }),

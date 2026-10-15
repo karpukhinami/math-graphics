@@ -111,7 +111,8 @@ function pointMathJson(math: PointMath, scene: PlotScene): Record<string, unknow
     case "plane":
       return { mode: "plane", x: math.x, y: math.y };
     case "intersection":
-      return { mode: "intersection", graphId: math.graphId, graphIdB: math.graphIdB };
+      return { mode: "intersection", graphId: math.graphId, graphIdB: math.graphIdB,
+        ...(math.intersectionIndex === undefined ? {} : { intersectionIndex: math.intersectionIndex }) };
     case "anchor":
       return { mode: "anchor", graphId: math.graphId, anchorIndex: math.anchorIndex };
     case "onGraph": {

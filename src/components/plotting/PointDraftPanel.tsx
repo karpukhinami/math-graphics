@@ -13,6 +13,7 @@ import { ValueFormula } from "./MathLatex";
 import { usePlotStore } from "@/lib/plotting/store";
 import { sceneAnchorChoices } from "@/lib/plotting/scene";
 import { graphInlineLatex } from "@/lib/plotting/latex";
+import { AXIS_INTERSECTION_TARGETS } from "@/lib/plotting/intersection-targets";
 import type { PointMode } from "@/lib/plotting/types";
 
 /**
@@ -36,7 +37,7 @@ export function PointDraftPanel() {
   const modes: Array<{ value: PointMode; label: string; disabled?: boolean }> = [
     { value: "plane", label: "на плоскости" },
     { value: "onGraph", label: "на графике", disabled: scene.graphs.length === 0 },
-    { value: "intersection", label: "на пересечении", disabled: scene.graphs.length < 2 },
+    { value: "intersection", label: "на пересечении", disabled: !scene.graphs.some((graph) => graph.built) },
     { value: "anchor", label: "выбрать из опорных точек", disabled: anchors.length === 0 },
   ];
 
@@ -54,6 +55,11 @@ export function PointDraftPanel() {
 
   const selectedGraph = scene.graphs.find((graph) => graph.id === draft.graphId);
   const selectedGraphB = scene.graphs.find((graph) => graph.id === draft.graphIdB);
+  const intersectionItems = scene.graphs.filter((graph) => graph.built).map((graph) => (
+    <SelectItem key={graph.id} value={graph.id}>
+      <MathLatex latex={graphInlineLatex(graph, xName, yName)} />
+    </SelectItem>
+  ));
 
   return (
     <div className="space-y-3 rounded-lg border border-primary/40 bg-primary/5 p-3">
@@ -62,7 +68,7 @@ export function PointDraftPanel() {
         <Select
           value={draft.mode}
           onValueChange={(value) =>
-            update({ mode: value as PointMode, graphId: null, graphIdB: null, anchorIndex: null })
+            update({ mode: value as PointMode, graphId: null, graphIdB: null, anchorIndex: null, intersectionIndex: undefined })
           }
         >
           <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
@@ -144,11 +150,20 @@ export function PointDraftPanel() {
                 <SelectTrigger className="bg-background">
                   {current ? (
                     <MathLatex latex={graphInlineLatex(current, xName, yName)} />
+                  ) : AXIS_INTERSECTION_TARGETS.some((axis) => axis.id === draft[key]) ? (
+                    <MathLatex latex={draft[key] === "axis:x=0" ? `${xName}=0` : `${yName}=0`} />
                   ) : (
                     <span className="text-muted-foreground">выберите</span>
                   )}
                 </SelectTrigger>
-                <SelectContent>{graphItems}</SelectContent>
+                <SelectContent>
+                  {intersectionItems}
+                  {AXIS_INTERSECTION_TARGETS.map((axis) => (
+                    <SelectItem key={axis.id} value={axis.id}>
+                      <MathLatex latex={axis.id === "axis:x=0" ? `${xName}=0` : `${yName}=0`} />
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
           ))}

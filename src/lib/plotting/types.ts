@@ -176,6 +176,8 @@ export interface PointMath {
   y: string;
   graphId: string | null;
   graphIdB: string | null;
+  /** Отдельная карточка одного пересечения; отсутствие означает все решения. */
+  intersectionIndex?: number;
   /** Выбранная опорная точка качественного графика. */
   anchorIndex: number | null;
 }
