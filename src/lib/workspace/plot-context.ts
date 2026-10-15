@@ -11,6 +11,10 @@ export function textGenerationSource(text: string, selectionStart: number, selec
   return end > start ? text.slice(start, end) : previousParagraph(text, start);
 }
 
+export function textInsertionPosition(text: string, selectionEnd = text.length): number {
+  return Math.max(0, Math.min(text.length, selectionEnd));
+}
+
 export interface CropRect { x: number; y: number; width: number; height: number }
 export function cropRect(start: { x: number; y: number }, end: { x: number; y: number }): CropRect {
   const clamp = (n: number) => Math.max(0, Math.min(1, n));
