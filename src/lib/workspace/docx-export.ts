@@ -21,7 +21,8 @@ export function latexToOmml(tex: string, display = false): string {
 
 function mathRun(tex: string, display: boolean): ParagraphChild {
   try {
-    return ImportedXmlComponent.fromXmlString(latexToOmml(tex, display)) as unknown as ParagraphChild;
+    const root = ImportedXmlComponent.fromXmlString(latexToOmml(tex, display)) as unknown as { root: ParagraphChild[] };
+    return root.root[0];
   } catch {
     return new TextRun(tex);
   }
