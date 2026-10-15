@@ -140,7 +140,8 @@ export interface GraphStyle {
   width: number | null;
   label: string;
   /** Подпись на графике; отсутствие поля в старом JSON означает none. */
-  labelMode?: "none" | "name" | "equation";
+  labelMode?: "none" | "name" | "equation" | "custom";
+  customLabel?: string;
   visible: boolean;
 }
 
@@ -251,6 +252,7 @@ export interface PlotScene {
 export interface RenderCurve {
   id?: string;
   caption?: string | null;
+  captionLatex?: string | null;
   color: string;
   width: number;
   segments: Polyline[];

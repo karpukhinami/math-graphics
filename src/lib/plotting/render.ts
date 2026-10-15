@@ -8,6 +8,7 @@
  * только внутри математической области.
  */
 import { displayNumber, evaluateNumber, parseValueList } from "./math-expr";
+import { layoutGraphCaption, renderGraphCaption } from "./graph-caption-layout";
 import {
   layoutLabels,
   measureTextWidth,
@@ -588,9 +589,8 @@ function graphLabelAnchors(curve: RenderCurve, geometry: PlotGeometry): Array<[n
   return sampled.sort((a, b) => b[0] - a[0]);
 }
 
-function curveLabelFontSize(curve: RenderCurve, geometry: PlotGeometry, a: PlotAppearance): number {
-  const width = measureTextWidth(curve.caption ?? "", a.pointLabelFontSize);
-  return Math.min(a.pointLabelFontSize, a.pointLabelFontSize * (geometry.right - geometry.left - 24) / Math.max(1, width));
+function curveCaptionLayout(curve: RenderCurve, geometry: PlotGeometry, a: PlotAppearance) {
+  return layoutGraphCaption(curve.caption ?? "", curve.captionLatex, a.pointLabelFontSize, geometry.right - geometry.left - 24);
 }
 
 function layoutPointLabels(
@@ -633,12 +633,12 @@ function layoutPointLabels(
     const anchors = graphLabelAnchors(curve, geometry);
     const first = anchors[0];
     if (!first) continue;
-    const fontSize = curveLabelFontSize(curve, geometry, a);
+    const caption = curveCaptionLayout(curve, geometry, a);
     requests.push({
       id: `graph:${curve.id}`,
       anchorX: first[0], anchorY: first[1], anchors,
-      width: measureTextWidth(curve.caption, fontSize), height: fontSize * 1.12,
-      fontSize, gap: 12 + curve.width / 2,
+      width: caption.width, height: caption.height,
+      fontSize: caption.fontSize, gap: 12 + curve.width / 2,
     });
   }
 
@@ -886,12 +886,8 @@ export function renderPlotSvg(
     if (!curve.caption || !curve.id) continue;
     const placed = placedLabels.get(`graph:${curve.id}`);
     if (!placed) continue;
-    const fontSize = curveLabelFontSize(curve, geometry, a);
-    const attrs = `x="${round(placed.x)}" y="${round(placed.y)}" text-anchor="middle" font-family="${escapeText(a.pointLabelFontFamily)}" font-size="${round(fontSize)}" font-style="italic"`;
-    const caption = escapeText(curve.caption);
-    const backdrop = placed.needsBackdrop
-      ? `<text ${attrs} fill="#FFFFFF" fill-opacity="${BACKDROP_OPACITY}" stroke="#FFFFFF" stroke-opacity="${BACKDROP_OPACITY}" stroke-width="${BACKDROP_STROKE}" paint-order="stroke fill">${caption}</text>` : "";
-    parts.push(`<g data-graph-label="${escapeText(curve.id)}">${backdrop}<text ${attrs} fill="${curve.color}">${caption}</text></g>`);
+    const caption = curveCaptionLayout(curve, geometry, a);
+    parts.push(`<g data-graph-label="${escapeText(curve.id)}">${renderGraphCaption(caption, placed.rect.x, placed.rect.y, curve.color, a.pointLabelFontFamily, placed.needsBackdrop)}</g>`);
   }
 
   const w = round(geometry.canvasWidth);

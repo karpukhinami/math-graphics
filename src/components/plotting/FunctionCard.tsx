@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -148,9 +149,21 @@ export function FunctionCard({ graph }: { graph: SceneGraph }) {
                   <SelectItem value="none">Без подписи</SelectItem>
                   <SelectItem value="name" disabled={!graph.style.label.trim()}>По названию</SelectItem>
                   {(math.kind === "explicit" || math.kind === "implicit") && <SelectItem value="equation">Уравнением</SelectItem>}
+                  <SelectItem value="custom">Своя подпись</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {graph.style.labelMode === "custom" && (
+              <Textarea
+                aria-label="Своя подпись"
+                value={graph.style.customLabel ?? ""}
+                placeholder="Например: Скорость $v(t)$"
+                title="Текст и формулы LaTeX в $…$"
+                onChange={(event) => updateGraphStyle(graph.id, { customLabel: event.target.value })}
+                className="min-h-20"
+              />
+            )}
 
             {math.kind === "explicit" && (
               <MathInput

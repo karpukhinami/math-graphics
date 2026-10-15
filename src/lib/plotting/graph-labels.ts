@@ -1,5 +1,5 @@
 /** Содержимое подписи графика; размещение всегда вычисляется заново. */
-import { parseExpression } from "./math-expr";
+import { equationLatex, expressionLatex, parseExpression } from "./math-expr";
 import type { PlotScene, SceneGraph } from "./types";
 
 const SUPER = "⁰¹²³⁴⁵⁶⁷⁸⁹";
@@ -21,6 +21,7 @@ export function graphCaption(graph: SceneGraph, scene: Pick<PlotScene, "xAxis" |
   const mode = graph.style.labelMode ?? "none";
   const x = scene.xAxis.name.trim() || "x";
   const y = scene.yAxis.name.trim() || "y";
+  if (mode === "custom") return graph.style.customLabel?.trim() || null;
   if (mode === "name") {
     const name = graph.style.label.trim();
     return name ? `${y} = ${name}(${x})` : null;
@@ -36,5 +37,17 @@ export function graphCaption(graph: SceneGraph, scene: Pick<PlotScene, "xAxis" |
   } catch {
     // Незавершённый ввод не должен ломать уже построенный чертёж.
   }
+  return null;
+}
+
+/** Equations retain full LaTeX instead of Unicode approximations used in summaries. */
+export function graphCaptionLatex(graph: SceneGraph, scene: Pick<PlotScene, "xAxis" | "yAxis">): string | null {
+  if (graph.style.labelMode !== "equation") return null;
+  const x = scene.xAxis.name.trim() || "x";
+  const y = scene.yAxis.name.trim() || "y";
+  try {
+    if (graph.math.kind === "explicit") return `${y} = ${expressionLatex(graph.math.expression, [x])}`;
+    if (graph.math.kind === "implicit") return equationLatex(graph.math.equation, [x, y]);
+  } catch { /* Incomplete edits must not break a built graph. */ }
   return null;
 }
