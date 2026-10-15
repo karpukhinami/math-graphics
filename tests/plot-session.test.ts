@@ -48,16 +48,19 @@ describe("изоляция режимов и окон", () => {
     store().startSession();
     expect(store().inputMode).toBe("manual");
     expect(store().spaceTab).toBe("plane");
-    expect(store().scene.line).toBeUndefined();
+    expect(store().scene.line).toBeNull();
     expect(store().scene.graphs).toHaveLength(0);
   });
   test("смена размерности очищает все пространственные черновики", () => {
     store().setSpaceTab("space");
+    store().setSpaceShapeKind("parallelepiped");
+    store().setSpaceBaseInput("ABCD");
+    store().buildSpaceFigure();
     store().startSpacePointDraft();
     expect(store().spacePointDraft).not.toBeNull();
     store().setSpaceTab("plane");
     expect(store().spacePointDraft).toBeNull();
-    expect(store().scene.space3d).toBeUndefined();
+    expect(store().scene.space3d).toBeNull();
   });
   test("нажатие уже выбранного режима не удаляет построения", () => {
     drawGraph();
