@@ -21,7 +21,7 @@ export function captionTokens(text: string, latex?: string | null): CaptionToken
 }
 
 function tokenSize(token: CaptionToken, font: number): { width: number; height: number } {
-  if (!token.math) return { width: measureTextWidth(token.text, font) * 1.15, height: font * 1.4 };
+  if (!token.math) return { width: measureTextWidth(token.text, font) * 1.4, height: font * 1.4 };
   const html = katex.renderToString(token.text, { throwOnError: false, trust: false, output: "html" });
   const struts = [...html.matchAll(/class="strut" style="height:([\d.]+)em/g)].map((match) => Number(match[1]));
   const visible = token.text.replace(/\\(?:frac|dfrac|tfrac)\{([^{}]*)\}\{([^{}]*)\}/g, (_m, a: string, b: string) => a.length > b.length ? a : b)
