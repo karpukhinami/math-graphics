@@ -11,6 +11,11 @@ function equalScene(xMin: string, xMax: string, yMin: string, yMax: string) {
 }
 
 describe("equal-scale geometry", () => {
+  test("новая ручная плоскость подписывает 0 и первое деление по обеим осям", () => {
+    const scene = createScene();
+    expect(scene.xAxis.markRule).toBe("zeroAndFirst");
+    expect(scene.yAxis.markRule).toBe("zeroAndFirst");
+  });
   test("a tall chart keeps the configured canvas and is centered, not stretched", () => {
     const scene = equalScene("-0.5", "1.5", "-0.5", "2.8");
     const g = resolveGeometry(scene)!;
