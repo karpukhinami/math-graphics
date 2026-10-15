@@ -1,11 +1,47 @@
 import { describe, expect, test } from "bun:test";
-import { graphCaption } from "../src/lib/plotting/graph-labels";
+import { graphCaption, graphCaptionLatex } from "../src/lib/plotting/graph-labels";
+import { captionTokens, layoutGraphCaption } from "../src/lib/plotting/graph-caption-layout";
 import { layoutLabels } from "../src/lib/plotting/label-layout";
 import { buildScene, createGraph, createScene, sceneCurves, scenePoints } from "../src/lib/plotting/scene";
 import { sceneFromJson, sceneToJson } from "../src/lib/plotting/scene-json";
 import { renderPlotSvg } from "../src/lib/plotting/render";
 
 describe("graph caption rules", () => {
+  test("equation captions use original fractional LaTeX and current variables", () => {
+    const scene = createScene(); scene.xAxis.name = "t"; scene.yAxis.name = "s";
+    const graph = createGraph(1); graph.style.labelMode = "equation"; graph.math.expression = "t/2";
+    expect(graphCaptionLatex(graph, scene)).toContain("\\frac");
+    expect(graphCaptionLatex(graph, scene)).toContain("s =");
+    graph.math.kind = "implicit"; graph.math.equation = "s=t/2";
+    expect(graphCaptionLatex(graph, scene)).toContain("\\frac");
+    graph.math.kind = "qualitative";
+    expect(graphCaptionLatex(graph, scene)).toBeNull();
+  });
+  test("custom captions keep mixed text and math through compact and legacy JSON", () => {
+    const scene = createScene(); const graph = createGraph(1);
+    graph.style.labelMode = "custom"; graph.style.customLabel = "Скорость $v = \\frac{t}{2}$";
+    graph.math.expression = "x"; scene.graphs = [graph];
+    for (const json of [sceneToJson(scene), scene]) {
+      const loaded = sceneFromJson(json);
+      expect(graphCaption(loaded.graphs[0], loaded)).toBe("Скорость $v = \\frac{t}{2}$");
+    }
+    expect(captionTokens(graph.style.customLabel)).toEqual([{ text: "Скорость " }, { text: "v = \\frac{t}{2}", math: true }]);
+  });
+  test("custom text wraps whole words to fit the plot without shrinking ordinary text", () => {
+    const caption = layoutGraphCaption("Скорость движения автомобиля", null, 20, 180);
+    expect(caption.lines.length).toBeGreaterThan(1);
+    expect(caption.fontSize).toBe(20);
+    expect(caption.lines.every((line) => line.width <= 180)).toBe(true);
+    expect(caption.lines.map((line) => line.tokens.map((token) => token.text).join("")).join(" ").replace(/\s+/g, " ").trim()).toBe("Скорость движения автомобиля");
+  });
+  test("a long unbroken word and a formula still fit the available width", () => {
+    const word = layoutGraphCaption("Сверхдлиннаянеразрывнаяподпись", null, 20, 80);
+    expect(word.lines.length).toBeGreaterThan(1);
+    expect(word.lines.every((line) => line.width <= 80)).toBe(true);
+    const formula = layoutGraphCaption("", "x+x+x+x+x+x+x+x", 20, 80);
+    expect(formula.width).toBeLessThanOrEqual(80);
+    expect(formula.fontSize).toBeLessThan(20);
+  });
   test("name mode uses the real name and current axis variables", () => {
     const scene = createScene();
     scene.xAxis.name = "t"; scene.yAxis.name = "s";

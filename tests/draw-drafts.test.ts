@@ -21,6 +21,21 @@ const planeDraft = {
 };
 
 describe("plane draft → scene", () => {
+  test("AI drafts retain every supported graph caption mode", () => {
+    const { scene, errors } = expandPlaneDraft({
+      axes: planeDraft.axes,
+      graphs: [
+        { id: "g1", type: "explicit", expression: "x", labelMode: "equation" },
+        { id: "g2", type: "points", connect: "segments", through: [{ x: "0", y: "0" }, { x: "1", y: "2" }], labelMode: "custom", customLabel: "Путь $s(t)$" },
+        { id: "g3", type: "explicit", expression: "x^2", labelMode: "name", label: "f" },
+      ], points: [],
+    });
+    expect(errors).toEqual([]);
+    const result = mergeAiScene(scene);
+    expect(result.graphs.map((graph) => graph.style.labelMode)).toEqual(["equation", "custom", "name"]);
+    expect(result.graphs[1].style.customLabel).toBe("Путь $s(t)$");
+    expect(result.graphs[2].style.label).toBe("f");
+  });
   test("аналог сохраняет квадратичную функцию и прямую через начало координат как формулы", () => {
     const { scene, errors } = expandPlaneDraft({
       axes: { xMin: "-2", xMax: "4", yMin: "-3", yMax: "3" },

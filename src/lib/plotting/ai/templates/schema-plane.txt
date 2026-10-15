@@ -53,7 +53,9 @@ grid.visible — показывать ли сетку.
   "style": {
     "colorGroup": number,   // 1–6, см. COLOR_GROUPS_RULES
     "width": null | number,
-    "label": string,
+    "label": string,
+    "labelMode"?: "none" | "name" | "equation" | "custom",
+    "customLabel"?: string,
     "visible": true
   }
 }

@@ -5,7 +5,7 @@ import { resolveGeometry } from "./render";
 import { DEFAULT_APPEARANCE, nextId, PLOT_PALETTE, PLOT_PALETTE_GROUPS } from "./shared";
 import { createSpaceSceneData } from "./space/scene";
 import { intersectGraphs, pointsOnGraphAtX } from "./solve";
-import { graphCaption } from "./graph-labels";
+import { graphCaption, graphCaptionLatex } from "./graph-labels";
 import type {
   AxisSpec,
   GraphKind,
@@ -431,6 +431,7 @@ export function sceneCurves(scene: PlotScene): RenderCurve[] {
     return [{
       id: graph.id,
       caption: graphCaption(graph, scene),
+      captionLatex: graphCaptionLatex(graph, scene),
       color: graph.style.color,
       width: graph.style.width ?? scene.appearance.graphWidth,
       segments: graph.built.segments,
