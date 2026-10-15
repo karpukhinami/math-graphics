@@ -7,6 +7,7 @@ import { createSpaceSceneData } from "./space/scene";
 import { intersectGraphs, pointsOnGraphAtX } from "./solve";
 import { graphCaption, graphCaptionLatex } from "./graph-labels";
 import { intersectionAxisGraph, pointSourceColor } from "./intersection-targets";
+import { axisIntersections } from "./axis-intersections";
 import type {
   AxisSpec,
   GraphKind,
@@ -369,7 +370,11 @@ export function buildPoint(point: ScenePoint, scene: PlotScene, bounds: PlotBoun
   const firstBuilt = firstAxis ?? first?.built;
   const secondBuilt = secondAxis ?? second?.built;
   if (!firstBuilt || !secondBuilt) throw new Error("Оба графика должны быть построены.");
-  const allHits = intersectGraphs(firstBuilt, secondBuilt).filter((hit) => inside(hit.x, hit.y));
+  const axis = firstAxis ? point.math.graphId : secondAxis ? point.math.graphIdB : null;
+  const graph = firstAxis ? second : first;
+  const exactAxisHits = axis && graph ? axisIntersections(graph.math, axis,
+    { x: scene.xAxis.name.trim() || "x", y: scene.yAxis.name.trim() || "y" }, bounds) : null;
+  const allHits = (exactAxisHits ?? intersectGraphs(firstBuilt, secondBuilt)).filter((hit) => inside(hit.x, hit.y));
   const hits = point.math.intersectionIndex === undefined
     ? allHits
     : allHits.filter((_hit, index) => index === point.math.intersectionIndex);
