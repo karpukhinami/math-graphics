@@ -1,5 +1,5 @@
 /** Меню вставки картинки: файл или чертёж (ИИ / ручной конструктор). Встраиваемая точка входа. */
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { ImagePlus, Upload, Wand2, ScanLine, PencilRuler } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +25,8 @@ export function PlotInsertMenu({
   context?: "text" | "task";
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+  const pointerOpening = useRef(false);
   return (
     <>
       <input
@@ -41,14 +43,25 @@ export function PlotInsertMenu({
           reader.readAsDataURL(file);
         }}
       />
-      <DropdownMenu>
+      <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
         <DropdownMenuTrigger asChild>
-          <Button type="button" variant="ghost" size={size === "icon" ? "icon" : "sm"} title="Вставить изображение">
+          <Button type="button" variant="ghost" size={size === "icon" ? "icon" : "sm"} title="Вставить изображение"
+            onPointerDown={(event) => {
+              if (event.button !== 0 || event.ctrlKey) return;
+              // Open without moving focus away from the selected source text.
+              pointerOpening.current = true;
+              event.preventDefault();
+              setOpen((value) => !value);
+            }}
+            onKeyDown={() => { pointerOpening.current = false; }}>
             <ImagePlus className="size-4" />
             {size !== "icon" && "Картинка"}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-72">
+        <DropdownMenuContent align="start" className="w-72"
+          onOpenAutoFocus={(event) => {
+            if (pointerOpening.current) event.preventDefault();
+          }}>
           <DropdownMenuItem onSelect={() => fileRef.current?.click()}>
             <Upload className="size-4" /> Загрузить из файла
           </DropdownMenuItem>
