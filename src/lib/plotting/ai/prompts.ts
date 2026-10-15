@@ -1,6 +1,7 @@
 /** Сборка промптов режима ИИ-рисования из отдельных файлов. */
 import sharedSourceRules from "@/lib/plotting/ai/templates/shared-source-rules.txt?raw";
 import analysisPrecisionRules from "@/lib/plotting/ai/templates/analysis-precision-rules.txt?raw";
+import analysisStructureRules from "@/lib/plotting/ai/templates/analysis-structure-rules.txt?raw";
 import mathNotationRules from "@/lib/plotting/ai/templates/math-notation-rules.txt?raw";
 import lineFractionRules from "@/lib/plotting/ai/templates/line-fraction-rules.txt?raw";
 import analyzeDraw from "@/lib/plotting/ai/templates/analyze-draw.txt?raw";
@@ -57,9 +58,14 @@ export const techDraftLine = techDraftLineRaw
 
 function withTechBlocks(template: string): string {
   return template
-    .replaceAll("{{TECH_PLAN_RULES}}", techPlanRules)
+    .replaceAll("{{TECH_PLAN_RULES}}", techPlanRules.replaceAll("{{ANALYSIS_STRUCTURE_RULES}}", analysisStructureRules))
     .replaceAll("{{TECH_DRAFT_PLANE}}", techDraftPlane)
     .replaceAll("{{TECH_DRAFT_LINE}}", techDraftLine);
+}
+
+function withAnalysisRules(prompt: string): string {
+  const structured = prompt.includes(analysisStructureRules) ? prompt : prompt + "\n\n" + analysisStructureRules;
+  return structured + "\n\n" + analysisPrecisionRules;
 }
 
 function injectShared(template: string, sourceText: string): string {
@@ -76,9 +82,9 @@ export function buildAnalyzePrompt(opts: {
   if (scenario === "task") {
     const refinements = opts.userRefinements?.trim() || "(нет)";
     const source = sourceText.trim() || "(текста задания нет)";
-    return (withTechBlocks(taskAnalyze)
+    return withAnalysisRules(withTechBlocks(taskAnalyze)
       .replaceAll("{{SOURCE_TEXT}}", () => source)
-      .replaceAll("{{USER_REFINEMENTS}}", () => refinements)) + "\n\n" + lineFractionRules + "\n\n" + analysisPrecisionRules;
+      .replaceAll("{{USER_REFINEMENTS}}", () => refinements) + "\n\n" + lineFractionRules);
   }
   let template: string;
   switch (scenario) {
@@ -95,7 +101,7 @@ export function buildAnalyzePrompt(opts: {
       template = analyzeAnalog;
       break;
   }
-  return injectShared(template, sourceText) + "\n\n" + analysisPrecisionRules;
+  return withAnalysisRules(injectShared(template, sourceText));
 }
 
 export function buildGeneratePrompt(opts: {
@@ -179,7 +185,7 @@ ${validationErrors.map((e) => `- ${e}`).join("\n")}
 
 export function analysisSchemaHint(scenario: PlotAiScenario = "draw"): string {
   if (scenario === "draw" || scenario === "task") {
-    return `JSON с полями: reasoning (string — рассуждения), canDraw (boolean), sceneType ("plane"|"line"|"space" если canDraw), drawPlan (string — явный вывод, что именно построить, если canDraw), stageData (object, заполняется только для "space").`;
+    return `JSON с полями: reasoning (string — подробный анализ по единой структуре), canDraw (boolean), sceneType ("plane"|"line"|"space" если canDraw), drawPlan (string — самодостаточный перечень построений по той же структуре, если canDraw), stageData (object, заполняется только для "space").`;
   }
   return `JSON с полями: canDraw (boolean), sceneType ("plane"|"line"|"space" если canDraw), analysisText (string), stageData (object).`;
 }
@@ -197,14 +203,14 @@ export function generateSchemaHint(scenario: PlotAiScenario, sceneType?: PlotSce
 /** «Аналог по скриншоту», этап 1: распознавание и шаблон аналога (без конкретных чисел). */
 export function buildAnalogTaskAnalyzePrompt(userRefinements: string): string {
   const refinements = userRefinements.trim() || "(нет)";
-  return withTechBlocks(analogTaskAnalyze).replaceAll("{{USER_REFINEMENTS}}", () => refinements) +
-    "\n\n" + lineFractionRules + "\n\n" + analysisPrecisionRules;
+  return withAnalysisRules(withTechBlocks(analogTaskAnalyze).replaceAll("{{USER_REFINEMENTS}}", () => refinements) +
+    "\n\n" + lineFractionRules);
 }
 
 /** «Задание по запросу», этап 1: идея и шаблон по свободному описанию (дальше — как у аналога). */
 export function buildRequestTaskAnalyzePrompt(request: string): string {
-  return withTechBlocks(requestTaskAnalyze).replaceAll("{{USER_REQUEST}}", () => request.trim() || "(пусто)") +
-    "\n\n" + lineFractionRules + "\n\n" + analysisPrecisionRules;
+  return withAnalysisRules(withTechBlocks(requestTaskAnalyze).replaceAll("{{USER_REQUEST}}", () => request.trim() || "(пусто)") +
+    "\n\n" + lineFractionRules);
 }
 
 /** «Аналог по скриншоту», этап 2: N конкретных вариантов с планами чертежей по шаблону. */
@@ -226,7 +232,7 @@ export function buildAnalogTaskVariantsPrompt(opts: {
   const figs = opts.figures.length
     ? opts.figures.map((f) => `- ${f.id}: ${f.placement === "option" ? `в варианте ответа №${(f.optionIndex ?? 0) + 1}` : "в тексте"} — ${f.role}`).join("\n")
     : "(чертежей нет)";
-  return withTechBlocks(analogTaskVariants)
+  return withAnalysisRules(withTechBlocks(analogTaskVariants)
     .replaceAll("{{COUNT}}", String(opts.count))
     .replaceAll("{{TASK_TYPE}}", opts.taskType)
     .replaceAll("{{SCENE_TYPE}}", opts.sceneType ?? "—")
@@ -236,7 +242,7 @@ export function buildAnalogTaskVariantsPrompt(opts: {
     .replaceAll("{{TEMPLATE}}", () => JSON.stringify(opts.template, null, 2))
     .replaceAll("{{FIGURES}}", () => figs)
     .replaceAll("{{USER_REFINEMENTS}}", () => opts.userRefinements.trim() || "(нет)") +
-    (opts.sceneType === "line" ? "\n\n" + lineFractionRules : "") + "\n\n" + analysisPrecisionRules;
+    (opts.sceneType === "line" ? "\n\n" + lineFractionRules : ""));
 }
 
 /** «Аналог по скриншоту», этап 3: все однотипные чертежи одного варианта одним запросом. */

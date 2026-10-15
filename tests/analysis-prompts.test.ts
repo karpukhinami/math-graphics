@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import precisionRules from "../src/lib/plotting/ai/templates/analysis-precision-rules.txt?raw";
+import structureRules from "../src/lib/plotting/ai/templates/analysis-structure-rules.txt?raw";
 import {
   buildAnalyzePrompt,
   buildAnalogTaskAnalyzePrompt,
@@ -25,6 +26,31 @@ const analysisPrompts = () => [
 const paragraphs = precisionRules.trim().split("\n");
 
 describe("общие математические правила анализа", () => {
+  test("каждый сценарий анализа получает одну общую структуру подробного перечня построений", () => {
+    const sections = ["РАЗМЕРНОСТЬ:", "ПОСТРОИТЬ:", "ПОДПИСАТЬ:", "ОСИ:", "ОФОРМЛЕНИЕ:", "ОГРАНИЧЕНИЯ:"];
+    let previousIndex = -1;
+    for (const section of sections) {
+      const index = structureRules.indexOf(section);
+      expect(index).toBeGreaterThan(previousIndex);
+      previousIndex = index;
+    }
+    for (const prompt of analysisPrompts()) {
+      expect(prompt.split(structureRules)).toHaveLength(2);
+      expect(prompt).not.toMatch(/\{\{[A-Z_]+\}\}/);
+      expect(prompt).not.toContain("все рассуждения и решение (Markdown + LaTeX)");
+      expect(prompt).not.toContain("краткие ответы на вопросы 1–7");
+    }
+  });
+
+  test("общая структура сохраняет зависимости, видимость и параметрические шаблоны", () => {
+    for (const prompt of analysisPrompts()) {
+      expect(prompt).toContain("Вычисляемые координаты зависимых точек в drawPlan НЕ дублируй");
+      expect(prompt).toContain("НЕ придумывай конкретные числа будущих вариантов");
+      expect(prompt).toContain("не добавляй поля");
+      expect(prompt).toContain("каждый конкретный drawPlan относится только к своему чертежу");
+    }
+  });
+
   test("распознавание семейства и формула прежде интерполяции во всех сценариях", () => {
     const rules = paragraphs.slice(1, 4);
     expect(rules).toHaveLength(3);
