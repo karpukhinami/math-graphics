@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, FileJson, RotateCcw, Sparkles, Upload } from "lucide-react";
+import { ChevronDown, Download, FileJson, RotateCcw, Sparkles, Upload } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { usePlotStore } from "@/lib/plotting/store";
@@ -95,16 +101,36 @@ export function PlotPreview({
               <Download className="size-4" />
               SVG
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={!svg}
-              onClick={() => svg && downloadPng(svg)}
-            >
-              <Download className="size-4" />
-              PNG
-            </Button>
+            {beautifiedImage ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" size="sm" variant="outline" disabled={!svg}>
+                    <Download className="size-4" />
+                    PNG
+                    <ChevronDown className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => svg && downloadPng(svg)}>
+                    Скачать чертёж
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => downloadImageSrc(beautifiedImage)}>
+                    Скачать картинку
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={!svg}
+                onClick={() => svg && downloadPng(svg)}
+              >
+                <Download className="size-4" />
+                PNG
+              </Button>
+            )}
             <Button
               type="button"
               size="sm"
