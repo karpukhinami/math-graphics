@@ -21,6 +21,7 @@ import type { PlotScene } from "@/lib/plotting/types";
 import { textGenerationSource, withoutPlotImages } from "@/lib/workspace/plot-context";
 import { AnalogTaskDialog, type AnalogTaskResult } from "@/components/workspace/AnalogTaskDialog";
 import { buildAnalogBlock } from "@/lib/workspace/analog-block";
+import { plotInsertionImages, insertPlotImageTokens } from "@/lib/workspace/plot-insertion";
 
 export const Route = createFileRoute("/workspace")({
   head: () => ({
@@ -139,6 +140,26 @@ function WorkspacePage() {
     else insertToken(t.blockId, id, t.position);
   }
 
+  function placePlotImages(t: PlotTarget, imgs: TaskImage[]) {
+    const ids = imgs.map((_, i) => i === 0 && t.imageId ? t.imageId : uid());
+    setImages((m) => ({ ...m, ...Object.fromEntries(ids.map((id, i) => [id, imgs[i]])) }));
+    setBlocks((bs) => bs.map((b) => {
+      if (b.id !== t.blockId) return b;
+      const optionId = t.optionId ?? b.options.find((o) => o.imageId === t.imageId)?.id;
+      if (optionId) {
+        return { ...b, options: b.options.map((o) => o.id !== optionId ? o : {
+          ...o, imageId: ids[0], text: insertPlotImageTokens(o.text, ids.slice(1)),
+        }) };
+      }
+      if (t.imageId) {
+        const token = `![Чертёж](plot:${t.imageId})`;
+        const position = b.text.indexOf(token);
+        return { ...b, text: insertPlotImageTokens(b.text, ids.slice(1), position < 0 ? b.text.length : position + token.length) };
+      }
+      return { ...b, text: insertPlotImageTokens(b.text, ids, t.position) };
+    }));
+  }
+
   function wrapSelection(blockId: string, left: string, right = left) {
     const el = textRefs.current[blockId];
     const b = blocks.find((x) => x.id === blockId);
@@ -177,11 +198,12 @@ function WorkspacePage() {
 
   function onInsert(r: PlotInsertResult) {
     if (!target) return;
+    const insertedImages = plotInsertionImages(r.src, r.scene, r.beautifiedSrc);
     if (target.newTask) {
       const block = newBlock("input");
-      const imageId = uid();
-      block.text = `${r.newTaskText ?? ""}\n![Чертёж](plot:${imageId})\n`;
-      setImages((m) => ({ ...m, [imageId]: { src: r.src, scene: r.scene } }));
+      const ids = insertedImages.map(() => uid());
+      block.text = insertPlotImageTokens(r.newTaskText ?? "", ids);
+      setImages((m) => ({ ...m, ...Object.fromEntries(ids.map((id, i) => [id, insertedImages[i]])) }));
       setBlocks((bs) => [...bs, block]);
       return;
     }
@@ -192,8 +214,8 @@ function WorkspacePage() {
         const tokens = b.text.match(IMG_RE) ?? [];
         return { ...b, text: [r.text, ...tokens].join("\n") };
       }));
-      placeImage({ ...target, position: Number.MAX_SAFE_INTEGER }, { src: r.src, scene: r.scene });
-    } else placeImage(target, { src: r.src, scene: r.scene });
+      placePlotImages({ ...target, position: Number.MAX_SAFE_INTEGER }, insertedImages);
+    } else placePlotImages(target, insertedImages);
   }
 
   function imagesOf(text: string) {
@@ -267,10 +289,10 @@ function WorkspacePage() {
                         <label key={o.id} className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] cursor-pointer items-start gap-2 rounded-md border border-border p-2">
                           <Checkbox className="mt-1 shrink-0" aria-label={`Выбрать вариант ${block.options.indexOf(o) + 1}`} />
                           <div className="min-w-0 space-y-1">
-                            <RichView text={o.text} images={images} />
                             {o.imageId && images[o.imageId] && (
                               <img src={images[o.imageId].src} alt="Вариант" className="block h-auto w-full rounded border border-border" />
                             )}
+                            <RichView text={o.text} images={images} />
                           </div>
                         </label>
                       ))}
@@ -356,6 +378,10 @@ function WorkspacePage() {
                             <ImageThumb blockId={block.id} imageId={o.imageId}
                               onRemove={() => patchOption(block.id, o.id, { imageId: undefined })} />
                           )}
+                          {imagesOf(o.text).map((id) => (
+                            <ImageThumb key={id} blockId={block.id} imageId={id}
+                              onRemove={() => patchOption(block.id, o.id, { text: o.text.replace(new RegExp(`\\n?!\\[[^\\]]*\\]\\(plot:${id}\\)\\n?`, "g"), "") })} />
+                          ))}
                         </div>
                       ))}
                       </div>

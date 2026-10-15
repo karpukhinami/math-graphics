@@ -16,6 +16,7 @@ export interface PlotInsertResult {
   scene: PlotScene;
   text?: string;
   newTaskText?: string;
+  beautifiedSrc?: string;
 }
 
 export function PlotEditorDialog({
@@ -33,6 +34,8 @@ export function PlotEditorDialog({
 }) {
   const [resultReady, setResultReady] = useState(false);
   const [inserting, setInserting] = useState(false);
+  const [beautifiedSrc, setBeautifiedSrc] = useState<string | null>(null);
+  const [beautifying, setBeautifying] = useState(false);
   const [text, setText] = useState(aiInitial?.initialText ?? "");
   const [newTaskText, setNewTaskText] = useState<string>();
   const isAi = usePlotStore((s) => s.inputMode === "ai");
@@ -40,6 +43,7 @@ export function PlotEditorDialog({
   const scene = usePlotStore((s) => s.scene);
 
   async function insert() {
+    if (beautifying) return;
     if (!svg || (isAi && !resultReady)) {
       toast.error("Сначала постройте чертёж");
       return;
@@ -52,6 +56,7 @@ export function PlotEditorDialog({
       scene: structuredClone(scene),
       text: aiInitial?.initialScenario === "task" ? text : undefined,
       newTaskText,
+      beautifiedSrc: beautifiedSrc ?? undefined,
     });
     onOpenChange(false);
     } catch (error) {
@@ -69,6 +74,8 @@ export function PlotEditorDialog({
           key={sessionKey}
           simplified
           resultReady={resultReady}
+          onBeautifiedImageChange={setBeautifiedSrc}
+          onBeautifyingChange={setBeautifying}
           aiInitial={{ ...aiInitial, onBuiltChange: setResultReady, onTextChange: setText, onAnalogText: setNewTaskText }}
           title={<h2 className="text-lg font-semibold">Чертёж</h2>}
         />
@@ -76,7 +83,7 @@ export function PlotEditorDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Отмена
           </Button>
-          <Button onClick={insert} disabled={inserting || !svg || (isAi && !resultReady)}>
+          <Button onClick={insert} disabled={inserting || beautifying || !svg || (isAi && !resultReady)}>
             <Check className="size-4" /> {inserting ? "Подготовка…" : "Вставить чертёж"}
           </Button>
         </div>

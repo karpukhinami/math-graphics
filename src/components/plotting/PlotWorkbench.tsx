@@ -6,7 +6,7 @@ import { useState, type ReactNode } from "react";
 import { Layers, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlotPreview } from "@/components/plotting/PlotPreview";
+import { PlotPreview, type PlotPreviewResultProps } from "@/components/plotting/PlotPreview";
 import { PlotManualPanel } from "@/components/plotting/PlotManualPanel";
 import { PlotAiPanel, type PlotAiPanelProps } from "@/components/plotting/ai/PlotAiPanel";
 import { SpaceFaceDepthDebugDialog } from "@/components/plotting/space/SpaceFaceDepthDebugDialog";
@@ -14,7 +14,7 @@ import { usePlotStore } from "@/lib/plotting/store";
 import { buildSpaceFaceDepthReport } from "@/lib/plotting/space/space-face-depth-report";
 import type { SpaceFaceDepthReport } from "@/lib/plotting/space/space-face-depth-report";
 
-export function PlotWorkbench({ aiInitial, title, simplified = false, resultReady = false }: { aiInitial?: PlotAiPanelProps; title?: ReactNode; simplified?: boolean; resultReady?: boolean }) {
+export function PlotWorkbench({ aiInitial, title, simplified = false, resultReady = false, onBeautifiedImageChange, onBeautifyingChange }: PlotPreviewResultProps & { aiInitial?: PlotAiPanelProps; title?: ReactNode; simplified?: boolean; resultReady?: boolean }) {
   const inputMode = usePlotStore((state) => state.inputMode);
   const setInputMode = usePlotStore((state) => state.setInputMode);
   const spaceTab = usePlotStore((state) => state.spaceTab);
@@ -83,7 +83,7 @@ export function PlotWorkbench({ aiInitial, title, simplified = false, resultRead
           {isAi ? <PlotAiPanel key={aiSessionKey} {...aiInitial} simplified={simplified} /> : <PlotManualPanel />}
         </div>
         {(!simplified || !isAi || resultReady) && <div className="min-h-0 overflow-y-auto lg:pl-1">
-          <PlotPreview simplified={simplified} />
+          <PlotPreview simplified={simplified} onBeautifiedImageChange={onBeautifiedImageChange} onBeautifyingChange={onBeautifyingChange} />
         </div>}
       </div>
       <SpaceFaceDepthDebugDialog open={faceDepthOpen} onOpenChange={setFaceDepthOpen} report={faceDepthReport} />

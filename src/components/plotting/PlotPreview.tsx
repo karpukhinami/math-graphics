@@ -9,7 +9,12 @@ import { downloadPng, downloadSceneJson, downloadSvg, readSceneJson } from "@/li
 import { PlotBeautifyDialog } from "@/components/plotting/PlotBeautifyDialog";
 import { toast } from "sonner";
 
-export function PlotPreview({ simplified = false }: { simplified?: boolean }) {
+export interface PlotPreviewResultProps {
+  onBeautifiedImageChange?: (src: string | null) => void;
+  onBeautifyingChange?: (busy: boolean) => void;
+}
+
+export function PlotPreview({ simplified = false, onBeautifiedImageChange, onBeautifyingChange }: PlotPreviewResultProps & { simplified?: boolean }) {
   const scene = usePlotStore((state) => state.scene);
   const status = usePlotStore((state) => state.status);
   const buildAll = usePlotStore((state) => state.buildAll);
@@ -21,13 +26,20 @@ export function PlotPreview({ simplified = false }: { simplified?: boolean }) {
 
   const [beautifyOpen, setBeautifyOpen] = useState(false);
   const [beautifying, setBeautifying] = useState(false);
-  const [beautifiedImage, setBeautifiedImage] = useState<string | null>(null);
+  const [beautifiedResult, setBeautifiedResult] = useState<{ src: string; svg: string } | null>(null);
 
   const svg = usePlotSvg();
+  const svgRef = useRef(svg);
+  svgRef.current = svg;
+  const beautifiedImage = beautifiedResult?.svg === svg ? beautifiedResult.src : null;
 
   useEffect(() => {
-    setBeautifiedImage(null);
-  }, [svg]);
+    onBeautifiedImageChange?.(beautifiedImage);
+  }, [beautifiedImage, onBeautifiedImageChange]);
+
+  useEffect(() => {
+    onBeautifyingChange?.(beautifying);
+  }, [beautifying, onBeautifyingChange]);
 
   async function onBeautifyDraw(wishes: string) {
     const container = previewRef.current;
@@ -38,7 +50,8 @@ export function PlotPreview({ simplified = false }: { simplified?: boolean }) {
     setBeautifying(true);
     try {
       const dataUrl = await generatePlotBeautifiedImage({ previewEl: container, userWishes: wishes });
-      setBeautifiedImage(dataUrl);
+      if (svgRef.current !== svg) return;
+      setBeautifiedResult({ src: dataUrl, svg });
       setBeautifyOpen(false);
       toast.success("Дорисованная версия готова");
     } catch (error) {
