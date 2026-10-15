@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { usePlotStore } from "@/lib/plotting/store";
 import { sceneToSvg, usePlotSvg } from "@/lib/plotting/use-plot-svg";
 import { generatePlotBeautifiedImage } from "@/lib/plotting/beautify";
-import { downloadPng, downloadSceneJson, downloadSvg, readSceneJson } from "@/lib/plotting/export";
+import { downloadImageSrc, downloadPng, downloadSceneJson, downloadSvg, readSceneJson } from "@/lib/plotting/export";
 import { PlotBeautifyDialog } from "@/components/plotting/PlotBeautifyDialog";
 import { toast } from "sonner";
 
