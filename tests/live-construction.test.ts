@@ -6,7 +6,12 @@ const store = () => usePlotStore.getState();
 const vertices = () => store().scene.graphs[0]?.built?.segments.flat() ?? [];
 
 beforeEach(() => {
-  usePlotStore.setState({ scene: createScene(), spaceTab: "plane", inputMode: "manual", status: null });
+  usePlotStore.setState({
+    scene: createScene(),
+    spaceTab: "plane",
+    inputMode: "manual",
+    status: null,
+  });
 });
 
 describe("автоматическое перестроение ввода", () => {
@@ -14,7 +19,9 @@ describe("автоматическое перестроение ввода", () 
     const graph = createGraph(1);
     graph.math.expression = "x";
     const point = createPoint(1, { mode: "onGraph", graphId: graph.id, x: "1" });
-    usePlotStore.setState({ scene: buildScene({ ...createScene(), graphs: [graph], points: [point] }).scene });
+    usePlotStore.setState({
+      scene: buildScene({ ...createScene(), graphs: [graph], points: [point] }).scene,
+    });
     store().updateGraphMath(graph.id, { expression: "2*x" });
     expect(store().scene.points[0].built?.[0].y).toBeCloseTo(2, 6);
     expect(store().scene.graphs[0].dirty).toBe(false);
@@ -50,14 +57,22 @@ describe("автоматическое перестроение ввода", () 
   test("границы множества и связанные точки обновляются вместе", () => {
     store().setSpaceTab("line");
     store().startSetDraft();
-    store().updateSetDraftMath({ kind: "interval", left: "-2", right: "2", leftOp: "<", rightOp: "<" });
+    store().updateSetDraftMath({
+      kind: "interval",
+      left: "-2",
+      right: "2",
+      leftOp: "<",
+      rightOp: "<",
+    });
     store().commitSetDraft();
     const set = store().scene.line?.sets[0];
     expect(set).toBeDefined();
     if (!set) throw new Error("Множество не создано");
     store().updateSetMath(set.id, { right: "3" });
     expect(store().scene.line?.sets[0].built?.parts[0].right).toBe(3);
-    expect(store().scene.line?.points.some((point) => point.locked && point.built?.x === 3)).toBe(true);
+    expect(store().scene.line?.points.some((point) => point.locked && point.built?.x === 3)).toBe(
+      true,
+    );
   });
 
   test("изменение координаты самостоятельной точки на прямой применяется сразу", () => {

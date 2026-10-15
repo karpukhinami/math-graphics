@@ -31,9 +31,12 @@ function PlottingPage() {
       <div className="mx-auto flex min-h-0 w-full max-w-[1400px] flex-1 flex-col p-4 lg:p-6">
         <PlotWorkbench
           title={
-              <Button asChild variant="outline" size="sm">
-                <Link to="/"><Home className="size-4" />На главную</Link>
-              </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/">
+                <Home className="size-4" />
+                На главную
+              </Link>
+            </Button>
           }
         />
       </div>

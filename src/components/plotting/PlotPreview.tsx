@@ -14,7 +14,12 @@ export interface PlotPreviewResultProps {
   onBeautifyingChange?: (busy: boolean) => void;
 }
 
-export function PlotPreview({ simplified = false, onReset, onBeautifiedImageChange, onBeautifyingChange }: PlotPreviewResultProps & { simplified?: boolean; onReset?: () => void }) {
+export function PlotPreview({
+  simplified = false,
+  onReset,
+  onBeautifiedImageChange,
+  onBeautifyingChange,
+}: PlotPreviewResultProps & { simplified?: boolean; onReset?: () => void }) {
   const scene = usePlotStore((state) => state.scene);
   const status = usePlotStore((state) => state.status);
   const importScene = usePlotStore((state) => state.importScene);
@@ -25,7 +30,9 @@ export function PlotPreview({ simplified = false, onReset, onBeautifiedImageChan
 
   const [beautifyOpen, setBeautifyOpen] = useState(false);
   const [beautifying, setBeautifying] = useState(false);
-  const [beautifiedResult, setBeautifiedResult] = useState<{ src: string; svg: string } | null>(null);
+  const [beautifiedResult, setBeautifiedResult] = useState<{ src: string; svg: string } | null>(
+    null,
+  );
 
   const svg = usePlotSvg();
   // Temporary point drafts are not changes to the inserted construction.
@@ -50,7 +57,10 @@ export function PlotPreview({ simplified = false, onReset, onBeautifiedImageChan
     }
     setBeautifying(true);
     try {
-      const dataUrl = await generatePlotBeautifiedImage({ previewEl: container, userWishes: wishes });
+      const dataUrl = await generatePlotBeautifiedImage({
+        previewEl: container,
+        userWishes: wishes,
+      });
       if (svgRef.current !== committedSvg) return;
       setBeautifiedResult({ src: dataUrl, svg: committedSvg });
       onBeautifiedImageChange?.(dataUrl);
@@ -66,69 +76,85 @@ export function PlotPreview({ simplified = false, onReset, onBeautifiedImageChan
   return (
     <Card>
       <CardContent className="space-y-3 p-3">
-        {!simplified && <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={!svg}
-            onClick={() => svg && downloadSvg(svg)}
-          >
-            <Download className="size-4" />
-            SVG
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={!svg}
-            onClick={() => svg && downloadPng(svg)}
-          >
-            <Download className="size-4" />
-            PNG
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => downloadSceneJson(scene)}
-          >
-            <FileJson className="size-4" />
-            Сохранить JSON
-          </Button>
-          <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-            <Upload className="size-4" />
-            Загрузить JSON
-          </Button>
-          <Button type="button" size="sm" variant="outline" className="ml-auto" onClick={onReset ?? usePlotStore.getState().resetScene}>
-            <RotateCcw className="size-4" />
-            Сбросить
-          </Button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/json"
-            className="hidden"
-            onChange={async (event) => {
-              const file = event.target.files?.[0];
-              event.target.value = "";
-              if (!file) return;
-              try {
-                importScene(await readSceneJson(file));
-                toast.success("Чертёж загружен");
-              } catch (error) {
-                toast.error(error instanceof Error ? error.message : "Не удалось прочитать файл");
-              }
-            }}
-          />
-        </div>}
+        {!simplified && (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={!svg}
+              onClick={() => svg && downloadSvg(svg)}
+            >
+              <Download className="size-4" />
+              SVG
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={!svg}
+              onClick={() => svg && downloadPng(svg)}
+            >
+              <Download className="size-4" />
+              PNG
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => downloadSceneJson(scene)}
+            >
+              <FileJson className="size-4" />
+              Сохранить JSON
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => fileRef.current?.click()}
+            >
+              <Upload className="size-4" />
+              Загрузить JSON
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="ml-auto"
+              onClick={onReset ?? usePlotStore.getState().resetScene}
+            >
+              <RotateCcw className="size-4" />
+              Сбросить
+            </Button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (!file) return;
+                try {
+                  importScene(await readSceneJson(file));
+                  toast.success("Чертёж загружен");
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "Не удалось прочитать файл");
+                }
+              }}
+            />
+          </div>
+        )}
 
         <div
           ref={previewRef}
           className="overflow-auto rounded-md border border-border bg-background p-2"
         >
           {svg ? (
-            <div className="[&>svg]:h-auto [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+            <div
+              className="[&>svg]:h-auto [&>svg]:w-full"
+              dangerouslySetInnerHTML={{ __html: svg }}
+            />
           ) : (
             <p className="p-8 text-center text-sm text-muted-foreground">
               {spaceTab === "line"

@@ -174,7 +174,10 @@ interface PlotStore {
   buildLinePointItem: (id: string) => void;
   removeLinePoint: (id: string) => void;
   updateAxis: (axis: "xAxis" | "yAxis", patch: Partial<AxisSpec>) => void;
-  updateAxisScale: (patch: { axisScaleMode?: AxisScaleMode; plotAspectRatio?: PlotAspectRatio }) => void;
+  updateAxisScale: (patch: {
+    axisScaleMode?: AxisScaleMode;
+    plotAspectRatio?: PlotAspectRatio;
+  }) => void;
   updateGrid: (patch: Partial<GridSpec>) => void;
   updateAppearance: (patch: Partial<PlotAppearance>) => void;
   resetAppearance: () => void;
@@ -233,7 +236,6 @@ interface PlotStore {
   removeSpacePlane: (id: string) => void;
 }
 
-
 function patchSpaceData(
   state: PlotStore,
   updater: (data: SpaceSceneData) => SpaceSceneData,
@@ -246,7 +248,10 @@ function patchSpaceData(
 function applySpaceBuild(scene: PlotScene): { scene: PlotScene; status: BuildStatus } {
   const data = scene.space3d;
   if (!data) {
-    return { scene, status: { built: 0, errors: ["Пространственная сцена не инициализирована."], at: Date.now() } };
+    return {
+      scene,
+      status: { built: 0, errors: ["Пространственная сцена не инициализирована."], at: Date.now() },
+    };
   }
   const report = buildSpaceSceneData(data);
   return {
@@ -260,10 +265,16 @@ function rebuildPlotScene(scene: PlotScene): { scene: PlotScene; status: BuildSt
   if (scene.space === "space") return applySpaceBuild(scene);
   if (scene.space === "line" && scene.line) {
     const report = buildLineScene(scene.line);
-    return { scene: { ...scene, line: report.line }, status: { built: report.built, errors: report.errors, at: Date.now() } };
+    return {
+      scene: { ...scene, line: report.line },
+      status: { built: report.built, errors: report.errors, at: Date.now() },
+    };
   }
   const report = buildScene(scene);
-  return { scene: report.scene, status: { built: report.built, errors: report.errors, at: Date.now() } };
+  return {
+    scene: report.scene,
+    status: { built: report.built, errors: report.errors, at: Date.now() },
+  };
 }
 
 function withSpaceData(
@@ -340,7 +351,9 @@ function commitImportedScene(
   const report = buildScene(scene);
   // Заготовки решений (подписи/видимость по номеру) не должны рисоваться, если точка не построилась.
   const points = report.scene.points.map((point) =>
-    point.error && point.built?.some((solution) => solution.displayX === "") ? { ...point, built: null } : point,
+    point.error && point.built?.some((solution) => solution.displayX === "")
+      ? { ...point, built: null }
+      : point,
   );
   set({
     scene: { ...report.scene, points },
@@ -389,19 +402,24 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
       // своего графика, точка на пересечении — цвет первого выбранного графика.
       const sourceColor = pointSourceColor(state.scene, draft);
       // Каждое найденное решение становится отдельной плашкой точки.
-      const created = solutions.map((solution, position) =>
-        ({
-          ...createPoint(state.scene.points.length + position + 1, {
-            ...draft,
-            ...(draft.mode === "intersection" ? { intersectionIndex: position } : {}),
-          }, {
-            open: Boolean(solution.style?.open),
-            ...(sourceColor ? { color: sourceColor } : {}),
-          }),
-          built: [{ ...solution, show: true, style: undefined }],
-          dirty: false,
-          error: null,
-        }) as ScenePoint,
+      const created = solutions.map(
+        (solution, position) =>
+          ({
+            ...createPoint(
+              state.scene.points.length + position + 1,
+              {
+                ...draft,
+                ...(draft.mode === "intersection" ? { intersectionIndex: position } : {}),
+              },
+              {
+                open: Boolean(solution.style?.open),
+                ...(sourceColor ? { color: sourceColor } : {}),
+              },
+            ),
+            built: [{ ...solution, show: true, style: undefined }],
+            dirty: false,
+            error: null,
+          }) as ScenePoint,
       );
 
       set({
@@ -413,7 +431,6 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
       set({ pointDraftError: (error as Error).message });
     }
   },
-
 
   setInputMode: (inputMode) => set({ inputMode }),
 
@@ -474,11 +491,10 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
   updateLineAxis: (patch) =>
     set((state) => {
       if (!state.scene.line) return state;
-      return rebuildPlotScene( {
-          ...state.scene,
-          line: { ...state.scene.line, axis: { ...state.scene.line.axis, ...patch } },
-        }
-      );
+      return rebuildPlotScene({
+        ...state.scene,
+        line: { ...state.scene.line, axis: { ...state.scene.line.axis, ...patch } },
+      });
     }),
 
   updateLineTicks: (patch) =>
@@ -552,18 +568,17 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
   updateSetMath: (id, patch) =>
     set((state) => {
       if (!state.scene.line) return state;
-      return rebuildPlotScene( {
-          ...state.scene,
-          line: {
-            ...state.scene.line,
-            sets: state.scene.line.sets.map((set) =>
-              set.id === id
-                ? { ...set, math: { ...set.math, ...patch }, dirty: true, error: null }
-                : set,
-            ),
-          },
-        }
-      );
+      return rebuildPlotScene({
+        ...state.scene,
+        line: {
+          ...state.scene.line,
+          sets: state.scene.line.sets.map((set) =>
+            set.id === id
+              ? { ...set, math: { ...set.math, ...patch }, dirty: true, error: null }
+              : set,
+          ),
+        },
+      });
     }),
 
   updateSetStyle: (id, patch) =>
@@ -600,7 +615,11 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
         line: { ...result.line, sets },
       },
       status: result.set.error
-        ? { built: 0, errors: [`Множество ${targetSet.index}: ${result.set.error}`], at: Date.now() }
+        ? {
+            built: 0,
+            errors: [`Множество ${targetSet.index}: ${result.set.error}`],
+            at: Date.now(),
+          }
         : { built: 1, errors: [], at: Date.now() },
     });
   },
@@ -682,18 +701,17 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
   updateLinePointMath: (id, patch) =>
     set((state) => {
       if (!state.scene.line) return state;
-      return rebuildPlotScene( {
-          ...state.scene,
-          line: {
-            ...state.scene.line,
-            points: state.scene.line.points.map((point) =>
-              point.id === id && !point.locked
-                ? { ...point, math: { ...point.math, ...patch }, dirty: true, error: null }
-                : point,
-            ),
-          },
-        }
-      );
+      return rebuildPlotScene({
+        ...state.scene,
+        line: {
+          ...state.scene.line,
+          points: state.scene.line.points.map((point) =>
+            point.id === id && !point.locked
+              ? { ...point, math: { ...point.math, ...patch }, dirty: true, error: null }
+              : point,
+          ),
+        },
+      });
     }),
 
   updateLinePointStyle: (id, patch) =>
@@ -712,7 +730,9 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
       const point = points.find((p) => p.id === id);
       if (point && patch.open !== undefined && point.locked) {
         line = syncSetFromBoundaryPoint({ ...line, points }, point, patch.open);
-        points = line.points.map((p) => (p.id === id ? { ...p, style: { ...p.style, open: patch.open! } } : p));
+        points = line.points.map((p) =>
+          p.id === id ? { ...p, style: { ...p.style, open: patch.open! } } : p,
+        );
       }
       return { scene: { ...state.scene, line: { ...line, points } } };
     }),
@@ -761,9 +781,7 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
           ...state.scene,
           line: {
             ...state.scene.line,
-            points: reindex(
-              state.scene.line.points.filter((p) => p.id !== id),
-            ) as SceneLinePoint[],
+            points: reindex(state.scene.line.points.filter((p) => p.id !== id)) as SceneLinePoint[],
           },
         },
       };
@@ -820,7 +838,9 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
       scene: {
         ...state.scene,
         appearance: {
-          ...(state.scene.space === "line" ? createLineScene().appearance : createScene().appearance),
+          ...(state.scene.space === "line"
+            ? createLineScene().appearance
+            : createScene().appearance),
         },
       },
     })),
@@ -834,24 +854,29 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
     })),
 
   updateGraphMath: (id, patch) =>
-    set((state) => rebuildPlotScene( {
+    set((state) =>
+      rebuildPlotScene({
         ...state.scene,
         graphs: state.scene.graphs.map((graph) =>
           graph.id === id
             ? { ...graph, math: { ...graph.math, ...patch }, dirty: true, error: null }
             : graph,
         ),
-      }
-    )),
+      }),
+    ),
 
   removeGraphAnchor: (id, index) =>
-    set((state) => rebuildPlotScene( {
+    set((state) =>
+      rebuildPlotScene({
         ...state.scene,
         graphs: state.scene.graphs.map((graph) =>
           graph.id === id
             ? {
                 ...graph,
-                math: { ...graph.math, anchors: graph.math.anchors.filter((_item, position) => position !== index) },
+                math: {
+                  ...graph.math,
+                  anchors: graph.math.anchors.filter((_item, position) => position !== index),
+                },
                 dirty: true,
                 error: null,
               }
@@ -863,8 +888,8 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
           const anchorIndex = ref === index ? null : ref - 1;
           return { ...point, math: { ...point.math, anchorIndex }, dirty: true };
         }),
-      }
-    )),
+      }),
+    ),
 
   updateGraphStyle: (id, patch) =>
     set((state) => ({
@@ -877,7 +902,8 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
     })),
 
   removeGraph: (id) =>
-    set((state) => rebuildPlotScene( {
+    set((state) =>
+      rebuildPlotScene({
         ...state.scene,
         graphs: reindex(state.scene.graphs.filter((graph) => graph.id !== id)) as SceneGraph[],
         points: state.scene.points.map((point) =>
@@ -893,22 +919,20 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
               }
             : point,
         ),
-      }
-    )),
-
-
-
+      }),
+    ),
 
   updatePointMath: (id, patch) =>
-    set((state) => rebuildPlotScene( {
+    set((state) =>
+      rebuildPlotScene({
         ...state.scene,
         points: state.scene.points.map((point) =>
           point.id === id
             ? { ...point, math: { ...point.math, ...patch }, dirty: true, error: null }
             : point,
         ),
-      }
-    )),
+      }),
+    ),
 
   updatePointStyle: (id, patch) =>
     set((state) => ({
@@ -973,12 +997,18 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
 
   buildGraph: (id) => {
     const report = buildScene(get().scene, { graphId: id });
-    set({ scene: report.scene, status: { built: report.built, errors: report.errors, at: Date.now() } });
+    set({
+      scene: report.scene,
+      status: { built: report.built, errors: report.errors, at: Date.now() },
+    });
   },
 
   buildPoint: (id) => {
     const report = buildScene(get().scene, { pointId: id });
-    set({ scene: report.scene, status: { built: report.built, errors: report.errors, at: Date.now() } });
+    set({
+      scene: report.scene,
+      status: { built: report.built, errors: report.errors, at: Date.now() },
+    });
   },
 
   commitInputs: () => {
@@ -1002,7 +1032,10 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
       return;
     }
     const report = buildScene(scene);
-    set({ scene: report.scene, status: { built: report.built, errors: report.errors, at: Date.now() } });
+    set({
+      scene: report.scene,
+      status: { built: report.built, errors: report.errors, at: Date.now() },
+    });
   },
 
   importScene: (raw) => {
@@ -1135,7 +1168,8 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
     if (!data?.figure) return;
     const verts = data.figure.vertices;
     const firstLineId = data.figure.edges[0]?.id ?? data.lines.find((line) => line.built)?.id ?? "";
-    const firstPlaneId = data.figure.faces[0]?.id ?? data.planes.find((plane) => plane.built)?.id ?? "";
+    const firstPlaneId =
+      data.figure.faces[0]?.id ?? data.planes.find((plane) => plane.built)?.id ?? "";
     const firstDerivedId = derivedPointChoices(data)[0]?.id ?? "";
     set({
       spacePointDraft: {
@@ -1160,7 +1194,9 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
 
   updateSpacePointDraft: (patch) =>
     set((state) => ({
-      spacePointDraft: state.spacePointDraft ? { ...state.spacePointDraft, ...patch } : state.spacePointDraft,
+      spacePointDraft: state.spacePointDraft
+        ? { ...state.spacePointDraft, ...patch }
+        : state.spacePointDraft,
       spacePointDraftError: null,
     })),
 
@@ -1209,18 +1245,18 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
             lineParam: draft.lineParam,
           } satisfies PointOnLineDefinition)
         : draft.mode === "onFace"
-          ? ({
-            kind: "onFace" as const,
-            faceId: draft.faceId,
-            placement: draft.placement,
-            faceU: 0.35,
-            faceV: 0.35,
-          })
-          : ({
+          ? {
+              kind: "onFace" as const,
+              faceId: draft.faceId,
+              placement: draft.placement,
+              faceU: 0.35,
+              faceV: 0.35,
+            }
+          : {
               kind: "linePlaneIntersection" as const,
               lineId: draft.lineId,
               planeId: draft.planeId,
-            });
+            };
 
     let lines = data.lines;
     if (definition.kind === "onLine") {
@@ -1340,7 +1376,9 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
 
   updateSpaceLineDraft: (patch) =>
     set((state) => ({
-      spaceLineDraft: state.spaceLineDraft ? { ...state.spaceLineDraft, ...patch } : state.spaceLineDraft,
+      spaceLineDraft: state.spaceLineDraft
+        ? { ...state.spaceLineDraft, ...patch }
+        : state.spaceLineDraft,
       spaceLineDraftError: null,
     })),
 
@@ -1363,9 +1401,10 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
       set({ spaceLineDraftError: "Выберите две различные плоскости." });
       return;
     }
-    const derivedChoice = draft.kind === "fromConstruction"
-      ? derivedLineChoices(data).find((item) => item.id === draft.derivedId)
-      : null;
+    const derivedChoice =
+      draft.kind === "fromConstruction"
+        ? derivedLineChoices(data).find((item) => item.id === draft.derivedId)
+        : null;
     if (draft.kind === "fromConstruction" && !derivedChoice) {
       set({ spaceLineDraftError: "Это построение больше недоступно." });
       return;
@@ -1391,10 +1430,17 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
       if (line.definition.kind === "planeIntersection") {
         const pairKey = [line.definition.planeAId, line.definition.planeBId].sort().join(":");
         const pairPoints = points
-          .filter((point) => point.definition.kind === "planeIntersectionBoundary"
-            && [point.definition.planeAId, point.definition.planeBId].sort().join(":") === pairKey)
+          .filter(
+            (point) =>
+              point.definition.kind === "planeIntersectionBoundary" &&
+              [point.definition.planeAId, point.definition.planeBId].sort().join(":") === pairKey,
+          )
           .sort((a, b) => {
-            if (a.definition.kind !== "planeIntersectionBoundary" || b.definition.kind !== "planeIntersectionBoundary") return 0;
+            if (
+              a.definition.kind !== "planeIntersectionBoundary" ||
+              b.definition.kind !== "planeIntersectionBoundary"
+            )
+              return 0;
             return a.definition.endpoint - b.definition.endpoint;
           });
         line.definition = {
@@ -1425,7 +1471,9 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
       ...state.scene,
       space3d: {
         ...data,
-        lines: data.lines.map((l) => (l.id === id ? { ...l, built: true, dirty: true, label: "" } : l)),
+        lines: data.lines.map((l) =>
+          l.id === id ? { ...l, built: true, dirty: true, label: "" } : l,
+        ),
       },
     });
     set({ scene: result.scene, status: result.status });
@@ -1444,7 +1492,9 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
       withSpaceData(state, (data) => ({
         ...data,
         lines: data.lines.map((l) =>
-          l.id === id ? { ...l, style: { ...l.style, ...patch }, dirty: patch.visualKind ? true : l.dirty } : l,
+          l.id === id
+            ? { ...l, style: { ...l.style, ...patch }, dirty: patch.visualKind ? true : l.dirty }
+            : l,
         ),
       })),
     ),
@@ -1477,7 +1527,11 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
   updateSpacePlaneDraft: (patch) =>
     set((state) => ({
       spacePlaneDraft: state.spacePlaneDraft
-        ? { ...state.spacePlaneDraft, ...patch, definition: patch.definition ?? state.spacePlaneDraft.definition }
+        ? {
+            ...state.spacePlaneDraft,
+            ...patch,
+            definition: patch.definition ?? state.spacePlaneDraft.definition,
+          }
         : state.spacePlaneDraft,
       spacePlaneDraftError: null,
     })),
@@ -1556,4 +1610,3 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
       })),
     ),
 }));
-
