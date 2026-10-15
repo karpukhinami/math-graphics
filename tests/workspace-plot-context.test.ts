@@ -1,7 +1,18 @@
 import { describe, expect, test } from "bun:test";
-import { previousParagraph, withoutPlotImages, cropRect } from "../src/lib/workspace/plot-context";
+import { previousParagraph, textGenerationSource, withoutPlotImages, cropRect } from "../src/lib/workspace/plot-context";
 
 describe("workspace plot context", () => {
+  test("text generation uses all selected text across paragraph boundaries without trimming", () => {
+    const selected = " $y=x^2$\n\nТочка A при x=2. ";
+    const text = "До выделения\n\n" + selected + "\n\nПосле выделения";
+    const start = text.indexOf(selected);
+    expect(textGenerationSource(text, start, start + selected.length)).toBe(selected);
+  });
+  test("text generation without selection uses the previous paragraph", () => {
+    const text = "Первый абзац\n\nПостройте $y=x^2$.\n\nСледующий абзац";
+    const cursor = text.indexOf("Следующий");
+    expect(textGenerationSource(text, cursor, cursor)).toBe("Постройте $y=x^2$.");
+  });
   test("takes the preceding paragraph, not the whole text block", () => {
     const text = "Первый абзац\n\nПостройте $y=x^2$.\n\nСледующий абзац";
     expect(previousParagraph(text, text.indexOf("Следующий"))).toBe("Постройте $y=x^2$.");
