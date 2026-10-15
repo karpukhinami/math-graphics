@@ -56,7 +56,7 @@ describe("автоматическое перестроение ввода", () 
     expect(set).toBeDefined();
     if (!set) throw new Error("Множество не создано");
     store().updateSetMath(set.id, { right: "3" });
-    expect(store().scene.line?.sets[0].built?.parts[0].to).toBe(3);
+    expect(store().scene.line?.sets[0].built?.parts[0].right).toBe(3);
     expect(store().scene.line?.points.some((point) => point.locked && point.built?.x === 3)).toBe(true);
   });
 
