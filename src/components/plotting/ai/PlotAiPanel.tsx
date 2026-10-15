@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, Sparkles, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,13 @@ export interface PlotAiPanelProps {
 
 export function PlotAiPanel({ initialText, initialScenario, initialRefinements, simplified = false, textLabel = "Текст задания", onTextChange, onBuiltChange, onAnalogText }: PlotAiPanelProps = {}) {
   const importAiScene = usePlotStore((s) => s.importAiScene);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+  const isCurrentSession = (version: number) =>
+    mounted.current && usePlotStore.getState().sessionVersion === version;
 
   const source = usePlotSourceState(initialText ?? "");
   const [model, setModel] = useState(initialScenario === "reproduce" ? DEFAULT_REPRODUCE_MODEL : DEFAULT_TEXT_MODEL);
@@ -67,6 +74,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
     setAnalogTaskText(null);
     setSceneBuilt(false);
     setEditOpen(false);
+    const version = usePlotStore.getState().sessionVersion;
     try {
       const result = await analyzePlotMaterial({
         model,
@@ -76,6 +84,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
         attachedImages,
         userRefinements: scenario === "task" || scenario === "reproduce" ? userRefinements : undefined,
       });
+      if (!isCurrentSession(version)) return;
       setAnalysis(result);
       if (!result.canDraw) {
         toast.message("Построение недоступно", {
@@ -83,9 +92,10 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
         });
       }
     } catch (e) {
+      if (!isCurrentSession(version)) return;
       toast.error(e instanceof Error ? e.message : "Ошибка анализа");
     } finally {
-      setAnalyzing(false);
+      if (isCurrentSession(version)) setAnalyzing(false);
     }
   }
 
@@ -93,6 +103,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
     if (!analysis?.canDraw || !analysis.sceneType) return;
     setDrawing(true);
     setSceneBuilt(false);
+    const version = usePlotStore.getState().sessionVersion;
     try {
       const result = await generatePlotScene({
         model,
@@ -103,6 +114,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
         analysis,
         userRefinements,
       });
+      if (!isCurrentSession(version)) return;
       importAiScene(result.scene);
       setSceneBuilt(true);
       if ("newTaskText" in result && result.newTaskText) {
@@ -111,9 +123,10 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
       }
       toast.success("Чертёж построен");
     } catch (e) {
+      if (!isCurrentSession(version)) return;
       toast.error(e instanceof Error ? e.message : "Не удалось построить чертёж");
     } finally {
-      setDrawing(false);
+      if (isCurrentSession(version)) setDrawing(false);
     }
   }
 
@@ -121,6 +134,9 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
     <div className="space-y-4">
       {!simplified && <Tabs value={scenario} onValueChange={(value) => {
         if (value !== "task" && value !== "reproduce") return;
+        if (value === scenario) return;
+        usePlotStore.getState().resetScene();
+        onBuiltChange?.(false);
         setScenario(value);
         setModel(value === "reproduce" ? DEFAULT_REPRODUCE_MODEL : DEFAULT_TEXT_MODEL);
         source.setManualText("");
