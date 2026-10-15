@@ -6,6 +6,13 @@ import { mergeAiScene } from "../src/lib/plotting/ai/merge-scene";
 import { sceneToJson, sceneFromJson } from "../src/lib/plotting/scene-json";
 
 describe("точные дроби на прямой", () => {
+  test("новая ручная прямая подписывает ноль и следующее деление с шагом 1", () => {
+    const line = createLineScene().line;
+    expect(line.axis.majorStep).toBe("1");
+    expect(line.ticks.majorVisible).toBe(true);
+    expect(line.ticks.majorLabelMode).toBe("givenTwo");
+    expect(line.ticks.majorLabelAnchor).toBe("0");
+  });
   test("дробный шаг даёт точные подписи засечек без ограничения знаменателя", () => {
     const line = createLineScene().line;
     line.axis.min = "-1/37";

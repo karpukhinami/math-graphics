@@ -24,6 +24,7 @@ export function PlotWorkbench({ aiInitial, title, simplified = false, resultRead
   const space3d = scene.space3d;
 
   const [aiSessionKey, setAiSessionKey] = useState(0);
+  const [aiResultReady, setAiResultReady] = useState(false);
   const [faceDepthOpen, setFaceDepthOpen] = useState(false);
   const [faceDepthReport, setFaceDepthReport] = useState<SpaceFaceDepthReport | null>(null);
 
@@ -32,6 +33,7 @@ export function PlotWorkbench({ aiInitial, title, simplified = false, resultRead
 
   function handleReset() {
     resetScene();
+    setAiResultReady(false);
     if (isAi) setAiSessionKey((key) => key + 1);
   }
 
@@ -50,7 +52,7 @@ export function PlotWorkbench({ aiInitial, title, simplified = false, resultRead
             type="button"
             variant="outline"
             size="sm"
-            disabled={!canFaceDepthDebug}
+            disabled={!canFaceDepthDebug || (isAi && !aiResultReady)}
             title={canFaceDepthDebug ? "Снимок глубин граней многогранника" : "Доступно на вкладке «Пространство» с построенным телом"}
             onClick={() => {
               if (!space3d) return;
@@ -80,9 +82,10 @@ export function PlotWorkbench({ aiInitial, title, simplified = false, resultRead
 
       <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto lg:grid-cols-2 lg:overflow-hidden">
         <div className="min-h-0 space-y-4 overflow-y-auto lg:pr-2">
-          {isAi ? <PlotAiPanel key={aiSessionKey} {...aiInitial} simplified={simplified} /> : <PlotManualPanel />}
+          {isAi ? <PlotAiPanel key={aiSessionKey} {...aiInitial} simplified={simplified}
+            onBuiltChange={(built) => { setAiResultReady(built); aiInitial?.onBuiltChange?.(built); }} /> : <PlotManualPanel />}
         </div>
-        {(!simplified || !isAi || resultReady) && <div className="min-h-0 overflow-y-auto lg:pl-1">
+        {(!isAi || (simplified ? resultReady : aiResultReady)) && <div className="min-h-0 overflow-y-auto lg:pl-1">
           <PlotPreview simplified={simplified} onBeautifiedImageChange={onBeautifiedImageChange} onBeautifyingChange={onBeautifyingChange} />
         </div>}
       </div>
