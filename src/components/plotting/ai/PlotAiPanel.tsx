@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Sparkles, Pencil } from "lucide-react";
+import { ChevronDown, Loader2, Sparkles, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,11 +54,18 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
   const [drawing, setDrawing] = useState(false);
   const [sceneBuilt, setSceneBuilt] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [sourceOpen, setSourceOpen] = useState(true);
 
   const { manualText, attachedImages } = source;
   useEffect(() => { onTextChange?.(manualText); }, [manualText, onTextChange]);
   useEffect(() => { onBuiltChange?.(sceneBuilt); }, [sceneBuilt, onBuiltChange]);
-  function invalidate() { setAnalysis(null); setSceneBuilt(false); setAnalogTaskText(null); }
+  function invalidate() {
+    setAnalysis(null);
+    setSceneBuilt(false);
+    setAnalogTaskText(null);
+    setSourceOpen(true);
+    setEditOpen(false);
+  }
 
   const hasSource =
     hasSourceMaterials(manualText, source.state.uploadedSourceText, attachedImages) ||
@@ -74,6 +81,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
     setAnalogTaskText(null);
     setSceneBuilt(false);
     setEditOpen(false);
+    setSourceOpen(true);
     const version = usePlotStore.getState().sessionVersion;
     try {
       const result = await analyzePlotMaterial({
@@ -117,6 +125,8 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
       if (!isCurrentSession(version)) return;
       importAiScene(result.scene);
       setSceneBuilt(true);
+      setSourceOpen(false);
+      setEditOpen(true);
       if ("newTaskText" in result && result.newTaskText) {
         setAnalogTaskText(result.newTaskText);
         onAnalogText?.(result.newTaskText);
@@ -151,6 +161,16 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
         </TabsList>
       </Tabs>}
 
+      <Collapsible open={sourceOpen} onOpenChange={setSourceOpen}>
+        {sceneBuilt && (
+          <CollapsibleTrigger asChild>
+            <Button type="button" variant="outline" className="w-full justify-between">
+              Исходные данные и анализ
+              <ChevronDown className={cn("size-4", sourceOpen && "rotate-180")} />
+            </Button>
+          </CollapsibleTrigger>
+        )}
+        <CollapsibleContent className={cn("space-y-4", sceneBuilt && "pt-4")}>
       {
         <fieldset disabled={analyzing || drawing} className="space-y-4">
           {scenario === "draw" || scenario === "task" ? <>
@@ -251,13 +271,15 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
           </CardContent>
         </Card>
       )}
+        </CollapsibleContent>
+      </Collapsible>
 
       {sceneBuilt && (
         <Collapsible open={editOpen} onOpenChange={setEditOpen}>
           <CollapsibleTrigger asChild>
             <Button type="button" variant="outline" className="w-full justify-between">
               Редактировать изображение
-              <span className={cn("text-xs text-muted-foreground", editOpen && "rotate-180")}>▼</span>
+              <ChevronDown className={cn("size-4", editOpen && "rotate-180")} />
             </Button>
           </CollapsibleTrigger>
           <CollapsibleContent className="pt-4">
