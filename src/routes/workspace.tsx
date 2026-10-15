@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import { Bold, Eye, Italic, Pencil, Plus, Copy, FileText, Home, ListChecks, TextCursorInput, Download, Upload, Sigma, Trash2, X, Rows3, Columns3, Grid2X2, Sparkles } from "lucide-react";
+import { Bold, Eye, Italic, Minus, Pencil, Plus, Copy, FileText, Home, ListChecks, TextCursorInput, Download, Upload, Sigma, Trash2, X, Rows3, Columns3, Grid2X2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -255,13 +255,29 @@ function WorkspacePage() {
     return [...text.matchAll(IMG_RE)].map((m) => m[1]).filter((id) => images[id]);
   }
 
-  function ImageThumb({ blockId, imageId, onRemove }: { blockId: string; imageId: string; onRemove: () => void }) {
+  function ImageThumb({ blockId, imageId, onRemove, widthPct, onWidthChange }: {
+    blockId: string; imageId: string; onRemove: () => void;
+    widthPct?: number; onWidthChange?: (pct: number) => void;
+  }) {
     const img = images[imageId];
     if (!img) return null;
+    const resizable = widthPct !== undefined && onWidthChange !== undefined;
+    const step = (delta: number) => onWidthChange?.(Math.min(100, Math.max(20, widthPct! + delta)));
     return (
       <div className="group relative mx-auto w-fit min-w-0 max-w-full rounded-md border border-border bg-card p-1">
-        <img src={img.src} alt="Чертёж" className="block h-auto w-auto max-w-full" style={{ width: "min(24rem, 100%)" }} />
+        <img src={img.src} alt="Чертёж" className="block h-auto w-auto max-w-full"
+          style={{ width: resizable ? `${widthPct}%` : "min(24rem, 100%)" }} />
         <div className="absolute right-1 top-1 flex gap-1 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+          {resizable && (
+            <>
+              <Button size="icon" variant="secondary" className="size-7" title="Уменьшить" onClick={() => step(-10)}>
+                <Minus className="size-3.5" />
+              </Button>
+              <Button size="icon" variant="secondary" className="size-7" title="Увеличить" onClick={() => step(10)}>
+                <Plus className="size-3.5" />
+              </Button>
+            </>
+          )}
           {img.scene && (
             <Button size="icon" variant="secondary" className="size-7" title="Редактировать чертёж"
               onClick={() => openPlot({ blockId, imageId }, "manual", img.scene)}>
