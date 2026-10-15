@@ -36,6 +36,22 @@ describe("plane draft → scene", () => {
     expect(result.graphs[1].style.customLabel).toBe("Путь $s(t)$");
     expect(result.graphs[2].style.label).toBe("f");
   });
+  test("график на промежутке: domain из черновика ограничивает линию и попадает в сцену", () => {
+    const { scene, errors } = expandPlaneDraft({
+      axes: { xMin: "-1", xMax: "6", yMin: "-1", yMax: "4" },
+      graphs: [{ id: "g1", type: "explicit", expression: "sqrt(x)", domain: { from: "0", to: "4" } }],
+      points: [{ type: "onGraph", graph: "g1", x: "4", label: "A", open: true }],
+    });
+    expect(errors).toEqual([]);
+    const s = scene as Record<string, any>;
+    expect(s.graphs[0].math.domainFrom).toBe("0");
+    expect(s.graphs[0].math.domainTo).toBe("4");
+    const built = buildScene(mergeAiScene(scene)).scene;
+    const xs = built.graphs[0].built!.segments.flat().map(([x]) => x);
+    expect(Math.min(...xs)).toBeCloseTo(0, 6);
+    expect(Math.max(...xs)).toBeCloseTo(4, 6);
+    expect(scenePoints(built).map((p) => [p.x, p.open])).toEqual([[4, true]]);
+  });
   test("аналог сохраняет квадратичную функцию и прямую через начало координат как формулы", () => {
     const { scene, errors } = expandPlaneDraft({
       axes: { xMin: "-2", xMax: "4", yMin: "-3", yMax: "3" },
