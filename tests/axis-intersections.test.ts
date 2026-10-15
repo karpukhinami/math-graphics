@@ -31,6 +31,20 @@ describe("пересечения с осями", () => {
     expect(found).toHaveLength(3);
     [-1.123, 0.123, 2.123].forEach((x, i) => expect(found[i].x).toBeCloseTo(x, 7));
   });
+  test("точка касания остаётся связанной при перестроении и загрузке", () => {
+    const graph = createGraph(1);
+    graph.math.expression = "(x-0.123)^2";
+    const scene = buildScene({ ...createScene(), graphs: [graph] }).scene;
+    usePlotStore.setState({ scene, pointDraft: { ...createPoint(1).math, mode: "intersection", graphId: graph.id, graphIdB: "axis:y=0" } });
+    usePlotStore.getState().commitPointDraft();
+    usePlotStore.getState().updateGraphMath(graph.id, { expression: "(x-1.123)^2" });
+    usePlotStore.getState().buildGraph(graph.id);
+    const rebuilt = usePlotStore.getState().scene;
+    expect(rebuilt.points).toHaveLength(1);
+    expect(rebuilt.points[0].built?.[0].x).toBeCloseTo(1.123, 8);
+    const restored = buildScene(sceneFromJson(sceneToJson(rebuilt))).scene;
+    expect(restored.points[0].built).toEqual(rebuilt.points[0].built);
+  });
   test("не считает близкий минимум или асимптоту пересечением", () => {
     expect(hits("(x-0.123)^2+0.00000001")).toHaveLength(0);
     expect(hits("1/(x-0.123)")).toHaveLength(0);
