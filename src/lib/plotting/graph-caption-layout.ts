@@ -21,7 +21,7 @@ export function captionTokens(text: string, latex?: string | null): CaptionToken
 }
 
 function tokenSize(token: CaptionToken, font: number): { width: number; height: number } {
-  if (!token.math) return { width: measureTextWidth(token.text, font), height: font * 1.4 };
+  if (!token.math) return { width: measureTextWidth(token.text, font) * 1.15, height: font * 1.4 };
   const html = katex.renderToString(token.text, { throwOnError: false, trust: false, output: "html" });
   const struts = [...html.matchAll(/class="strut" style="height:([\d.]+)em/g)].map((match) => Number(match[1]));
   const visible = token.text.replace(/\\(?:frac|dfrac|tfrac)\{([^{}]*)\}\{([^{}]*)\}/g, (_m, a: string, b: string) => a.length > b.length ? a : b)
@@ -31,7 +31,7 @@ function tokenSize(token: CaptionToken, font: number): { width: number; height: 
 
 export function layoutGraphCaption(text: string, latex: string | null | undefined, fontSize: number, maxWidth: number): CaptionLayout {
   const limit = Math.max(1, maxWidth);
-  const tokens = captionTokens(text, latex).flatMap((token) => token.math ? [token] : token.text.split(/(\n|[^\S\n]+)/).filter(Boolean).map((text) => ({ text })));
+  const tokens: CaptionToken[] = captionTokens(text, latex).flatMap((token): CaptionToken[] => token.math ? [token] : token.text.split(/(\n|[^\S\n]+)/).filter(Boolean).map((text) => ({ text })));
   const longestMath = Math.max(1, ...tokens.filter((token) => token.math).map((token) => tokenSize(token, fontSize).width));
   const font = Math.min(fontSize, fontSize * limit / longestMath);
   const lines: CaptionLine[] = [];
@@ -48,7 +48,7 @@ export function layoutGraphCaption(text: string, latex: string | null | undefine
     if (!token.math && tokenSize(token, font).width > limit) {
       let chunk = "";
       for (const char of token.text) {
-        if (chunk && measureTextWidth(chunk + char, font) > limit) { append({ text: chunk }); flush(); chunk = ""; }
+        if (chunk && tokenSize({ text: chunk + char }, font).width > limit) { append({ text: chunk }); flush(); chunk = ""; }
         chunk += char;
       }
       if (chunk) append({ text: chunk });

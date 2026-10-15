@@ -339,6 +339,13 @@ export function expandPlaneDraft(raw: unknown, options: DraftOptions = {}): Draf
     }
 
     graphRefs.push({ id, ref, type, anchorCount });
+    const labelMode = enumKey(item.labelMode);
+    if (labelMode && !["none", "name", "equation", "custom"].includes(labelMode)) {
+      errors.push(`${where}: labelMode должен быть none | name | equation | custom`);
+    }
+    if (labelMode === "equation" && type !== "explicit" && type !== "implicit") {
+      errors.push(`${where}: подпись уравнением доступна только для explicit и implicit; используй custom для своего текста`);
+    }
     graphs.push({
       id,
       index: n,
@@ -347,6 +354,8 @@ export function expandPlaneDraft(raw: unknown, options: DraftOptions = {}): Draf
         colorGroup: ((n - 1) % MAX_PALETTE_GROUP) + 1,
         width: null,
         label: text(item.label),
+        labelMode: labelMode || "none",
+        ...(labelMode === "custom" ? { customLabel: text(item.customLabel) } : {}),
         visible: true,
       },
     });

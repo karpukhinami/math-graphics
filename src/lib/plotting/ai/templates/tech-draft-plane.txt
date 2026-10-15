@@ -60,7 +60,9 @@ GRAPH (у каждого "id": "g1", "g2", … — на него ссылают�
     "extendEnds"?: true }
       ≥ 2 точки с разными x; extremum "min"|"max" — только для smooth; extendEnds — только если план просит продолжить за крайние точки.
   Необязательно у любого графика:
-    "label"?: string                            [по плану] подпись графика
+    "label"?: string                            [по плану] короткое имя функции, например "f"
+    "labelMode"?: "none" | "name" | "equation" | "custom" [по плану] вид подписи, правила в общем блоке выше
+    "customLabel"?: string                      [по плану] текст с формулами $…$ только при labelMode = "custom"
     "domain"?: { "from": string, "to": string } [по плану] ограничение области определения
 
 POINT:
