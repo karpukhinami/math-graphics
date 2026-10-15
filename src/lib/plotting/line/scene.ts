@@ -15,7 +15,7 @@ import { lineNumericLabel } from "./numeric-labels";
 export function createLineSceneData(): LineSceneData {
   return {
     axis: { name: "x", unit: "", min: "-5", max: "5", majorStep: "1" },
-    ticks: { ...DEFAULT_LINE_TICKS },
+    ticks: { ...DEFAULT_LINE_TICKS, majorLabelMode: "givenTwo", majorLabelAnchor: "0" },
     axisRowCount: 1,
     sets: [],
     points: [],
