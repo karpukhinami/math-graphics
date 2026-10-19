@@ -15,7 +15,8 @@ import { Markdown } from "@/components/plotting/Markdown";
 import { DEFAULT_REPRODUCE_MODEL, DEFAULT_TEXT_MODEL } from "@/lib/ai/models";
 import { hasSourceMaterials } from "@/lib/plotting/ai/source-files";
 import { analyzePlotMaterial, generatePlotScene } from "@/lib/plotting/ai/pipeline";
-import type { PlotAiScenario, PlotAnalysisResult } from "@/lib/plotting/ai/types";
+import { isChartResult, type PlotAiScenario, type PlotAnalysisResult } from "@/lib/plotting/ai/types";
+import { renderStatDecoJson, validateStatDecoJson } from "@/lib/plotting/chart";
 import { usePlotStore } from "@/lib/plotting/store";
 import { usePlotSourceState } from "./PlotSourceInput";
 import { PlotManualPanel } from "../PlotManualPanel";
@@ -123,7 +124,11 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
         userRefinements,
       });
       if (!isCurrentSession(version)) return;
-      importAiScene(result.scene);
+      if (isChartResult(result)) {
+        usePlotStore.getState().setChart(result.chart);
+      } else {
+        importAiScene(result.scene);
+      }
       setSceneBuilt(true);
       setSourceOpen(false);
       setEditOpen(true);
@@ -211,7 +216,9 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
             <CardTitle className="text-base">Результат анализа</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {analysis.drawPlan ? (
+            {analysis.sceneType === "chart" ? (
+              <ChartAnalysisView analysis={analysis} />
+            ) : analysis.drawPlan ? (
               <div className="space-y-3">
                 <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground">Что будет построено</p>
@@ -239,7 +246,9 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
                   ? "координатная плоскость"
                   : analysis.sceneType === "space"
                     ? "пространство (многогранник)"
-                    : "числовая прямая"}
+                    : analysis.sceneType === "chart"
+                      ? "диаграмма"
+                      : "числовая прямая"}
               </p>
             )}
             {analysis.canDraw && (
