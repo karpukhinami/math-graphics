@@ -76,9 +76,18 @@ export function PlotEditorDialog({
     }
   }
 
+  function requestClose() {
+    if (inserting || beautifying) return;
+    if (!window.confirm("Закрыть конструктор без вставки? Введённые данные будут потеряны.")) return;
+    onOpenChange(false);
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(next) => { if (next) onOpenChange(true); else requestClose(); }}>
       <DialogContent className="flex h-[92vh] max-w-[95vw] flex-col gap-3 lg:max-w-[66vw]"
+        // Clicks outside and Escape never close the editor: entered data must not be lost.
+        onInteractOutside={(event) => event.preventDefault()}
+        onEscapeKeyDown={(event) => event.preventDefault()}
         onOpenAutoFocus={(event) => {
           // Focusing the first tab activates it and destroys the imported chart.
           event.preventDefault();
@@ -95,7 +104,7 @@ export function PlotEditorDialog({
           title={<h2 className="text-lg font-semibold">Чертёж</h2>}
         />
         <div className="flex justify-end gap-2 border-t border-border pt-3">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={requestClose}>
             Отмена
           </Button>
           <Button onClick={insert} disabled={inserting || beautifying || (!svg && !chart) || (isAi && !resultReady)}>
