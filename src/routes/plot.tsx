@@ -30,7 +30,7 @@ export const Route = createFileRoute("/plot")({
 function PlottingPage() {
   const [sessionReady, setSessionReady] = useState(false);
   useEffect(() => {
-    usePlotStore.getState().startSession();
+    usePlotStore.getState().startSession("ai");
     setSessionReady(true);
   }, []);
   if (!sessionReady) return null;
