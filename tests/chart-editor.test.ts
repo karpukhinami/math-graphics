@@ -1,6 +1,51 @@
 import { describe, expect, test } from "bun:test";
 import { addRow, addSeries, buildStatDecoOption, clearCells, createEmptyChart, normalizeChart, parseCell, removeRow, resizeTable, setCell, validateStatDecoJson } from "@/lib/plotting/chart";
 import { usePlotStore } from "@/lib/plotting/store";
+import { generatePlotScene } from "@/lib/plotting/ai/pipeline";
+
+async function generateAiChart(rendering: Record<string, unknown> = {}) {
+  const result = await generatePlotScene({
+    model: "unused", scenario: "draw", manualText: "", uploadedSourceText: "",
+    attachedImages: [], userRefinements: "",
+    analysis: { canDraw: true, sceneType: "chart", analysisText: "", stageData: {
+      chart: { chartType: "bar", title: "Опрос", rendering,
+        data: { columns: [["Ответ", "Да", "Нет"], ["Голосов", 7, 3]] } },
+    } },
+  });
+  if (!("chart" in result)) throw new Error("Ожидалась диаграмма");
+  usePlotStore.getState().setCharts([result.chart]);
+  return usePlotStore.getState().charts[0];
+}
+
+describe("начальные настройки диаграмм от ИИ", () => {
+  test("сетка включена даже при устаревшем showGrid=false в ответе", async () => {
+    const chart = await generateAiChart({ showGrid: false });
+    expect(chart.rendering.showGrid).toBe(true);
+    const axis = (buildStatDecoOption(chart).option as { yAxis: { splitLine: { show: boolean } } }).yAxis;
+    expect(axis.splitLine.show).toBe(true);
+  });
+  test("объёмность выключена даже при volume=true в ответе", async () => {
+    expect((await generateAiChart({ volume: true })).rendering.volume).toBe(false);
+  });
+  test("значения показаны, если ИИ не прислал showValues", async () => {
+    const chart = await generateAiChart();
+    expect(chart.rendering.showValues).toBe(true);
+  });
+  test("заголовок и названия данных сохраняются", async () => {
+    const chart = await generateAiChart();
+    expect(chart.title).toBe("Опрос");
+    expect(chart.data.columns).toEqual([["Ответ", "Да", "Нет"], ["Голосов", 7, 3]]);
+  });
+  test("ручные правки после ИИ не сбрасываются обычной проверкой", async () => {
+    const chart = await generateAiChart();
+    const edited = normalizeChart(validateStatDecoJson({ ...chart,
+      rendering: { ...chart.rendering, showGrid: false, volume: true, showValues: false },
+    }));
+    expect(edited.rendering.showGrid).toBe(false);
+    expect(edited.rendering.volume).toBe(true);
+    expect(edited.rendering.showValues).toBe(false);
+  });
+});
 
 describe("ручные диаграммы", () => {
   test("ответ ИИ без оформления дополняется значениями по умолчанию", () => {
