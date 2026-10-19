@@ -19,7 +19,7 @@ function toOption(id: string, kind: ModelKind): ModelOption {
 export const TEXT_MODELS: ModelOption[] = list.text.map((m) => toOption(m.id, "text"));
 export const IMAGE_MODELS: ModelOption[] = list.image.map((m) => toOption(m.id, "image"));
 
-export const DEFAULT_TEXT_MODEL = "google/gemini-3.1-flash-lite";
+export const DEFAULT_TEXT_MODEL = "openai/gpt-6-luna";
 /** Модель по умолчанию для восстановления чертежа по картинке. */
 export const DEFAULT_REPRODUCE_MODEL = "openai/gpt-6-luna";
 export const DEFAULT_IMAGE_MODEL = "google/gemini-3.1-flash-image-preview";
