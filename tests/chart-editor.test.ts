@@ -128,6 +128,8 @@ describe("ручные диаграммы", () => {
   test("тумблер «Ось и сетка» включает видимую ось с сеткой и красивым максимумом", () => {
     const chart = createEmptyChart("bar");
     chart.data.columns = [["Предмет", "Математика", "Физика"], ["Учеников", 12, 7]];
+    // По умолчанию сетка включена; выключение тумблером скрывает ось.
+    chart.rendering.showGrid = false;
     const off = buildStatDecoOption(chart);
     const yOff = (off.option as { yAxis: { show: boolean } }).yAxis;
     expect(yOff.show).toBe(false);
