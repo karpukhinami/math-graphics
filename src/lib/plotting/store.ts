@@ -195,6 +195,8 @@ interface PlotStore {
   updatePointDraft: (patch: Partial<PointMath>) => void;
   cancelPointDraft: () => void;
   commitPointDraft: () => void;
+  /** Сразу создаёт пустую точку на плоскости; дальше она живёт как обычная карточка. */
+  addPoint: () => void;
   updatePointMath: (id: string, patch: Partial<PointMath>) => void;
   updatePointStyle: (id: string, patch: Partial<PointStyle>) => void;
   togglePointSolution: (id: string, index: number, show: boolean) => void;
