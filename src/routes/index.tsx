@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { PenLine, FileText } from "lucide-react";
+import { PencilRuler, FileText } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -35,7 +35,7 @@ function HomePage() {
             to="/plot"
             className="group flex aspect-square flex-col items-center justify-center gap-4 rounded-2xl border bg-card p-8 text-center shadow-sm transition-colors hover:border-primary hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <PenLine className="h-14 w-14 text-primary transition-transform group-hover:scale-110" />
+            <PencilRuler className="h-14 w-14 text-primary transition-transform group-hover:scale-110" />
             <span className="text-xl font-semibold">Чертёж или диаграмма</span>
             <span className="text-sm text-muted-foreground">
               Графики функций, числовые прямые, геометрические чертежи и диаграммы — вручную или с помощью ИИ
