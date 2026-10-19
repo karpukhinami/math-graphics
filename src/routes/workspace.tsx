@@ -144,6 +144,17 @@ function WorkspacePage() {
     setBlocks((bs) => [...bs, ...newBlocks]);
   }
   const textRefs = useRef<Record<string, InlineImageTextEditorHandle | null>>({});
+  // Добавили блоки — прокручиваем к последнему, чтобы он оказался перед глазами.
+  const prevBlockCount = useRef(blocks.length);
+  useEffect(() => {
+    const grew = blocks.length > prevBlockCount.current;
+    prevBlockCount.current = blocks.length;
+    if (!grew) return;
+    const last = blocks[blocks.length - 1];
+    requestAnimationFrame(() => {
+      document.querySelector(`[data-block-id="${last.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [blocks]);
 
   const patch = (id: string, p: Partial<Block>) =>
     setBlocks((bs) => bs.map((b) => (b.id === id ? { ...b, ...p } : b)));
@@ -335,7 +346,7 @@ function WorkspacePage() {
         )}
 
         {blocks.map((block, index) => (
-          <Card key={block.id}>
+          <Card key={block.id} data-block-id={block.id} className="scroll-mt-4">
             <CardContent className="space-y-3 p-4">
               {preview ? (
                 <>
