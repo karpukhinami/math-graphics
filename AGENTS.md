@@ -23,3 +23,5 @@
 - Workspace inline-image editing uses presentation-only Markdown ranges in `workspace/text-segments.ts` and a selection handle mapping local text offsets to the full source. Why: images appear in place without changing stored plot tokens, formulas or generation input.
 - Line batch building assigns completed sets after boundary synchronization updates the scene. Why: reassigning the scene inside a map must not discard built sets while preserving their boundary points.
 - Store input actions rebuild committed constructions and dependencies; spatial vertex text commits on blur, with drafts excluded. Why: every workbench updates geometry without a build-all button or premature draft insertion.
+- Plane axes split `name` (variable used in formulas) from optional `label` (verbal caption drawn on the axis); AI drafts use xName/yName + xCaption/yCaption, and `axisLabelText` prefers the caption. Why: equations stay correct while the axis can read «время».
+- Point labels render `A_1` as A with a subscript via `pointLabelTspans` in render.ts; measurement uses the underscore-stripped plain form. Why: SVG text has no KaTeX, so subscripts are explicit tspans.
