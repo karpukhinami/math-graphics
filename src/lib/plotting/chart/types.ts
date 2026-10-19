@@ -47,6 +47,8 @@ export interface StatDecoRendering {
   showValues?: boolean;
   /** Ось значений с серой сеткой и подписями делений (для диаграмм с осями). */
   showGrid?: boolean;
+  /** Independent value-axis caption; empty or missing means no caption. */
+  valueAxisLabel?: string;
   colorMode?: StatDecoColorMode;
   chartSize?: "small" | "medium" | "large";
   sliceGap?: "none" | "narrow" | "medium" | "wide";

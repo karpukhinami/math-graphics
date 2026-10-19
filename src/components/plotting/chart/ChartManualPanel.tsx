@@ -138,6 +138,17 @@ export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number
           <Switch checked={r.showValues ?? false} onCheckedChange={(showValues) => render({ showValues })} />
         </div>
         {GRID_TYPES.includes(type) && (
+          <div className="space-y-1">
+            <Label htmlFor={`chart-axis-label-${index}`} className="text-xs">Подпись оси{type === "scatter" ? " Y" : " значений"}</Label>
+            <CommitInput
+              id={`chart-axis-label-${index}`}
+              value={r.valueAxisLabel ?? ""}
+              placeholder="Без подписи"
+              onCommit={(valueAxisLabel) => render({ valueAxisLabel })}
+            />
+          </div>
+        )}
+        {GRID_TYPES.includes(type) && (
           <div className="flex items-center justify-between rounded-md border border-border px-2 py-1.5">
             <Label className="text-xs">Ось и сетка</Label>
             <Switch checked={r.showGrid ?? false} onCheckedChange={(showGrid) => render({ showGrid })} />

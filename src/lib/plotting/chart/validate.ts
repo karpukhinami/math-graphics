@@ -144,6 +144,7 @@ function normalizeRendering(raw: unknown): StatDecoRendering {
     headroom: pick(o.headroom, size),
     showValues: typeof o.showValues === "undefined" ? undefined : bool(o.showValues, true),
     showGrid: typeof o.showGrid === "undefined" ? undefined : bool(o.showGrid, false),
+    valueAxisLabel: typeof o.valueAxisLabel === "string" ? o.valueAxisLabel.trim() : undefined,
     colorMode: pick(o.colorMode, ["same", "similar", "different"] as const) as
       | StatDecoColorMode
       | undefined,

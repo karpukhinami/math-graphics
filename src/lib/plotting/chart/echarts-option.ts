@@ -13,7 +13,6 @@ import { wrapCategoryLabel } from "./category-labels";
 import { prismSeries, volumePieSeries } from "./volume";
 import {
   formatNum,
-  header,
   histogramBins,
   isNumericColumn,
   numericBody,
@@ -155,12 +154,9 @@ export function buildStatDecoOption(
     };
   };
 
-  /** Подпись оси значений — заголовок первого числового столбца таблицы. */
+  /** Independent caption, never a series name from the table. */
   const valueAxisName = (): string | undefined => {
-    const idx = json.mapping.value ?? firstNumericColumnIndex(json);
-    if (idx == null || idx < 0) return undefined;
-    const name = header(json.data.columns[idx]);
-    return name || undefined;
+    return r.valueAxisLabel?.trim() || undefined;
   };
 
   switch (json.chartType) {
@@ -336,7 +332,8 @@ export function buildStatDecoOption(
 
     /* ------------------------------ scatter ---------------------------- */
     case "scatter": {
-      const { xName, yName, points } = toScatterPoints(json);
+      const { xName, points } = toScatterPoints(json);
+      const yName = valueAxisName();
       if (!points.length) return emptyResult(base, "Не найдены пары числовых координат");
       const radius = POINT_RADIUS[r.pointSize ?? "medium"] || 7;
       const hasSize = points.some((p) => typeof p.size === "number");
@@ -382,13 +379,13 @@ export function buildStatDecoOption(
       if (!labels.length) return emptyResult(base, "Нет числовых наблюдений для распределения");
       const colors = resolveColors(theme, r.colorMode ?? "same", labels.length);
       const horizontal = r.orientation === "horizontal";
-      if (r.volume) return { option: { ...base, grid: chartGrid(labels, horizontal), xAxis: horizontal ? valueAxis(counts, "Частота", true) : catAxis(labels), yAxis: horizontal ? catAxis(labels, false) : valueAxis(counts, "Частота"), series: [prismSeries("Частота", counts.map((v, i) => ({ start: 0, end: v, color: colors[i] })), horizontal, BAR_WIDTH[r.barWidth ?? "wide"] * 0.82, 0, showValues)] } };
+      if (r.volume) return { option: { ...base, grid: chartGrid(labels, horizontal), xAxis: horizontal ? valueAxis(counts, valueAxisName(), true) : catAxis(labels), yAxis: horizontal ? catAxis(labels, false) : valueAxis(counts, valueAxisName()), series: [prismSeries("Частота", counts.map((v, i) => ({ start: 0, end: v, color: colors[i] })), horizontal, BAR_WIDTH[r.barWidth ?? "wide"] * 0.82, 0, showValues)] } };
       return {
         option: {
           ...base,
           grid: chartGrid(labels, horizontal),
-          xAxis: horizontal ? valueAxis(counts, "Частота", true) : catAxis(labels),
-          yAxis: horizontal ? catAxis(labels, false) : valueAxis(counts, "Частота"),
+          xAxis: horizontal ? valueAxis(counts, valueAxisName(), true) : catAxis(labels),
+          yAxis: horizontal ? catAxis(labels, false) : valueAxis(counts, valueAxisName()),
           series: ([
             {
               type: "bar",
