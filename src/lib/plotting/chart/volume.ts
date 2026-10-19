@@ -1,6 +1,7 @@
 import type { CustomSeriesOption, CustomSeriesRenderItem, CustomSeriesRenderItemReturn } from "echarts";
 import { darken, lighten, statDecoTheme } from "./colors";
 import { formatNum } from "./data";
+import { wrapCategoryLabel } from "./category-labels";
 
 type Point = number[];
 export interface PrismDatum { start: number; end: number; color: string; label?: number }
@@ -53,7 +54,10 @@ export function volumePieSeries(categories: string[], values: number[], colors: 
     const ry = rx * 0.52;
     const depth = Math.min(30, rx * 0.18);
     const point = (a: number, radius = 1, down = 0): Point => [cx + Math.cos(a) * rx * radius, cy + Math.sin(a) * ry * radius + down];
-    const arc = (a: number, b: number, radius = 1, down = 0) => Array.from({ length: Math.max(2, Math.ceil((b - a) * 30)) + 1 }, (_, i, arr) => point(a + (b - a) * i / (arr.length - 1), radius, down));
+    const arc = (a: number, b: number, radius = 1, down = 0) => {
+      const segments = Math.max(2, Math.ceil((b - a) * 30));
+      return Array.from({ length: segments + 1 }, (_, i) => point(a + (b - a) * i / segments, radius, down));
+    };
     const walls: NonNullable<Extract<CustomSeriesRenderItemReturn, { type: "group" }>>["children"] = [];
     const tops: typeof walls = [];
     const labels: typeof walls = [];
@@ -79,7 +83,7 @@ export function volumePieSeries(categories: string[], values: number[], colors: 
       if (showValues) {
         const middle = (angle + end) / 2;
         const [x, y] = point(middle, 1.15);
-        labels.push({ type: "text", style: { text: `${name}\n${formatNum(values[i])}`, x, y: y + (Math.sin(middle) > 0 ? depth : -6), align: Math.cos(middle) > 0.1 ? "left" : Math.cos(middle) < -0.1 ? "right" : "center", verticalAlign: Math.sin(middle) > 0 ? "top" : "bottom", fill: statDecoTheme().ink, font: "13px sans-serif", lineHeight: 16, width: Math.min(measure(name), api.getWidth() * 0.22), overflow: "break" } });
+        labels.push({ type: "text", style: { text: `${wrapCategoryLabel(name, api.getWidth() * 0.2, measure)}\n${formatNum(values[i])}`, x, y: y + (Math.sin(middle) > 0 ? depth : -6), align: Math.cos(middle) > 0.1 ? "left" : Math.cos(middle) < -0.1 ? "right" : "center", verticalAlign: Math.sin(middle) > 0 ? "top" : "bottom", fill: statDecoTheme().ink, font: "13px sans-serif", lineHeight: 16 } });
       }
       angle = end;
     });
