@@ -24,7 +24,7 @@ import {
   type StatDecoJson,
   type StatDecoRendering,
 } from "@/lib/plotting/chart";
-import { CHART_COLOR_CHOICES, similarAvailable } from "@/lib/plotting/chart/colors";
+import { CHART_COLOR_CHOICES, changeChartColor, resolveColors, similarAvailable, statDecoTheme } from "@/lib/plotting/chart/colors";
 import { PLOT_PALETTE } from "@/lib/plotting/shared";
 import { usePlotStore } from "@/lib/plotting/store";
 
@@ -51,19 +51,14 @@ export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number
 
   // Цели раскраски: несколько рядов — по рядам, один ряд — по категориям.
   const seriesCount = Math.max(0, columns.length - 1);
-  const colorTargets: string[] =
-    colorMode === "different"
-      ? seriesCount > 1
-        ? columns.slice(1).map((col, i) => String(col[0] ?? `Ряд ${i + 1}`))
-        : Array.from({ length: rows }, (_, i) => String(columns[0]?.[i + 1] ?? `Значение ${i + 1}`))
-      : ["Основной цвет"];
+  const colorsBySeries = ["line", "area", "radar"].includes(type) || (type === "bar" && seriesCount > 1);
   const customColors = r.customColors ?? [];
+  const effectiveMode = colorsBySeries && seriesCount > 1 && colorMode === "same" ? "different" : colorMode;
+  const displayedColors = resolveColors(statDecoTheme(), effectiveMode, colorsBySeries ? seriesCount : rows, customColors);
   // «Оттенки одного цвета» предлагаем только там, где у базового цвета есть хотя бы 3 фирменных оттенка.
   const similarOk = similarAvailable(customColors[0] ?? PLOT_PALETTE[0]);
   const setCustomColor = (i: number, color: string) => {
-    const next = [...customColors];
-    next[i] = color;
-    render({ customColors: next });
+    update({ rendering: changeChartColor({ ...r, colorMode: effectiveMode }, i, color) });
   };
 
   return (
@@ -106,24 +101,15 @@ export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
-          {colorTargets.map((name, i) => (
-            <ColorSwatch
-              key={`${i}-${name}`}
-              title={name}
-              value={customColors[i]}
-              onChange={(color) => setCustomColor(i, color)}
-            />
-          ))}
-        </div>
-
         <div className="overflow-x-auto rounded-md border border-border">
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr>
+                {!colorsBySeries && <th className="w-9 border-b border-border bg-muted/50" />}
                 {columns.map((col, c) => (
                   <th key={c} className="border-b border-border bg-muted/50 p-1 align-top">
                     <div className="flex items-center gap-1">
+                      {colorsBySeries && c > 0 && <ColorSwatch title={`Цвет ряда ${String(col[0] ?? c)}`} value={displayedColors[c - 1]} onChange={(color) => setCustomColor(c - 1, color)} />}
                       <CommitInput
                         value={String(col[0] ?? "")}
                         className="h-8 font-medium"
@@ -143,6 +129,7 @@ export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number
             <tbody>
               {Array.from({ length: rows }, (_, row) => (
                 <tr key={row}>
+                  {!colorsBySeries && <td className="w-9 p-1"><ColorSwatch title={`Цвет строки ${row + 1}: ${String(columns[0]?.[row + 1] ?? "")}`} value={displayedColors[row]} onChange={(color) => setCustomColor(row, color)} /></td>}
                   {columns.map((col, c) => (
                     <td key={c} className="p-1">
                       <CommitInput
@@ -282,21 +269,27 @@ function ColorSwatch({ value, title, onChange }: { value: string | undefined; ti
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button
+        <Button
           type="button"
           title={title}
-          className="size-6 rounded-full border border-border"
+          aria-label={title}
+          variant="ghost"
+          size="icon"
+          className="size-6 shrink-0 rounded-full border border-border p-0"
           style={{ backgroundColor: value ?? "transparent", backgroundImage: value ? undefined : "linear-gradient(45deg, var(--border) 50%, transparent 50%)" }}
         />
       </PopoverTrigger>
       <PopoverContent className="w-auto p-2" align="start">
         <div className="grid grid-cols-6 gap-1.5">
           {CHART_COLOR_CHOICES.map((color) => (
-            <button
+            <Button
               key={color}
               type="button"
               title={color}
-              className={`size-6 rounded-full border ${value === color ? "ring-2 ring-primary ring-offset-1" : "border-border"}`}
+              aria-label={`Выбрать цвет ${color}`}
+              variant="ghost"
+              size="icon"
+              className={`size-6 rounded-full border p-0 ${value === color ? "ring-2 ring-primary ring-offset-1" : "border-border"}`}
               style={{ backgroundColor: color }}
               onClick={() => onChange(color)}
             />
