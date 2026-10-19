@@ -18,12 +18,13 @@ import {
 import { usePlotStore } from "@/lib/plotting/store";
 import { sceneToSvg } from "@/lib/plotting/use-plot-svg";
 import { standalonePlotSvg } from "@/lib/plotting/standalone-svg";
-import type { PlotScene } from "@/lib/plotting/types";
+import type { WorkspacePlotImage } from "@/lib/workspace/plot-insertion";
+import { renderChartsPng, type StatDecoJson } from "@/lib/plotting/chart";
 
 export interface AnalogTaskResult {
   task: AnalogTaskAnalysis["task"];
   figures: AnalogTaskAnalysis["figures"];
-  images: Record<string, { src: string; scene: PlotScene }>;
+  images: Record<string, WorkspacePlotImage>;
 }
 
 const markerPreview = (text: string) => text.replace(/\[\[(fig\d+|[a-z0-9_-]+)\]\]/gi, (_m, id: string) => `*[чертёж ${id}]*`);
@@ -81,7 +82,15 @@ export function AnalogTaskDialog({ open, onOpenChange, onCreate, mode = "screens
         const rendered: AnalogTaskResult["images"] = {};
         for (const fig of v.figures) {
           if (!(fig.id in allScenes[i])) continue;
-          store.importAiScene(allScenes[i][fig.id]);
+          const built = allScenes[i][fig.id];
+          if (v.sceneType === "chart") {
+            const charts = (built as { charts: StatDecoJson[] }).charts;
+            const src = await renderChartsPng(charts);
+            if (!src) throw new Error(`Вариант ${i + 1}: диаграмма ${fig.id} не построена`);
+            rendered[fig.id] = { src, charts: structuredClone(charts) };
+            continue;
+          }
+          store.importAiScene(built);
           const scene = usePlotStore.getState().scene;
           const svg = sceneToSvg(scene);
           if (!svg) throw new Error(`Вариант ${i + 1}: чертёж ${fig.id} не построен`);

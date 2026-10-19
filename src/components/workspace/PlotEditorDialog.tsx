@@ -15,6 +15,7 @@ import { renderChartsPng } from "@/lib/plotting/chart";
 export interface PlotInsertResult {
   src: string;
   scene: PlotScene;
+  charts?: import("@/lib/plotting/chart").StatDecoJson[];
   text?: string;
   newTaskText?: string;
   beautifiedSrc?: string;
@@ -56,11 +57,12 @@ export function PlotEditorDialog({
     // Диаграмма вставляется как PNG (ECharts), чертёж — как автономный SVG.
     const src = chart
       ? await renderChartsPng(chart)
-      : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(await standalonePlotSvg(svg!))}`;
+      : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(await standalonePlotSvg(svg ?? ""))}`;
     if (!src) throw new Error("Не удалось подготовить изображение диаграммы");
     onInsert({
       src,
       scene: structuredClone(scene),
+      charts: chart ? structuredClone(chart) : undefined,
       text: aiInitial?.initialScenario === "task" ? text : undefined,
       newTaskText,
       beautifiedSrc: beautifiedSrc ?? undefined,

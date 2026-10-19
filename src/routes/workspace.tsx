@@ -23,7 +23,7 @@ import { AnalogTaskDialog, type AnalogTaskResult } from "@/components/workspace/
 import { buildAnalogBlock } from "@/lib/workspace/analog-block";
 import { exportTaskDocx } from "@/lib/workspace/docx-export";
 import { importDocx } from "@/lib/workspace/docx-import";
-import { plotInsertionImages, insertPlotImageTokens } from "@/lib/workspace/plot-insertion";
+import { plotInsertionImages, insertPlotImageTokens, type WorkspacePlotImage } from "@/lib/workspace/plot-insertion";
 
 export const Route = createFileRoute("/workspace")({
   head: () => ({
@@ -42,7 +42,7 @@ export const Route = createFileRoute("/workspace")({
 type BlockType = "text" | "input" | "choice";
 interface ChoiceOption { id: string; text: string; correct: boolean; imageId?: string }
 interface Block { id: string; type: BlockType; text: string; answer: string; options: ChoiceOption[]; answerLayout?: AnswerLayout }
-interface TaskImage { src: string; scene?: PlotScene }
+type TaskImage = WorkspacePlotImage;
 interface PlotTarget { blockId: string; optionId?: string; imageId?: string; position?: number; syncText?: boolean; newTask?: boolean }
 
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -201,7 +201,7 @@ function WorkspacePage() {
     requestAnimationFrame(() => textRefs.current[blockId]?.focusRange(s + left.length, e + left.length));
   }
 
-  function openPlot(t: PlotTarget, action: PlotInsertAction | "ai-analog", existing?: PlotScene) {
+  function openPlot(t: PlotTarget, action: PlotInsertAction | "ai-analog", existing?: TaskImage) {
     const block = blocks.find((b) => b.id === t.blockId);
     const textInput = textRefs.current[t.blockId];
     const selectionStart = textInput?.selectionStart ?? block?.text.length ?? 0;
@@ -213,7 +213,10 @@ function WorkspacePage() {
       : textGenerationSource(block?.text ?? "", selectionStart, selectionEnd);
     if (existing) {
       startSession("manual");
-      importScene(existing);
+      if (existing.charts?.length) {
+        usePlotStore.getState().setSpaceTab("chart");
+        usePlotStore.getState().setCharts(structuredClone(existing.charts));
+      } else if (existing.scene) importScene(existing.scene);
       setAiInitial(undefined);
     } else {
       startSession(action === "manual" ? "manual" : "ai");
@@ -232,7 +235,7 @@ function WorkspacePage() {
 
   function onInsert(r: PlotInsertResult) {
     if (!target) return;
-    const insertedImages = plotInsertionImages(r.src, r.scene, r.beautifiedSrc);
+    const insertedImages = plotInsertionImages(r.src, r.scene, r.beautifiedSrc, r.charts);
     if (target.newTask) {
       const block = newBlock("input");
       const ids = insertedImages.map(() => uid());
@@ -263,7 +266,7 @@ function WorkspacePage() {
     const img = images[imageId];
     if (!img) return null;
     const resizable = widthPct !== undefined && onWidthChange !== undefined;
-    const step = (delta: number) => onWidthChange?.(Math.min(100, Math.max(20, widthPct! + delta)));
+    const step = (delta: number) => onWidthChange?.(Math.min(100, Math.max(20, (widthPct ?? 50) + delta)));
     return (
       <div className="group relative mx-auto min-w-0 max-w-full rounded-md border border-border bg-card p-1"
         style={resizable ? { width: `${widthPct}%` } : { width: "fit-content" }}>
@@ -280,9 +283,9 @@ function WorkspacePage() {
               </Button>
             </>
           )}
-          {img.scene && (
+          {(img.scene || img.charts?.length) && (
             <Button size="icon" variant="secondary" className="size-7" title="Редактировать чертёж"
-              onClick={() => openPlot({ blockId, imageId }, "manual", img.scene)}>
+              onClick={() => openPlot({ blockId, imageId }, "manual", img)}>
               <Pencil className="size-3.5" />
             </Button>
           )}

@@ -29,8 +29,13 @@ import analogTaskAnalyze from "@/lib/plotting/ai/templates/analog-task-analyze.t
 import analogTaskVariants from "@/lib/plotting/ai/templates/analog-task-variants.txt?raw";
 import requestTaskAnalyze from "@/lib/plotting/ai/templates/request-task-analyze.txt?raw";
 import analogTaskGenerate from "@/lib/plotting/ai/templates/analog-task-generate.txt?raw";
-import chartRules from "@/lib/plotting/ai/templates/chart-rules.txt?raw";
+import techChartJson from "@/lib/plotting/ai/templates/tech-chart-json.txt?raw";
+import chartTaskRules from "@/lib/plotting/ai/templates/tech-task-chart-rules.txt?raw";
+import chartRulesRaw from "@/lib/plotting/ai/templates/chart-rules.txt?raw";
 import type { PlotAiScenario, PlotAnalysisResult, PlotSceneType } from "./types";
+
+const chartRules = chartRulesRaw.replaceAll("{{TECH_CHART_JSON}}", techChartJson);
+export type TaskFigureSceneType = "line" | "plane" | "chart";
 
 const schemaLine = schemaLineRaw
   .replaceAll("{{LINE_SETS_RULES}}", lineSetsRules)
@@ -207,13 +212,13 @@ export function generateSchemaHint(scenario: PlotAiScenario, sceneType?: PlotSce
 export function buildAnalogTaskAnalyzePrompt(userRefinements: string): string {
   const refinements = userRefinements.trim() || "(нет)";
   return withAnalysisRules(withTechBlocks(analogTaskAnalyze).replaceAll("{{USER_REFINEMENTS}}", () => refinements) +
-    "\n\n" + lineFractionRules);
+    "\n\n" + lineFractionRules + "\n\n" + chartTaskRules);
 }
 
 /** «Задание по запросу», этап 1: идея и шаблон по свободному описанию (дальше — как у аналога). */
 export function buildRequestTaskAnalyzePrompt(request: string): string {
   return withAnalysisRules(withTechBlocks(requestTaskAnalyze).replaceAll("{{USER_REQUEST}}", () => request.trim() || "(пусто)") +
-    "\n\n" + lineFractionRules);
+    "\n\n" + lineFractionRules + "\n\n" + chartTaskRules);
 }
 
 /** «Аналог по скриншоту», этап 2: N конкретных вариантов с планами чертежей по шаблону. */
@@ -221,7 +226,7 @@ export function buildAnalogTaskVariantsPrompt(opts: {
   count: number;
   originalText: string;
   template: unknown;
-  sceneType: PlotDrawBranchType | null;
+  sceneType: TaskFigureSceneType | null;
   figures: Array<{ id: string; placement: string; optionIndex: number | null; role: string }>;
   taskType: "input" | "choice";
   userRefinements: string;
@@ -245,15 +250,20 @@ export function buildAnalogTaskVariantsPrompt(opts: {
     .replaceAll("{{TEMPLATE}}", () => JSON.stringify(opts.template, null, 2))
     .replaceAll("{{FIGURES}}", () => figs)
     .replaceAll("{{USER_REFINEMENTS}}", () => opts.userRefinements.trim() || "(нет)") +
-    (opts.sceneType === "line" ? "\n\n" + lineFractionRules : ""));
+    (opts.sceneType === "line" ? "\n\n" + lineFractionRules : "") + (opts.sceneType === "chart" ? "\n\n" + chartTaskRules : ""));
 }
 
 /** «Аналог по скриншоту», этап 3: все однотипные чертежи одного варианта одним запросом. */
 export function buildAnalogTaskGeneratePrompt(
-  sceneType: PlotDrawBranchType,
+  sceneType: TaskFigureSceneType,
   figures: Array<{ id: string; drawPlan: string }>,
 ): string {
   const plans = figures.map((f) => `── ЧЕРТЁЖ ${f.id} ──\n${f.drawPlan.trim()}`).join("\n\n");
+  if (sceneType === "chart") {
+    return "Построй диаграммы по готовым планам. Не решай задание заново, не меняй числа и не добавляй искомый ответ.\n\n" +
+      plans + "\n\nСхема каждого поля chart:\n" + techChartJson +
+      '\nВерни только JSON: { "figures": [{ "id": "fig1", "chart": { … } }] }. Ровно по одному объекту на каждый план с теми же id.';
+  }
   return analogTaskGenerate
     .replaceAll("{{SCENE_TYPE_NAME}}", sceneType === "line" ? "числовая прямая" : "координатная плоскость")
     .replaceAll("{{TECH_DRAFT}}", sceneType === "line" ? techDraftLine : techDraftPlane)
