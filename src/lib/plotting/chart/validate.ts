@@ -148,6 +148,9 @@ function normalizeRendering(raw: unknown): StatDecoRendering {
     colorMode: pick(o.colorMode, ["same", "similar", "different"] as const) as
       | StatDecoColorMode
       | undefined,
+    customColors: Array.isArray(o.customColors)
+      ? o.customColors.filter((c): c is string => typeof c === "string" && /^#[0-9a-fA-F]{6}$/.test(c))
+      : undefined,
     chartSize: pick(o.chartSize, size),
     sliceGap: pick(o.sliceGap, ["none", "narrow", "medium", "wide"] as const),
     innerHole: pick(o.innerHole, ["none", "small", "medium", "large"] as const),

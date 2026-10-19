@@ -50,6 +50,8 @@ export interface StatDecoRendering {
   /** Independent value-axis caption; empty or missing means no caption. */
   valueAxisLabel?: string;
   colorMode?: StatDecoColorMode;
+  /** Ручные цвета: для «different» — по позициям рядов/категорий, для «same»/«similar» — базовый цвет в [0]. */
+  customColors?: string[];
   chartSize?: "small" | "medium" | "large";
   sliceGap?: "none" | "narrow" | "medium" | "wide";
   innerHole?: "none" | "small" | "medium" | "large";
