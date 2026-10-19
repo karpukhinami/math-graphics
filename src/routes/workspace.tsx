@@ -313,6 +313,7 @@ function WorkspacePage() {
     <div className="flex h-full min-h-0 flex-col bg-muted/30">
       <OnboardingTour id="workspace" steps={[
         { target: "blocks", title: "Соберите задание", text: "Добавляйте текст и вопросы. «Аналог по скриншоту» и «Задание по запросу» создадут задание с чертежом сами." },
+        { target: "picture", title: "Картинка", text: "Загрузите свою картинку или вставьте чертёж: ИИ нарисует его по тексту задания, повторит по скриншоту, или постройте вручную." },
         { target: "download", title: "Готово — скачайте", text: "Задание сохраняется в Word. Чертёж можно вставить в любой блок кнопкой с картинкой." },
       ]} />
       <header className="flex items-center justify-between gap-3 border-b border-border bg-background px-4 py-3">
@@ -394,7 +395,7 @@ function WorkspacePage() {
                     <Button size="icon" variant="ghost" className="size-8" title="Формула" onClick={() => wrapSelection(block.id, "$")}>
                       <Sigma className="size-4" />
                     </Button>
-                    <span data-tour="picture" className="contents"><PlotInsertMenu context={block.type === "text" ? "text" : "task"}
+                    <PlotInsertMenu tourId="picture" context={block.type === "text" ? "text" : "task"}
                       onFile={(src) => placeImage({ blockId: block.id }, { src })}
                       onPlot={(a) => openPlot({ blockId: block.id }, a)}
                     />
