@@ -6,4 +6,6 @@
 - Do not port the archive's palette wheel, design profiles, or artistic beautification instructions for charts. Why: charts use our palette and the shared "Сделать красиво" flow.
 - Charts are stored as an array `charts: StatDecoJson[]` in the plot store, edited manually via `ChartManualPanel` (tab «Диаграмма») and filled by AI through `setCharts`, which runs `normalizeChart` to add defaults for fields AI did not send (`chart/editor.ts`). Why: manual and AI charts share one format, so AI output needs no conversion.
 
-- Тумблер «Ось и сетка» (`rendering.showGrid`) включает видимую ось значений с подписями, серой сеткой и «красивым» максимумом (1/2/2.5/5×10^n, `niceMax` в `echarts-option.ts`); при нескольких рядах colorMode "same" принудительно становится "different", чтобы легенда читалась. Why: легенда и сетка должны работать автоматически без ручной настройки цветов.
+- Value-axis bounds and intervals are derived from plotted data by `grid-scale.ts`; legacy headroom never affects a visible grid. Why: manual and AI charts must use the same scale without model-chosen bounds.
+- Horizontal category labels use measured bounded width and Russian hyphenation in `category-labels.ts`; value-axis captions sit below the axis at its center. Why: labels must not create unused margins or clipped captions.
+- Volume bars use custom ECharts series with explicit prism faces; volume pies use elliptical sectors with extruded walls in `volume.ts`, shared by preview and PNG. Why: geometry must preserve the flat chart's data and palette rather than substitute gradients.

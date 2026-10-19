@@ -7,7 +7,10 @@
  */
 import type { EChartsOption } from "echarts";
 import type { StatDecoJson } from "./types";
-import { darken, lighten, resolveColors, statDecoTheme, waterfallColors } from "./colors";
+import { resolveColors, statDecoTheme, waterfallColors } from "./colors";
+import { chartGridScale } from "./grid-scale";
+import { wrapCategoryLabel } from "./category-labels";
+import { prismSeries, volumePieSeries } from "./volume";
 import {
   formatNum,
   header,
@@ -41,12 +44,6 @@ function axisMaxWithHeadroom(values: number[], headroom: keyof typeof HEADROOM =
   return Math.ceil((max / (1 - fraction)) * 100) / 100;
 }
 
-/** Максимум оси сетки: на 5% больше максимального значения, округлённый до целого. */
-function niceMax(max: number | undefined): number | undefined {
-  if (max == null || !Number.isFinite(max) || max <= 0) return max;
-  return Math.max(1, Math.round(max * 1.05));
-}
-
 type SeriesList = NonNullable<EChartsOption["series"]>;
 
 export interface StatDecoOptionResult {
@@ -57,7 +54,7 @@ export interface StatDecoOptionResult {
 
 export function buildStatDecoOption(
   json: StatDecoJson,
-  layout: { width: number; measureText: (text: string, font: string) => number } = {
+  layout: { width: number; height?: number; measureText: (text: string, font: string) => number } = {
     width: 848,
     measureText: (text) => Array.from(text).length * 7.5,
   },
@@ -72,7 +69,7 @@ export function buildStatDecoOption(
     animation: false,
     textStyle: { color: theme.ink, fontFamily },
     title: {
-      text: json.title || "",
+      text: wrapCategoryLabel(json.title || "", Math.max(100, layout.width - 32), (text) => layout.measureText(text, `700 22px ${fontFamily}`)),
       left: "center",
       top: 8,
       textStyle: { color: theme.header, fontSize: 22, fontWeight: 700, fontFamily },
@@ -89,6 +86,17 @@ export function buildStatDecoOption(
     fontFamily,
   };
 
+  const measureLabel = (text: string) => layout.measureText(text, `13px ${fontFamily}`);
+  const labelWidth = Math.min(136, Math.max(80, layout.width * 0.22));
+  const chartGrid = (categories: string[], horizontal: boolean, legend = false) => {
+    const wrapped = categories.map((text) => wrapCategoryLabel(text, labelWidth, measureLabel));
+    const measured = Math.max(0, ...wrapped.flatMap((text) => text.split("\n").map(measureLabel)));
+    const tilted = categories.some((text) => measureLabel(text) > (layout.width - 88) / Math.max(categories.length, 1) - 12);
+    const left = tilted ? Math.max(40, Math.ceil(measureLabel(categories[0] ?? "") * Math.SQRT1_2) + 12) : 18;
+    return horizontal
+      ? { left: Math.ceil(measured) + 18, right: 36, top: 72, bottom: legend ? 94 : 68, containLabel: false }
+      : { left: Math.min(left, layout.width * 0.4), right: 36, top: 72, bottom: legend ? 72 : 32, containLabel: true };
+  };
   const catAxis = (categories: string[], horizontal = true) => {
     const slotWidth = Math.max(1, (layout.width - 88) / Math.max(categories.length, 1) - 12);
     const rotate = horizontal && categories.some(
@@ -108,7 +116,7 @@ export function buildStatDecoOption(
       hideOverlap: false,
       // Horizontal labels stay on one line; crowded names tilt together.
       rotate,
-      ...(horizontal ? {} : { overflow: "break" as const, width: 150 }),
+      ...(horizontal ? {} : { formatter: (text: string) => wrapCategoryLabel(text, labelWidth, measureLabel) }),
       lineHeight: 15,
       margin: 10,
     },
@@ -123,17 +131,18 @@ export function buildStatDecoOption(
    * тонкой серой сеткой и подписью оси (без стрелки); иначе ось скрыта.
    */
   const showGrid = r.showGrid === true;
-  const valueAxis = (max: number | undefined, name?: string) => {
+  const valueAxis = (values: number[], name?: string, horizontal = false) => {
+    const max = axisMaxWithHeadroom(values, r.headroom ?? "medium");
     if (!showGrid) {
       return { type: "value" as const, max, show: false, splitLine: { show: false } };
     }
     return {
       type: "value" as const,
-      max: niceMax(max),
-      name: name ?? "",
-      nameLocation: "end" as const,
-      nameGap: 12,
-      nameTextStyle: { color: theme.ink, fontSize: 13, fontFamily, fontWeight: 600 as const },
+      ...chartGridScale(values),
+      name: name ? wrapCategoryLabel(name, horizontal ? Math.max(100, layout.width - labelWidth - 72) : Math.min(210, layout.width * 0.45), measureLabel) : "",
+      nameLocation: horizontal ? "middle" as const : "end" as const,
+      nameGap: horizontal ? 36 : 12,
+      nameTextStyle: { color: theme.ink, fontSize: 13, fontFamily, fontWeight: 600 as const, align: horizontal ? "center" as const : "left" as const },
       axisLine: { show: true, lineStyle: { color: theme.muted } },
       axisTick: { show: false },
       axisLabel: {
@@ -178,13 +187,7 @@ export function buildStatDecoOption(
         barWidth: `${Math.round(perBar * 100)}%`,
         barCategoryGap: `${Math.round(CATEGORY_GAP[r.categoryGap ?? "medium"] * 100)}%`,
         barGap: `${Math.round(SERIES_GAP[r.seriesGap ?? "medium"] * 100)}%`,
-        itemStyle: volumeItemStyle(
-          series.length > 1 ? colors[si] : undefined,
-          colors,
-          series.length > 1,
-          r.volume === true,
-          horizontal,
-        ),
+        itemStyle: { color: series.length > 1 ? colors[si] : ((p: { dataIndex: number }) => colors[p.dataIndex % colors.length]), borderRadius: 2 },
         label: {
           ...labelStyle,
           position: horizontal ? ("right" as const) : ("top" as const),
@@ -196,15 +199,24 @@ export function buildStatDecoOption(
       }));
 
       const maxValues = stacked ? totals : series.flatMap((s) => s.values.map((v) => v ?? 0));
-      const vMax = normalize ? 100 : axisMaxWithHeadroom(maxValues, r.headroom ?? "medium");
+      const axisValues = normalize ? [100] : maxValues;
+      const renderedSeries = r.volume ? series.map((s, si) => prismSeries(s.name, s.values.map((v, i) => {
+        const endValue = normalize && totals[i] ? (v ?? 0) / totals[i] * 100 : v ?? 0;
+        const start = stacked ? series.slice(0, si).reduce((sum, prev) => {
+          const value = prev.values[i] ?? 0;
+          return sum + (normalize && totals[i] ? value / totals[i] * 100 : value);
+        }, 0) : 0;
+        return { start, end: start + endValue, color: series.length > 1 ? colors[si] : colors[i], label: endValue };
+      }), horizontal, perBar * 0.82, stacked ? 0 : (si - (series.length - 1) / 2) * perBar, showValues)) : echSeries;
 
       return {
         option: {
           ...base,
           legend: legendFor(series, theme),
-          xAxis: horizontal ? valueAxis(vMax, valueAxisName()) : catAxis(categories),
-          yAxis: horizontal ? catAxis(categories, false) : valueAxis(vMax, valueAxisName()),
-          series: echSeries as SeriesList,
+          grid: chartGrid(categories, horizontal, series.length > 1),
+          xAxis: horizontal ? valueAxis(axisValues, valueAxisName(), true) : catAxis(categories),
+          yAxis: horizontal ? catAxis(categories, false) : valueAxis(axisValues, valueAxisName()),
+          series: renderedSeries as SeriesList,
         },
       };
     }
@@ -242,19 +254,15 @@ export function buildStatDecoOption(
         ),
       }));
 
-      const vMax = normalize
-        ? 100
-        : axisMaxWithHeadroom(
-            stacked ? totals : series.flatMap((s) => s.values.map((v) => v ?? 0)),
-            r.headroom ?? "medium",
-          );
+      const axisValues = normalize ? [100] : stacked ? totals : series.flatMap((s) => s.values.map((v) => v ?? 0));
 
       return {
         option: {
           ...base,
           legend: legendFor(series, theme),
+          grid: chartGrid(categories, false, series.length > 1),
           xAxis: { ...catAxis(categories), boundaryGap: false },
-          yAxis: valueAxis(vMax, valueAxisName()),
+          yAxis: valueAxis(axisValues, valueAxisName()),
           series: echSeries as SeriesList,
         },
       };
@@ -269,6 +277,7 @@ export function buildStatDecoOption(
       const outer = PIE_RADIUS[r.chartSize ?? "medium"];
       const hole = INNER_HOLE[r.innerHole ?? "none"];
       const total = values.reduce<number>((a, v) => a + (v ?? 0), 0);
+      if (r.volume) return { option: { ...base, grid: undefined, series: [volumePieSeries(categories, values.map((v) => v ?? 0), colors, outer, hole, showValues, measureLabel)] } };
       return {
         option: {
           ...base,
@@ -337,26 +346,9 @@ export function buildStatDecoOption(
       return {
         option: {
           ...base,
-          xAxis: {
-            type: "value",
-            name: xName,
-            nameLocation: "middle",
-            nameGap: 28,
-            axisLine: { lineStyle: { color: theme.ink } },
-            axisLabel: { color: theme.ink, fontFamily },
-            splitLine: showGrid
-              ? { show: true, lineStyle: { color: theme.muted, opacity: 0.3, width: 1 } }
-              : { show: false },
-          },
-          yAxis: {
-            type: "value",
-            name: yName,
-            axisLine: { lineStyle: { color: theme.ink } },
-            axisLabel: { color: theme.ink, fontFamily },
-            splitLine: showGrid
-              ? { show: true, lineStyle: { color: theme.muted, opacity: 0.3, width: 1 } }
-              : { show: false },
-          },
+          grid: { left: 48, right: 36, top: 72, bottom: 68, containLabel: true },
+          xAxis: showGrid ? valueAxis(points.map((p) => p.x), xName, true) : { type: "value", name: xName, nameLocation: "middle", nameGap: 28, splitLine: { show: false } },
+          yAxis: showGrid ? valueAxis(points.map((p) => p.y), yName) : { type: "value", name: yName, splitLine: { show: false } },
           series: ([
             {
               type: "scatter",
@@ -389,19 +381,22 @@ export function buildStatDecoOption(
       const { labels, counts } = histogramBins(raw);
       if (!labels.length) return emptyResult(base, "Нет числовых наблюдений для распределения");
       const colors = resolveColors(theme, r.colorMode ?? "same", labels.length);
+      const horizontal = r.orientation === "horizontal";
+      if (r.volume) return { option: { ...base, grid: chartGrid(labels, horizontal), xAxis: horizontal ? valueAxis(counts, "Частота", true) : catAxis(labels), yAxis: horizontal ? catAxis(labels, false) : valueAxis(counts, "Частота"), series: [prismSeries("Частота", counts.map((v, i) => ({ start: 0, end: v, color: colors[i] })), horizontal, BAR_WIDTH[r.barWidth ?? "wide"] * 0.82, 0, showValues)] } };
       return {
         option: {
           ...base,
-          xAxis: catAxis(labels),
-          yAxis: valueAxis(axisMaxWithHeadroom(counts, r.headroom ?? "medium"), "Частота"),
+          grid: chartGrid(labels, horizontal),
+          xAxis: horizontal ? valueAxis(counts, "Частота", true) : catAxis(labels),
+          yAxis: horizontal ? catAxis(labels, false) : valueAxis(counts, "Частота"),
           series: ([
             {
               type: "bar",
               // Histogram bins touch each other.
               barCategoryGap: "0%",
               barWidth: `${Math.round(BAR_WIDTH[r.barWidth ?? "wide"] * 100)}%`,
-              itemStyle: volumeItemStyle(undefined, colors, false, r.volume === true, false),
-              label: { ...labelStyle, position: "top" as const },
+              itemStyle: { color: (p: { dataIndex: number }) => colors[p.dataIndex % colors.length] },
+              label: { ...labelStyle, position: horizontal ? "right" as const : "top" as const },
               data: counts,
             },
           ] as SeriesList),
@@ -526,8 +521,7 @@ export function buildStatDecoOption(
       const roles = waterfallColors(theme);
       const horizontal = r.orientation === "horizontal";
       const names = steps.map((s) => s.name);
-      const tops = steps.map((s) => s.base + s.span);
-      const vMax = axisMaxWithHeadroom(tops, r.headroom ?? "small");
+      const axisValues = steps.flatMap((s) => [s.base, s.base + s.span]);
       const series = [
         {
           type: "bar" as const,
@@ -548,16 +542,17 @@ export function buildStatDecoOption(
           },
           data: steps.map((s) => ({
             value: s.span,
-            itemStyle: volume3d(roles[s.role], r.volume === true, horizontal),
+            itemStyle: { color: roles[s.role], borderRadius: 2 },
           })),
         },
       ];
       return {
         option: {
           ...base,
-          xAxis: horizontal ? valueAxis(vMax, valueAxisName()) : catAxis(names),
-          yAxis: horizontal ? catAxis(names, false) : valueAxis(vMax, valueAxisName()),
-          series: series as SeriesList,
+          grid: chartGrid(names, horizontal),
+          xAxis: horizontal ? valueAxis(axisValues, valueAxisName(), true) : catAxis(names),
+          yAxis: horizontal ? catAxis(names, false) : valueAxis(axisValues, valueAxisName()),
+          series: r.volume ? [prismSeries("Изменение", steps.map((s) => ({ start: s.base, end: s.base + s.span, color: roles[s.role], label: s.value })), horizontal, BAR_WIDTH[r.barWidth ?? "medium"] * 0.82, 0, showValues)] : series as SeriesList,
         },
       };
     }
@@ -575,12 +570,13 @@ export function buildStatDecoOption(
       }));
       const outliers = stats.flatMap((s, i) => s.outliers.map((v) => (horizontal ? [v, i] : [i, v])));
       const allValues = stats.flatMap((s) => [s.min, s.max, ...s.outliers]);
-      const vMax = axisMaxWithHeadroom(allValues, "small");
+      const axisValues = allValues;
       return {
         option: {
           ...base,
-          xAxis: horizontal ? valueAxis(vMax, valueAxisName()) : catAxis(names),
-          yAxis: horizontal ? catAxis(names, false) : valueAxis(vMax, valueAxisName()),
+          grid: chartGrid(names, horizontal),
+          xAxis: horizontal ? valueAxis(axisValues, valueAxisName(), true) : catAxis(names),
+          yAxis: horizontal ? catAxis(names, false) : valueAxis(axisValues, valueAxisName()),
           series: ([
             {
               type: "boxplot",
@@ -622,49 +618,3 @@ function legendFor(
   };
 }
 
-/**
- * Restrained "volume" look. Instead of a hard offset dark block (which read as
- * a misaligned second bar), the bar is shaded across its width like a cylinder
- * and lifted with a soft, low-contrast shadow.
- */
-function volume3d(color: string, volume: boolean, horizontal: boolean) {
-  if (!volume) return { color, borderRadius: 2 };
-  return {
-    borderRadius: 3,
-    color: {
-      type: "linear" as const,
-      // Light falls across the bar's short side: horizontally for vertical bars.
-      x: 0,
-      y: 0,
-      x2: horizontal ? 0 : 1,
-      y2: horizontal ? 1 : 0,
-      colorStops: [
-        { offset: 0, color: lighten(color, 0.2) },
-        { offset: 0.35, color: lighten(color, 0.06) },
-        { offset: 1, color: darken(color, 0.14) },
-      ],
-    },
-    shadowColor: darken(color, 0.3),
-    shadowBlur: 10,
-    shadowOffsetX: horizontal ? 0 : 2,
-    shadowOffsetY: horizontal ? 2 : 2,
-  };
-
-}
-
-/** Per-series color, or per-category colors when there is only one series. */
-function volumeItemStyle(
-  seriesColor: string | undefined,
-  colors: string[],
-  multiSeries: boolean,
-  volume: boolean,
-  horizontal: boolean,
-) {
-  if (multiSeries) return volume3d(seriesColor ?? colors[0], volume, horizontal);
-  return {
-    ...volume3d(colors[0], volume, horizontal),
-    color: volume
-      ? volume3d(colors[0], true, horizontal).color
-      : ((p: { dataIndex: number }) => colors[p.dataIndex % colors.length]) as unknown as string,
-  };
-}

@@ -30,7 +30,7 @@ const MULTI_SERIES: StatDecoChartType[] = ["bar", "line", "area", "radar"];
 /** Типы, где логична ось значений с сеткой. */
 const GRID_TYPES: StatDecoChartType[] = ["bar", "line", "area", "scatter", "histogram", "waterfall", "boxplot"];
 /** Типы, где поддержан объёмный вид. */
-const VOLUME_TYPES: StatDecoChartType[] = ["bar", "histogram", "waterfall"];
+const VOLUME_TYPES: StatDecoChartType[] = ["bar", "histogram", "waterfall", "pie"];
 
 export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number }) {
   const updateChart = usePlotStore((s) => s.updateChart);
