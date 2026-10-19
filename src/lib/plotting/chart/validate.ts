@@ -144,6 +144,7 @@ function normalizeRendering(raw: unknown): StatDecoRendering {
     headroom: pick(o.headroom, size),
     showValues: typeof o.showValues === "undefined" ? undefined : bool(o.showValues, true),
     showGrid: typeof o.showGrid === "undefined" ? undefined : bool(o.showGrid, false),
+    gridStep: typeof o.gridStep === "number" && Number.isFinite(o.gridStep) && o.gridStep > 0 ? o.gridStep : undefined,
     valueAxisLabel: typeof o.valueAxisLabel === "string" ? o.valueAxisLabel.trim() : undefined,
     colorMode: pick(o.colorMode, ["same", "similar", "different"] as const) as
       | StatDecoColorMode
@@ -165,7 +166,7 @@ export function validateAiChartJson(raw: unknown): StatDecoJson {
   const chart = validateStatDecoJson(raw);
   return {
     ...chart,
-    rendering: { ...chart.rendering, showGrid: true, volume: false, showValues: chart.rendering.showValues ?? true },
+    rendering: { ...chart.rendering, showGrid: true, gridStep: undefined, volume: false, showValues: chart.rendering.showValues ?? true },
   };
 }
 

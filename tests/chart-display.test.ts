@@ -95,3 +95,12 @@ describe("объём сохраняет данные и палитру", () => {
     expect(result.children.slice(-2).map((p: { style: { fill: string } }) => p.style.fill)).toEqual(PLOT_PALETTE.slice(0, 2));
   });
 });
+import { validateAiChartJson as aiChartForStep } from "@/lib/plotting/chart/validate";
+test("ручной шаг сетки 5 при максимуме 31 даёт шкалу 0–35", () => {
+  expect(chartGridScale([31, 26], 5)).toEqual({ min: 0, max: 35, interval: 5 });
+  expect(chartGridScale([100], 10)).toEqual({ min: 0, max: 100, interval: 10 });
+});
+test("ИИ не задаёт шаг сетки", () => {
+  const c = aiChartForStep({ chartType: "bar", data: { columns: [["a", "x"], ["v", 3]] }, rendering: { gridStep: 5 } });
+  expect(c.rendering.gridStep).toBeUndefined();
+});
