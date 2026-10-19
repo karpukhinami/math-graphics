@@ -13,8 +13,8 @@ function asObject(value: unknown, field: string): Record<string, unknown> {
 }
 
 function parseSceneType(value: unknown): PlotSceneType {
-  if (value === "plane" || value === "line" || value === "space") return value;
-  throw new Error('Поле sceneType должно быть "plane", "line" или "space"');
+  if (value === "plane" || value === "line" || value === "space" || value === "chart") return value;
+  throw new Error('Поле sceneType должно быть "plane", "line", "space" или "chart"');
 }
 
 /** Модель может вернуть план списком строк — склеиваем в текст. */
@@ -56,7 +56,8 @@ export function validatePlotAnalysisJson(
   const sceneType = parseSceneType(root.sceneType);
   const stageData = asObject(root.stageData ?? {}, "stageData");
 
-  if (options.requireDrawPlan && drawPlan.length < 10) {
+  // Диаграмма: вместо плана построения анализ отдаёт таблицу данных в stageData.chart.
+  if (options.requireDrawPlan && sceneType !== "chart" && drawPlan.length < 10) {
     throw new Error(
       'Поле drawPlan обязательно: сформулируй явный итог анализа — что именно нужно построить, со всеми данными',
     );
