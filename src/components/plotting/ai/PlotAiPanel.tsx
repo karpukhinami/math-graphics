@@ -32,7 +32,7 @@ export interface PlotAiPanelProps {
   onAnalogText?: (text: string) => void;
   initialScenario?: PlotAiScenario;
   initialRefinements?: string;
-  /** Текущий шаг ИИ-построения (null — не идёт); показывается в поле чертежа. */
+  /** Текущий шаг ИИ-построения (null — не идёт); индикатор остаётся на кнопке. */
   onProgressChange?: (step: string | null) => void;
 }
 
@@ -57,6 +57,11 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
   const [sceneBuilt, setSceneBuilt] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [sourceOpen, setSourceOpen] = useState(true);
+  const [progress, setProgress] = useState("");
+  function reportProgress(step: string | null) {
+    setProgress(step ?? "");
+    onProgressChange?.(step);
+  }
 
   const { manualText, attachedImages } = source;
   useEffect(() => { onTextChange?.(manualText); }, [manualText, onTextChange]);
@@ -86,7 +91,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
     setSourceOpen(true);
     const version = usePlotStore.getState().sessionVersion;
     try {
-      onProgressChange?.(scenario === "reproduce" ? "Разбираю изображение…" : "Разбираю задание…");
+      reportProgress(scenario === "reproduce" ? "Разбираю изображение…" : "Разбираю задание…");
       const result = await analyzePlotMaterial({
         model,
         scenario,
@@ -104,7 +109,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
       }
       setAnalyzing(false);
       setDrawing(true);
-      onProgressChange?.(result.sceneType === "chart" ? "Строю диаграмму…" : "Рисую чертёж…");
+      reportProgress(result.sceneType === "chart" ? "Строю диаграмму…" : "Рисую чертёж…");
       const built = await generatePlotScene({
         model,
         scenario,
@@ -135,7 +140,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
       if (isCurrentSession(version)) {
         setAnalyzing(false);
         setDrawing(false);
-        onProgressChange?.(null);
+        reportProgress(null);
       }
     }
   }
@@ -202,7 +207,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
         ) : (
           <Pencil className="size-4 mr-2" />
         )}
-        {analyzing ? "Разбираю…" : drawing ? "Рисую…" : "Нарисовать"}
+        {analyzing || drawing ? progress : scenario === "analog" ? "Создать" : "Нарисовать"}
       </Button>
 
       {analysis && !analysis.canDraw && (
