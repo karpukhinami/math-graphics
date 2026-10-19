@@ -55,7 +55,7 @@ describe("ручные диаграммы", () => {
     const yOn = (on.option as { yAxis: { show?: boolean; max?: number; name?: string; splitLine: { show: boolean } } }).yAxis;
     expect(yOn.show).not.toBe(false);
     expect(yOn.splitLine.show).toBe(true);
-    expect(yOn.max).toBe(12.5);
+    expect(yOn.max).toBe(12);
     expect(yOn.name).toBe("Учеников");
   });
   test("несколько рядов: легенда появляется автоматически, ряды разных цветов", () => {

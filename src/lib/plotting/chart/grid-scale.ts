@@ -22,7 +22,7 @@ export function chartGridScale(values: number[]) {
     const lines = Math.round((max - min) / interval) + 1;
     return { min, max, interval, lines };
   }).filter((s) => s.lines >= 3 && s.lines <= 8);
-  scales.sort((a, b) => Math.abs(a.lines - 6) - Math.abs(b.lines - 6) || b.lines - a.lines || a.max - high - (b.max - high) || a.interval - b.interval);
+  scales.sort((a, b) => a.interval - b.interval);
   const best = scales[0];
   return best ? { min: best.min, max: best.max, interval: best.interval } : { min: low, max: high, interval: span / 5 };
 }
