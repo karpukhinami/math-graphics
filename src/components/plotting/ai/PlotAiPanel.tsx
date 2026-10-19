@@ -160,7 +160,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
         invalidate();
         setEditOpen(false);
       }}>
-        <TabsList className="grid h-auto w-full grid-cols-2">
+        <TabsList data-tour="scenario" className="grid h-auto w-full grid-cols-2">
           <TabsTrigger value="task" disabled={analyzing || drawing} className="whitespace-normal text-center">Нарисовать по заданию</TabsTrigger>
           <TabsTrigger value="reproduce" disabled={analyzing || drawing} className="whitespace-normal text-center">Воспроизвести скриншот</TabsTrigger>
         </TabsList>
@@ -198,6 +198,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
 
       <Button
         type="button"
+        data-tour="draw"
         className="w-full"
         disabled={!hasSource || analyzing || drawing}
         onClick={() => void onRun()}

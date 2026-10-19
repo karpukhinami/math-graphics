@@ -56,7 +56,7 @@ export function PlotWorkbench({
               setInputMode(value as "manual" | "ai");
             }}
           >
-            <TabsList className="grid h-12 w-full grid-cols-2 border border-primary/30 bg-primary/10 p-1 text-foreground">
+            <TabsList data-tour="mode" className="grid h-12 w-full grid-cols-2 border border-primary/30 bg-primary/10 p-1 text-foreground">
               <TabsTrigger
                 value="ai"
                 className="h-10 text-base font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
