@@ -10,7 +10,7 @@ import { usePlotSvg } from "@/lib/plotting/use-plot-svg";
 import { usePlotStore } from "@/lib/plotting/store";
 import type { PlotScene } from "@/lib/plotting/types";
 import { standalonePlotSvg } from "@/lib/plotting/standalone-svg";
-import { renderStatDecoChartPng } from "@/lib/plotting/chart";
+import { renderChartsPng } from "@/lib/plotting/chart";
 
 export interface PlotInsertResult {
   src: string;
@@ -42,7 +42,8 @@ export function PlotEditorDialog({
   const isAi = usePlotStore((s) => s.inputMode === "ai");
   const svg = usePlotSvg();
   const scene = usePlotStore((s) => s.scene);
-  const chart = usePlotStore((s) => s.chart);
+  const charts = usePlotStore((s) => s.charts);
+  const chart = charts.length ? charts : null;
 
   async function insert() {
     if (beautifying) return;
@@ -54,7 +55,7 @@ export function PlotEditorDialog({
     try {
     // Диаграмма вставляется как PNG (ECharts), чертёж — как автономный SVG.
     const src = chart
-      ? await renderStatDecoChartPng(chart)
+      ? await renderChartsPng(chart)
       : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(await standalonePlotSvg(svg!))}`;
     if (!src) throw new Error("Не удалось подготовить изображение диаграммы");
     onInsert({

@@ -88,12 +88,13 @@ export function PlotWorkbench({
       {!isAi && (
         <Tabs
           value={spaceTab}
-          onValueChange={(value) => setSpaceTab(value as "line" | "plane" | "space")}
+          onValueChange={(value) => setSpaceTab(value as "line" | "plane" | "space" | "chart")}
         >
           <TabsList>
             <TabsTrigger value="line">Числовая прямая</TabsTrigger>
             <TabsTrigger value="plane">Координатная плоскость</TabsTrigger>
             <TabsTrigger value="space">Пространство</TabsTrigger>
+            <TabsTrigger value="chart">Диаграмма</TabsTrigger>
           </TabsList>
         </Tabs>
       )}

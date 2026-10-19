@@ -14,7 +14,7 @@ import { generatePlotBeautifiedImage } from "@/lib/plotting/beautify";
 import { downloadImageSrc, downloadPng, downloadSceneJson, downloadSvg, readSceneJson } from "@/lib/plotting/export";
 import { PlotBeautifyDialog } from "@/components/plotting/PlotBeautifyDialog";
 import { ChartPreview } from "@/components/plotting/ChartPreview";
-import { renderStatDecoChartPng } from "@/lib/plotting/chart";
+import { chartForRender, renderChartsPng } from "@/lib/plotting/chart";
 import { toast } from "sonner";
 
 export interface PlotPreviewResultProps {
@@ -48,7 +48,8 @@ export function PlotPreview({
   const [beautifiedResult, setBeautifiedResult] = useState<{ src: string; svg: string } | null>(null);
 
   const svg = usePlotSvg();
-  const chart = usePlotStore((state) => state.chart);
+  const charts = usePlotStore((state) => state.charts);
+  const chart = charts.length > 0 || spaceTab === "chart" ? charts : null;
   // Temporary point drafts are not changes to the inserted construction.
   const committedSvg = useMemo(() => sceneToSvg(scene), [scene]);
   const svgRef = useRef(committedSvg);
@@ -66,7 +67,7 @@ export function PlotPreview({
   /** PNG: для диаграммы — офф-скрин рендер ECharts, иначе обычный SVG→PNG. */
   async function downloadChartOrPlot() {
     if (chart) {
-      const png = await renderStatDecoChartPng(chart);
+      const png = await renderChartsPng(chart);
       if (png) downloadImageSrc(png);
       else toast.error("Не удалось подготовить PNG диаграммы");
       return;
@@ -115,7 +116,7 @@ export function PlotPreview({
             {beautifiedImage ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button type="button" size="sm" variant="outline" disabled={!svg && !chart}>
+                  <Button type="button" size="sm" variant="outline" disabled={!svg && !chart?.length}>
                     <Download className="size-4" />
                     PNG
                     <ChevronDown className="size-4" />
@@ -129,7 +130,7 @@ export function PlotPreview({
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button type="button" size="sm" variant="outline" disabled={!svg && !chart} onClick={() => void downloadChartOrPlot()}>
+              <Button type="button" size="sm" variant="outline" disabled={!svg && !chart?.length} onClick={() => void downloadChartOrPlot()}>
                 <Download className="size-4" />
                 PNG
               </Button>
@@ -178,7 +179,13 @@ export function PlotPreview({
 
         <div ref={previewRef} className="overflow-auto rounded-md border border-border bg-background p-2">
           {chart ? (
-            <ChartPreview chart={chart} />
+            chart.length ? (
+              <div className="space-y-4">
+                {chart.map((c, i) => <ChartPreview key={i} chart={chartForRender(c)} />)}
+              </div>
+            ) : (
+              <p className="p-8 text-center text-sm text-muted-foreground">Добавьте диаграмму.</p>
+            )
           ) : svg ? (
             <div className="[&>svg]:h-auto [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
           ) : (
@@ -197,7 +204,7 @@ export function PlotPreview({
           size="sm"
           variant="secondary"
           className="w-full"
-          disabled={(!svg && !chart) || beautifying}
+          disabled={(!svg && !chart?.length) || beautifying}
           onClick={() => setBeautifyOpen(true)}
         >
           <Sparkles className="size-4" />
