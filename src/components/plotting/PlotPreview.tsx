@@ -63,6 +63,17 @@ export function PlotPreview({
     onBeautifyingChange?.(beautifying);
   }, [beautifying, onBeautifyingChange]);
 
+  /** PNG: для диаграммы — офф-скрин рендер ECharts, иначе обычный SVG→PNG. */
+  async function downloadChartOrPlot() {
+    if (chart) {
+      const png = await renderStatDecoChartPng(chart);
+      if (png) downloadImageSrc(png);
+      else toast.error("Не удалось подготовить PNG диаграммы");
+      return;
+    }
+    if (svg) downloadPng(svg);
+  }
+
   async function onBeautifyDraw(wishes: string) {
     const container = previewRef.current;
     if (!container || !svg || !committedSvg) {
@@ -166,7 +177,9 @@ export function PlotPreview({
         )}
 
         <div ref={previewRef} className="overflow-auto rounded-md border border-border bg-background p-2">
-          {svg ? (
+          {chart ? (
+            <ChartPreview chart={chart} />
+          ) : svg ? (
             <div className="[&>svg]:h-auto [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
           ) : (
             <p className="p-8 text-center text-sm text-muted-foreground">
@@ -184,7 +197,7 @@ export function PlotPreview({
           size="sm"
           variant="secondary"
           className="w-full"
-          disabled={!svg || beautifying}
+          disabled={(!svg && !chart) || beautifying}
           onClick={() => setBeautifyOpen(true)}
         >
           <Sparkles className="size-4" />
