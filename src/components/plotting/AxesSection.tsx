@@ -210,44 +210,33 @@ export function AxesSection() {
         <CardTitle className="text-base">Координатная плоскость</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label className="text-sm">Режим масштаба осей</Label>
-          <RadioGroup
-            value={axisScaleMode}
-            onValueChange={(value) => updateAxisScale({ axisScaleMode: value as AxisScaleMode })}
-            className="grid grid-cols-2 gap-2"
+        <RadioGroup
+          value={axisScaleMode}
+          onValueChange={(value) => updateAxisScale({ axisScaleMode: value as AxisScaleMode })}
+          className="grid grid-cols-2 gap-2"
+        >
+          <Label
+            htmlFor="axis-scale-equal"
+            title="Алгебраические графики: квадратная сетка, общий масштаб по X и Y."
+            className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-normal"
           >
-            <div className="flex items-start gap-2 rounded-md border border-border p-3">
-              <RadioGroupItem value="equal" id="axis-scale-equal" className="mt-0.5" />
-              <Label htmlFor="axis-scale-equal" className="cursor-pointer space-y-0.5 font-normal">
-                <span className="block text-sm font-medium">Одинаковая размерность осей</span>
-                <span className="block text-xs text-muted-foreground">
-                  Алгебраические графики: квадратная сетка, общий масштаб по X и Y.
-                </span>
-              </Label>
-            </div>
-            <div className="flex items-start gap-2 rounded-md border border-border p-3">
-              <RadioGroupItem value="independent" id="axis-scale-independent" className="mt-0.5" />
-              <Label htmlFor="axis-scale-independent" className="cursor-pointer space-y-0.5 font-normal">
-                <span className="block text-sm font-medium">Разная размерность осей</span>
-                <span className="block text-xs text-muted-foreground">
-                  Физические и статистические зависимости: независимые шкалы и шаг сетки.
-                </span>
-              </Label>
-            </div>
-          </RadioGroup>
-        </div>
-
-        <Separator />
+            <RadioGroupItem value="equal" id="axis-scale-equal" />
+            Одинаковая размерность
+          </Label>
+          <Label
+            htmlFor="axis-scale-independent"
+            title="Физические и статистические зависимости: независимые шкалы и шаг сетки."
+            className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-normal"
+          >
+            <RadioGroupItem value="independent" id="axis-scale-independent" />
+            Разная размерность
+          </Label>
+        </RadioGroup>
 
         <AxisMainFields axis="xAxis" title="Горизонтальная ось" />
         <AxisMainFields axis="yAxis" title="Вертикальная ось" />
 
         {independent && <PlotAspectField />}
-
-        <Button type="button" variant="outline" size="sm" disabled className="w-full">
-          Подобрать пределы
-        </Button>
 
         <Collapsible open={open} onOpenChange={setOpen}>
           <div className="flex items-center justify-between gap-2">

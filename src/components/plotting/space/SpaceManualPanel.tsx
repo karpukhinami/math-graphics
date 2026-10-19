@@ -237,17 +237,14 @@ export function SpaceManualPanel() {
                 </div>
                 </div>
               </div>
-              <div className="flex items-center justify-between rounded-md border border-border p-2">
-                <div className="space-y-0.5">
-                  <Label className="text-xs">В градациях серого</Label>
-                  <p className="text-[11px] text-muted-foreground">
-                    Цветные заливки и линии — по яркости в серый (рёбра тела без изменений).
-                  </p>
-                </div>
-                <Switch
+              <div className="flex flex-wrap gap-1.5">
+                <ToggleChip
                   checked={space3d.view.renderGrayscale ?? false}
-                  onCheckedChange={(checked) => updateSpaceView({ renderGrayscale: checked })}
-                />
+                  title="Цветные заливки и линии — по яркости в серый (рёбра тела без изменений)."
+                  onChange={(checked) => updateSpaceView({ renderGrayscale: checked })}
+                >
+                  В градациях серого
+                </ToggleChip>
               </div>
               <div hidden>
               <div className="flex items-center justify-between">
@@ -302,17 +299,14 @@ export function SpaceManualPanel() {
               <CardTitle className="text-base">Точки</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center justify-between rounded-md border border-border p-2">
-                <div className="space-y-0.5">
-                  <Label className="text-xs">Подписи точек цветом рёбер</Label>
-                  <p className="text-[11px] text-muted-foreground">
-                    Включено — подписи как у многогранника; выключено — цветом точки.
-                  </p>
-                </div>
-                <Switch
+              <div className="flex flex-wrap gap-1.5">
+                <ToggleChip
                   checked={space3d.view.pointLabelsUseEdgeColor !== false}
-                  onCheckedChange={(checked) => updateSpaceView({ pointLabelsUseEdgeColor: checked })}
-                />
+                  title="Включено — подписи как у многогранника; выключено — цветом точки."
+                  onChange={(checked) => updateSpaceView({ pointLabelsUseEdgeColor: checked })}
+                >
+                  Подписи цветом рёбер
+                </ToggleChip>
               </div>
               {space3d.points.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Дополнительные точки пока не добавлены.</p>
@@ -356,17 +350,14 @@ export function SpaceManualPanel() {
               <CardTitle className="text-base">Плоскости</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center justify-between rounded-md border border-border p-2">
-                <div className="space-y-0.5">
-                  <Label className="text-xs">Показывать линии пересечения</Label>
-                  <p className="text-[11px] text-muted-foreground">
-                    Пунктир по линии пересечения двух плоскостей; точки и прямые не создаются.
-                  </p>
-                </div>
-                <Switch
+              <div className="flex flex-wrap gap-1.5">
+                <ToggleChip
                   checked={space3d.view.showPlaneIntersections ?? false}
-                  onCheckedChange={(checked) => updateSpaceView({ showPlaneIntersections: checked })}
-                />
+                  title="Пунктир по линии пересечения двух плоскостей; точки и прямые не создаются."
+                  onChange={(checked) => updateSpaceView({ showPlaneIntersections: checked })}
+                >
+                  Линии пересечения
+                </ToggleChip>
               </div>
               {space3d.planes.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Плоскости пока не добавлены.</p>
