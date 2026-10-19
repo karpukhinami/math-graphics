@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { axisNamePositions, resolveGeometry } from "../src/lib/plotting/render";
+import { axisNamePositions, labeledMarks, markValues, resolveGeometry } from "../src/lib/plotting/render";
 import { createScene } from "../src/lib/plotting/scene";
 
 function equalScene(xMin: string, xMax: string, yMin: string, yMax: string) {
@@ -11,6 +11,30 @@ function equalScene(xMin: string, xMax: string, yMin: string, yMax: string) {
 }
 
 describe("equal-scale geometry", () => {
+  for (const [min, max, expected] of [
+    ["-8", "-2", [-3]],
+    ["-8", "0", [0, -1]],
+    ["2", "8", [3]],
+    ["0", "8", [0, 1]],
+    ["-8", "8", [0, 1]],
+    ["-8", "-2.5", [-3]],
+    ["2.5", "8", [3]],
+  ] as const) {
+    test(`первое деление ${min}…${max} не на другой оси и обязательно подписано`, () => {
+      const scene = equalScene(min, max, min, max);
+      const g = resolveGeometry(scene);
+      if (!g) throw new Error("Геометрия отсутствует");
+      const x = markValues(scene.xAxis, Number(min), Number(max), 1);
+      const y = markValues(scene.yAxis, Number(min), Number(max), 1);
+      expect(x).toEqual([...expected]);
+      expect(y).toEqual([...expected]);
+      const labels = labeledMarks(g, scene, scene.appearance, x, y);
+      for (const value of expected.filter((n) => n !== 0)) {
+        expect(labels.x).toContain(value);
+        expect(labels.y).toContain(value);
+      }
+    });
+  }
   for (const [name, bounds, extendX, extendY] of [
     ["отрицательная x", ["-8", "-2", "-3", "5"], true, false],
     ["отрицательная y", ["-3", "5", "-8", "-2"], false, true],

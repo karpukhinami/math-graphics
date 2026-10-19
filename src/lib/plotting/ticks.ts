@@ -29,12 +29,16 @@ export function tickValues(min: number, max: number, step: number): number[] {
   return values;
 }
 
-/** Первое деление после нуля (или первое деление диапазона, если нуля нет). */
+/** Ближайшее к нулю ненулевое деление, не совпадающее с другой осью. */
 export function firstStepValue(min: number, max: number, step: number): number | null {
-  const values = tickValues(min, max, step);
+  const crossing = Math.min(Math.max(0, min), max);
+  const epsilon = Math.max(1e-12, step * 1e-9);
+  const values = tickValues(min, max, step).filter(
+    (value) => Math.abs(value) > epsilon && Math.abs(value - crossing) > epsilon,
+  );
   const positive = values.find((value) => value > 1e-12);
   if (positive !== undefined) return positive;
-  return values.length ? values[values.length - 1] : null;
+  return values.at(-1) ?? null;
 }
 
 /** Есть ли ноль внутри диапазона. */
