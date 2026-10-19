@@ -36,6 +36,7 @@ import chartRulesImageRaw from "@/lib/plotting/ai/templates/chart-rules-image.tx
 import type { PlotAiScenario, PlotAnalysisResult, PlotSceneType } from "./types";
 
 const chartRules = chartRulesRaw.replaceAll("{{TECH_CHART_JSON}}", techChartJson);
+const chartRulesImage = chartRulesImageRaw.replaceAll("{{TECH_CHART_JSON}}", techChartJson);
 export type TaskFigureSceneType = "line" | "plane" | "chart";
 
 const schemaLine = schemaLineRaw
@@ -99,10 +100,9 @@ export function buildAnalyzePrompt(opts: {
       template = analyzeDraw;
       break;
     case "reproduce":
-      template = analyzeReproduce.replaceAll(
-        "{{USER_REFINEMENTS}}",
-        () => opts.userRefinements?.trim() || "(нет)",
-      );
+      template = analyzeReproduce
+        .replaceAll("{{USER_REFINEMENTS}}", () => opts.userRefinements?.trim() || "(нет)")
+        .replaceAll("{{CHART_RULES}}", chartRulesImage);
       break;
     case "analog":
       template = analyzeAnalog;
@@ -196,7 +196,7 @@ export function analysisSchemaHint(scenario: PlotAiScenario = "draw"): string {
   if (scenario === "draw" || scenario === "task") {
     return `JSON с полями: reasoning (string — подробный анализ по единой структуре), canDraw (boolean), sceneType ("plane"|"line"|"space"|"chart" если canDraw), drawPlan (string — самодостаточный перечень построений по той же структуре, если canDraw и sceneType не "chart"), stageData (object; для "chart" — поле chart с таблицей данных и типом диаграммы, для "space" — данные фигуры).`;
   }
-  return `JSON с полями: canDraw (boolean), sceneType ("plane"|"line"|"space" если canDraw), analysisText (string), stageData (object).`;
+  return `JSON с полями: canDraw (boolean), sceneType ("plane"|"line"|"space"|"chart" если canDraw), analysisText (string), stageData (object; для "chart" — поле chart с таблицей данных и типом диаграммы).`;
 }
 
 export function generateSchemaHint(scenario: PlotAiScenario, sceneType?: PlotSceneType): string {
