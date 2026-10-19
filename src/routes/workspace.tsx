@@ -394,7 +394,7 @@ function WorkspacePage() {
                     <Button size="icon" variant="ghost" className="size-8" title="Формула" onClick={() => wrapSelection(block.id, "$")}>
                       <Sigma className="size-4" />
                     </Button>
-                    <PlotInsertMenu context={block.type === "text" ? "text" : "task"}
+                    <span data-tour="picture" className="contents"><PlotInsertMenu context={block.type === "text" ? "text" : "task"}
                       onFile={(src) => placeImage({ blockId: block.id }, { src })}
                       onPlot={(a) => openPlot({ blockId: block.id }, a)}
                     />
