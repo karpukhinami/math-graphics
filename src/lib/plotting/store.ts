@@ -417,6 +417,17 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
     set((state) => ({ charts: state.charts.map((c, i) => (i === index ? chart : c)) })),
   removeChart: (index) => set((state) => ({ charts: state.charts.filter((_, i) => i !== index) })),
 
+  addPoint: () => {
+    const state = get();
+    const point = createPoint(state.scene.points.length + 1);
+    const scene = { ...state.scene, points: [...state.scene.points, point] };
+    const report = buildScene(scene, { pointId: point.id });
+    set({
+      scene: report.scene,
+      status: { built: report.built, errors: report.errors, at: Date.now() },
+    });
+  },
+
   startPointDraft: () => set({ pointDraft: { ...EMPTY_POINT_MATH }, pointDraftError: null }),
 
   updatePointDraft: (patch) =>
