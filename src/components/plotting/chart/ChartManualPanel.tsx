@@ -24,7 +24,8 @@ import {
   type StatDecoJson,
   type StatDecoRendering,
 } from "@/lib/plotting/chart";
-import { CHART_COLOR_CHOICES } from "@/lib/plotting/chart/colors";
+import { CHART_COLOR_CHOICES, similarAvailable } from "@/lib/plotting/chart/colors";
+import { PLOT_PALETTE } from "@/lib/plotting/shared";
 import { usePlotStore } from "@/lib/plotting/store";
 
 const CHART_TYPES = Object.keys(CHART_TYPE_LABELS) as StatDecoChartType[];
@@ -57,6 +58,8 @@ export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number
         : Array.from({ length: rows }, (_, i) => String(columns[0]?.[i + 1] ?? `Значение ${i + 1}`))
       : ["Основной цвет"];
   const customColors = r.customColors ?? [];
+  // «Оттенки одного цвета» предлагаем только там, где у базового цвета есть хотя бы 3 фирменных оттенка.
+  const similarOk = similarAvailable(customColors[0] ?? PLOT_PALETTE[0]);
   const setCustomColor = (i: number, color: string) => {
     const next = [...customColors];
     next[i] = color;
@@ -96,7 +99,7 @@ export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number
               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="same">Один цвет</SelectItem>
-                <SelectItem value="similar">Оттенки одного цвета</SelectItem>
+                <SelectItem value="similar" disabled={!similarOk}>Оттенки одного цвета</SelectItem>
                 <SelectItem value="different">Разные цвета</SelectItem>
               </SelectContent>
             </Select>
