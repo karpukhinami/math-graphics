@@ -212,6 +212,55 @@ export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number
   );
 }
 
+/** Кнопка «Сетка»: задать размер таблицы разом (строки × столбцы). */
+function TableSizePopover({ rows, cols, onApply }: { rows: number; cols: number; onApply: (rows: number, cols: number) => void }) {
+  const [open, setOpen] = useState(false);
+  const [nextRows, setNextRows] = useState(String(rows));
+  const [nextCols, setNextCols] = useState(String(cols));
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) {
+          setNextRows(String(rows));
+          setNextCols(String(cols));
+        }
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button type="button" size="sm" variant="outline">
+          <Table2 className="size-4" />
+          Сетка
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 space-y-3" align="start">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs">Строк</Label>
+            <Input type="number" min={1} max={50} value={nextRows} onChange={(e) => setNextRows(e.target.value)} className="h-8" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Столбцов</Label>
+            <Input type="number" min={2} max={12} value={nextCols} onChange={(e) => setNextCols(e.target.value)} className="h-8" />
+          </div>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          className="w-full"
+          onClick={() => {
+            onApply(Number(nextRows) || rows, Number(nextCols) || cols);
+            setOpen(false);
+          }}
+        >
+          Применить
+        </Button>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 /** Поле, которое применяет значение при уходе фокуса или Enter. */
 function CommitInput({
   value,
