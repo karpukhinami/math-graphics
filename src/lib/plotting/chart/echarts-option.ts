@@ -377,7 +377,7 @@ export function buildStatDecoOption(
       const raw = numericBody(cols[valIdx]).filter((v): v is number => v != null);
       const { labels, counts } = histogramBins(raw);
       if (!labels.length) return emptyResult(base, "Нет числовых наблюдений для распределения");
-      const colors = resolveColors(theme, r.colorMode ?? "same", labels.length);
+      const colors = resolveColors(theme, r.colorMode ?? "same", labels.length, r.customColors);
       const horizontal = r.orientation === "horizontal";
       if (r.volume) return { option: { ...base, grid: chartGrid(labels, horizontal), xAxis: horizontal ? valueAxis(counts, valueAxisName(), true) : catAxis(labels), yAxis: horizontal ? catAxis(labels, false) : valueAxis(counts, valueAxisName()), series: [prismSeries("Частота", counts.map((v, i) => ({ start: 0, end: v, color: colors[i] })), horizontal, BAR_WIDTH[r.barWidth ?? "wide"] * 0.82, 0, showValues)] } };
       return {
@@ -405,7 +405,7 @@ export function buildStatDecoOption(
     case "radar": {
       const { categories, series } = toCategorySeries(json);
       if (!categories.length || !series.length) return emptyResult(base, "Нет показателей для радара");
-      const colors = resolveColors(theme, r.colorMode ?? "different", series.length);
+      const colors = resolveColors(theme, r.colorMode ?? "different", series.length, r.customColors);
       const allValues = series.flatMap((s) => s.values.map((v) => v ?? 0));
       const max = axisMaxWithHeadroom(allValues, "small");
       const radius = POINT_RADIUS[r.pointSize ?? "small"];
@@ -443,7 +443,7 @@ export function buildStatDecoOption(
       const { categories, series } = toCategorySeries(json);
       if (!categories.length || !series.length) return emptyResult(base, "Нет этапов воронки");
       const values = series[0].values;
-      const colors = resolveColors(theme, r.colorMode ?? "similar", categories.length);
+      const colors = resolveColors(theme, r.colorMode ?? "similar", categories.length, r.customColors);
       return {
         option: {
           ...base,
@@ -481,7 +481,7 @@ export function buildStatDecoOption(
     case "treemap": {
       const nodes = toTreemapNodes(json);
       if (!nodes.length) return emptyResult(base, "Нет категорий для treemap");
-      const colors = resolveColors(theme, r.colorMode ?? "different", nodes.length);
+      const colors = resolveColors(theme, r.colorMode ?? "different", nodes.length, r.customColors);
       return {
         option: {
           ...base,
@@ -558,7 +558,7 @@ export function buildStatDecoOption(
     case "boxplot": {
       const stats = toBoxplotStats(json);
       if (!stats.length) return emptyResult(base, "Нет наблюдений для «ящика с усами»");
-      const colors = resolveColors(theme, r.colorMode ?? "same", stats.length);
+      const colors = resolveColors(theme, r.colorMode ?? "same", stats.length, r.customColors);
       const horizontal = r.orientation === "horizontal";
       const names = stats.map((s) => s.name);
       const boxes = stats.map((s, i) => ({
