@@ -37,15 +37,17 @@
 В stageData.lineSets укажи структуру множества; НЕ перечисляй граничные точки отдельно — они создаются из множества автоматически.
 Для одной прямой: axisRowCount: 1, axisRow: 0. Если на рисунке нет делений оси — majorVisible: false.
 
-ЧТО УМЕЕТ НАШ ИНСТРУМЕНТ — см. sceneType "plane" и "line" как в режиме построения по заданию.
+ЧТО УМЕЕТ НАШ ИНСТРУМЕНТ — см. sceneType "plane" и "line" как в режиме построения по заданию, а также "chart" ниже.
 Если воспроизвести содержательную часть нельзя — canDraw = false.
 
 {{SHARED_SOURCE_RULES}}
 
+{{CHART_RULES}}
+
 СТРУКТУРА JSON-ОТВЕТА
 {
   "canDraw": boolean,
-  "sceneType": "plane" | "line",
+  "sceneType": "plane" | "line" | "chart",
   "analysisText": string,
   "stageData": {
     "reproductionGoal": string,
@@ -54,9 +56,12 @@
     "lineSets": [ { "input": string, "description": string } ],
     "planePoints": [ { "x": string, "y": string, "label": string } ],
     "axisHints": { "xMin": string, "xMax": string, "yMin": string, "yMax": string, "lineMin": string, "lineMax": string },
+    "chart": object | null,
     "visualNotes": string
   }
 }
+
+Поле chart заполняется только при sceneType = "chart" (объект по схеме выше); иначе — null.
 
 analysisText — подробный перечень будущих построений по единой структуре ниже; перечисли каждый видимый объект с точными параметрами и подписями, кратко указав источник восстановленных данных.
 

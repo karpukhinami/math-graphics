@@ -32,9 +32,11 @@ import analogTaskGenerate from "@/lib/plotting/ai/templates/analog-task-generate
 import techChartJson from "@/lib/plotting/ai/templates/tech-chart-json.txt?raw";
 import chartTaskRules from "@/lib/plotting/ai/templates/tech-task-chart-rules.txt?raw";
 import chartRulesRaw from "@/lib/plotting/ai/templates/chart-rules.txt?raw";
+import chartRulesImageRaw from "@/lib/plotting/ai/templates/chart-rules-image.txt?raw";
 import type { PlotAiScenario, PlotAnalysisResult, PlotSceneType } from "./types";
 
 const chartRules = chartRulesRaw.replaceAll("{{TECH_CHART_JSON}}", techChartJson);
+const chartRulesImage = chartRulesImageRaw.replaceAll("{{TECH_CHART_JSON}}", techChartJson);
 export type TaskFigureSceneType = "line" | "plane" | "chart";
 
 const schemaLine = schemaLineRaw
@@ -98,17 +100,16 @@ export function buildAnalyzePrompt(opts: {
       template = analyzeDraw;
       break;
     case "reproduce":
-      template = analyzeReproduce.replaceAll(
-        "{{USER_REFINEMENTS}}",
-        () => opts.userRefinements?.trim() || "(нет)",
-      );
+      template = analyzeReproduce
+        .replaceAll("{{USER_REFINEMENTS}}", () => opts.userRefinements?.trim() || "(нет)")
+        .replaceAll("{{CHART_RULES}}", chartRulesImage);
       break;
     case "analog":
       template = analyzeAnalog;
       break;
   }
   const prompt = withAnalysisRules(injectShared(template, sourceText));
-  // Режим диаграмм доступен только в сценарии «Нарисовать по заданию».
+  // Диаграммы: «draw» — правила извлечения из текста, «reproduce» — из изображения (уже в шаблоне).
   return scenario === "draw" ? prompt + "\n\n" + chartRules : prompt;
 }
 
@@ -195,7 +196,7 @@ export function analysisSchemaHint(scenario: PlotAiScenario = "draw"): string {
   if (scenario === "draw" || scenario === "task") {
     return `JSON с полями: reasoning (string — подробный анализ по единой структуре), canDraw (boolean), sceneType ("plane"|"line"|"space"|"chart" если canDraw), drawPlan (string — самодостаточный перечень построений по той же структуре, если canDraw и sceneType не "chart"), stageData (object; для "chart" — поле chart с таблицей данных и типом диаграммы, для "space" — данные фигуры).`;
   }
-  return `JSON с полями: canDraw (boolean), sceneType ("plane"|"line"|"space" если canDraw), analysisText (string), stageData (object).`;
+  return `JSON с полями: canDraw (boolean), sceneType ("plane"|"line"|"space"|"chart" если canDraw), analysisText (string), stageData (object; для "chart" — поле chart с таблицей данных и типом диаграммы).`;
 }
 
 export function generateSchemaHint(scenario: PlotAiScenario, sceneType?: PlotSceneType): string {
