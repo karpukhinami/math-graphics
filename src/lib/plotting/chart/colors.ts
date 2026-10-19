@@ -109,12 +109,13 @@ export function resolveColors(
   const effective: StatDecoColorMode = mode ?? (n > 1 ? "different" : "same");
   let base: string[];
   if (effective === "same") base = Array.from({ length: n }, () => custom?.[0] ?? theme.primary);
-  else {
+  else if (effective === "similar") {
     const baseColor = custom?.[0] ?? theme.primary;
     const fixed = paletteShades(baseColor);
     // Оттенков меньше, чем столбцов, — повторяем все по кругу; вне групп палитры — оттенки по светлоте.
     base = fixed ? Array.from({ length: n }, (_, i) => fixed[i % fixed.length]) : shades(baseColor, n);
   }
+  else base = distinctColors(theme, n);
   // Ручные цвета (режим «different») перекрывают палитру по позициям.
   if (effective === "different" && custom) {
     return base.map((color, i) => custom[i] ?? color);
