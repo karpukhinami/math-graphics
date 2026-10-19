@@ -27,11 +27,15 @@ export async function renderStatDecoChartPng(statDeco: StatDecoJson): Promise<st
   let chart: EchartsLike | null = null;
   try {
     const echarts = await import("echarts");
+    const { option: sizedOption } = buildStatDecoOption(statDeco, {
+      width: 1200,
+      measureText: (text, font) => echarts.format.getTextRect(text, font).width,
+    });
     chart = echarts.init(host, undefined, {
       renderer: "canvas",
       devicePixelRatio: 2,
     }) as unknown as EchartsLike;
-    chart.setOption(option, true);
+    chart.setOption(sizedOption, true);
     return chart.getDataURL({
       type: "png",
       pixelRatio: 2,
