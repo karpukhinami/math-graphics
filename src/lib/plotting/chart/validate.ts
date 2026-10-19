@@ -143,6 +143,7 @@ function normalizeRendering(raw: unknown): StatDecoRendering {
     volume: typeof o.volume === "undefined" ? undefined : bool(o.volume, false),
     headroom: pick(o.headroom, size),
     showValues: typeof o.showValues === "undefined" ? undefined : bool(o.showValues, true),
+    showGrid: typeof o.showGrid === "undefined" ? undefined : bool(o.showGrid, false),
     colorMode: pick(o.colorMode, ["same", "similar", "different"] as const) as
       | StatDecoColorMode
       | undefined,
