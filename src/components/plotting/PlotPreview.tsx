@@ -1,4 +1,3 @@
-          data-tour="beautify"
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Download, FileJson, RotateCcw, Sparkles, Upload } from "lucide-react";
 import {
@@ -213,6 +212,7 @@ export function PlotPreview({
           type="button"
           size="sm"
           variant="secondary"
+          data-tour="beautify"
           className="w-full"
           disabled={(!svg && !chart?.length) || beautifying}
           onClick={() => setBeautifyOpen(true)}
