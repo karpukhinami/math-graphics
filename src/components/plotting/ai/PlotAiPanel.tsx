@@ -299,3 +299,29 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
     </div>
   );
 }
+
+/** Результат анализа для диаграммы: тип + таблица данных из stageData.chart. */
+function ChartAnalysisView({ analysis }: { analysis: PlotAnalysisResult }) {
+  const raw = (analysis.stageData as Record<string, unknown>).chart;
+  if (!raw) return <Markdown>{analysis.analysisText}</Markdown>;
+  try {
+    const chart = validateStatDecoJson(raw);
+    return (
+      <div className="space-y-3">
+        <Markdown>{renderStatDecoJson(chart)}</Markdown>
+        <Collapsible>
+          <CollapsibleTrigger asChild>
+            <Button type="button" variant="ghost" size="sm" className="px-0 text-xs">
+              Ход рассуждений
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-2">
+            <Markdown>{analysis.analysisText}</Markdown>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+    );
+  } catch {
+    return <Markdown>{analysis.analysisText}</Markdown>;
+  }
+}
