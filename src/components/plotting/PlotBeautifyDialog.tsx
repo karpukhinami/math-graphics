@@ -25,7 +25,7 @@ export function PlotBeautifyDialog({ open, busy, onOpenChange, onDraw }: PlotBea
     if (open) setWishes("");
   }, [open]);
 
-  const canDraw = wishes.trim().length > 0 && !busy;
+  const canDraw = !busy;
 
   return (
     <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
@@ -33,15 +33,14 @@ export function PlotBeautifyDialog({ open, busy, onOpenChange, onDraw }: PlotBea
         <DialogHeader>
           <DialogTitle>Сделать красиво</DialogTitle>
           <DialogDescription>
-            Текущий чертёж будет отправлен модели как образец. Опишите, что добавить к рисунку — фон,
-            иллюстрацию, стиль. Математические элементы должны сохраниться.
+            Пожелания к оформлению
           </DialogDescription>
         </DialogHeader>
         <Textarea
           rows={5}
           value={wishes}
           onChange={(e) => setWishes(e.target.value)}
-          placeholder="Например: лесная поляна, мягкий акварельный фон, школьная тетрадь по краям…"
+          placeholder="Например: лесная поляна, мягкий акварельный фон… Можно оставить пустым."
           disabled={busy}
           autoFocus
         />

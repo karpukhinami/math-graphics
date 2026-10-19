@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { usePlotStore } from "@/lib/plotting/store";
 import { sceneToSvg, usePlotSvg } from "@/lib/plotting/use-plot-svg";
 import { generatePlotBeautifiedImage } from "@/lib/plotting/beautify";
+import { plotBeautifySourceKey } from "@/lib/plotting/beautify-source";
 import { downloadImageSrc, downloadPng, downloadSceneJson, downloadSvg, readSceneJson } from "@/lib/plotting/export";
 import { PlotBeautifyDialog } from "@/components/plotting/PlotBeautifyDialog";
 import { ChartPreview } from "@/components/plotting/ChartPreview";
@@ -45,16 +46,17 @@ export function PlotPreview({
 
   const [beautifyOpen, setBeautifyOpen] = useState(false);
   const [beautifying, setBeautifying] = useState(false);
-  const [beautifiedResult, setBeautifiedResult] = useState<{ src: string; svg: string } | null>(null);
+  const [beautifiedResult, setBeautifiedResult] = useState<{ src: string; sourceKey: string } | null>(null);
 
   const svg = usePlotSvg();
   const charts = usePlotStore((state) => state.charts);
   const chart = charts.length > 0 || spaceTab === "chart" ? charts : null;
   // Temporary point drafts are not changes to the inserted construction.
   const committedSvg = useMemo(() => sceneToSvg(scene), [scene]);
-  const svgRef = useRef(committedSvg);
-  svgRef.current = committedSvg;
-  const beautifiedImage = beautifiedResult?.svg === committedSvg ? beautifiedResult.src : null;
+  const sourceKey = useMemo(() => plotBeautifySourceKey(committedSvg, chart), [committedSvg, chart]);
+  const sourceRef = useRef(sourceKey);
+  sourceRef.current = sourceKey;
+  const beautifiedImage = sourceKey && beautifiedResult?.sourceKey === sourceKey ? beautifiedResult.src : null;
 
   useEffect(() => {
     onBeautifiedImageChange?.(beautifiedImage);
@@ -77,7 +79,7 @@ export function PlotPreview({
 
   async function onBeautifyDraw(wishes: string) {
     const container = previewRef.current;
-    if (!container || !svg || !committedSvg) {
+    if (!container || !sourceKey) {
       toast.error("Сначала постройте чертёж");
       return;
     }
@@ -87,10 +89,11 @@ export function PlotPreview({
       const dataUrl = await generatePlotBeautifiedImage({
         previewEl: container,
         userWishes: wishes,
+        charts: chart ?? undefined,
       });
-      if (!mounted.current || usePlotStore.getState().sessionVersion !== version || svgRef.current !== committedSvg)
+      if (!mounted.current || usePlotStore.getState().sessionVersion !== version || sourceRef.current !== sourceKey)
         return;
-      setBeautifiedResult({ src: dataUrl, svg: committedSvg });
+      setBeautifiedResult({ src: dataUrl, sourceKey });
       onBeautifiedImageChange?.(dataUrl);
       setBeautifyOpen(false);
       toast.success("Дорисованная версия готова");
