@@ -24,6 +24,7 @@ import { buildAnalogBlock } from "@/lib/workspace/analog-block";
 import { exportTaskDocx } from "@/lib/workspace/docx-export";
 import { importDocx } from "@/lib/workspace/docx-import";
 import { plotInsertionImages, insertPlotImageTokens, type WorkspacePlotImage } from "@/lib/workspace/plot-insertion";
+import { OnboardingTour } from "@/components/OnboardingTour";
 
 export const Route = createFileRoute("/workspace")({
   head: () => ({
@@ -310,6 +311,10 @@ function WorkspacePage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-muted/30">
+      <OnboardingTour id="workspace" steps={[
+        { target: "blocks", title: "Соберите задание", text: "Добавляйте текст и вопросы. «Аналог по скриншоту» и «Задание по запросу» создадут задание с чертежом сами." },
+        { target: "download", title: "Готово — скачайте", text: "Задание сохраняется в Word. Чертёж можно вставить в любой блок кнопкой с картинкой." },
+      ]} />
       <header className="flex items-center justify-between gap-3 border-b border-border bg-background px-4 py-3">
         <Button asChild variant="outline" size="sm" className="shrink-0">
           <Link to="/">
@@ -321,14 +326,14 @@ function WorkspacePage() {
           <Button variant={preview ? "default" : "outline"} size="sm" onClick={() => setPreview((p) => !p)}>
             <Eye className="size-4" /> {preview ? "Редактировать" : "Предпросмотр"}
           </Button>
-          <Button size="sm" disabled={exporting} onClick={downloadDocx}>
+          <Button data-tour="download" size="sm" disabled={exporting} onClick={downloadDocx}>
             <Download className="size-4" /> {exporting ? "Готовлю…" : "Скачать"}
           </Button>
         </div>
       </header>
 
       <div className="flex min-h-0 flex-1 overflow-y-auto">
-        {!preview && <aside aria-label="Добавить блок" className="sticky top-0 h-fit w-44 shrink-0 space-y-2 border-r border-border p-3 lg:w-56">
+        {!preview && <aside data-tour="blocks" aria-label="Добавить блок" className="sticky top-0 h-fit w-44 shrink-0 space-y-2 border-r border-border p-3 lg:w-56">
           <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => setBlocks((bs) => [...bs, newBlock("text")])}><FileText className="size-4 shrink-0" /> Текст</Button>
           <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => setBlocks((bs) => [...bs, newBlock("input")])}><TextCursorInput className="size-4 shrink-0" /> Вопрос с вводом</Button>
           <Button variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => setBlocks((bs) => [...bs, newBlock("choice")])}><ListChecks className="size-4 shrink-0" /> Вопрос с вариантами</Button>
