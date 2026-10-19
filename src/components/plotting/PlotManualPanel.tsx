@@ -14,6 +14,7 @@ import { SetCard, SetDraftPanel } from "@/components/plotting/line/SetCard";
 import { LinePointCard, LinePointDraftPanel } from "@/components/plotting/line/LinePointCard";
 import { MathSyntaxHint } from "@/components/plotting/MathInput";
 import { usePlotStore } from "@/lib/plotting/store";
+import { ChartManualPanel } from "@/components/plotting/chart/ChartManualPanel";
 
 export function PlotManualPanel() {
   const scene = usePlotStore((state) => state.scene);
@@ -29,6 +30,12 @@ export function PlotManualPanel() {
   const isLine = scene.space === "line";
   const isSpace = scene.space === "space";
   const line = scene.line;
+
+  const spaceTab = usePlotStore((state) => state.spaceTab);
+  const chartCount = usePlotStore((state) => state.charts.length);
+  if (spaceTab === "chart" || chartCount > 0) {
+    return <ChartManualPanel />;
+  }
 
   if (isSpace) {
     return <SpaceManualPanel />;

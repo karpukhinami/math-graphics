@@ -125,7 +125,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
       });
       if (!isCurrentSession(version)) return;
       if (isChartResult(result)) {
-        usePlotStore.getState().setChart(result.chart);
+        usePlotStore.getState().setCharts([result.chart]);
       } else {
         importAiScene(result.scene);
       }

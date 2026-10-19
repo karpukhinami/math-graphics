@@ -1,4 +1,5 @@
 /** Состояние страницы plotting. UI меняет только сцену; сцена — единый контракт. */
+import { createEmptyChart, normalizeChart } from "@/lib/plotting/chart/editor";
 import { create } from "zustand";
 import {
   EMPTY_POINT_MATH,
@@ -119,7 +120,7 @@ export interface SpacePlaneDraft {
 }
 
 export type PlotInputMode = "manual" | "ai";
-export type PlotSpaceTab = "line" | "plane" | "space";
+export type PlotSpaceTab = "line" | "plane" | "space" | "chart";
 
 export interface BuildStatus {
   built: number;
@@ -206,9 +207,13 @@ interface PlotStore {
   commitInputs: () => void;
   importScene: (raw: unknown) => void;
   importAiScene: (raw: unknown) => void;
-  /** Построенная ИИ диаграмма (режим chart); живёт вне PlotScene. */
-  chart: import("@/lib/plotting/chart").StatDecoJson | null;
-  setChart: (chart: import("@/lib/plotting/chart").StatDecoJson | null) => void;
+  /** Диаграммы (режим chart, ручной и ИИ); живут вне PlotScene, рисуются друг под другом. */
+  charts: import("@/lib/plotting/chart").StatDecoJson[];
+  /** Принять диаграммы от ИИ: дополняются значениями по умолчанию для плашки. */
+  setCharts: (charts: import("@/lib/plotting/chart").StatDecoJson[]) => void;
+  addChart: () => void;
+  updateChart: (index: number, chart: import("@/lib/plotting/chart").StatDecoJson) => void;
+  removeChart: (index: number) => void;
   resetScene: () => void;
   setSpaceShapeKind: (kind: SpaceShapeKind) => void;
   setSpaceBaseInput: (input: string) => void;
@@ -380,7 +385,7 @@ function freshSession(spaceTab: PlotSpaceTab, sessionVersion: number): Partial<P
     spacePointDraft: null, spacePointDraftError: null,
     spaceLineDraft: null, spaceLineDraftError: null,
     spacePlaneDraft: null, spacePlaneDraftError: null,
-    chart: null,
+    charts: spaceTab === "chart" ? [createEmptyChart()] : [],
   };
 }
 
@@ -403,8 +408,12 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
   spacePlaneDraft: null,
   spacePlaneDraftError: null,
   activeAxisRow: 0,
-  chart: null,
-  setChart: (chart) => set({ chart }),
+  charts: [],
+  setCharts: (charts) => set({ charts: charts.map(normalizeChart) }),
+  addChart: () => set((state) => ({ charts: [...state.charts, createEmptyChart()] })),
+  updateChart: (index, chart) =>
+    set((state) => ({ charts: state.charts.map((c, i) => (i === index ? chart : c)) })),
+  removeChart: (index) => set((state) => ({ charts: state.charts.filter((_, i) => i !== index) })),
 
   startPointDraft: () => set({ pointDraft: { ...EMPTY_POINT_MATH }, pointDraftError: null }),
 
@@ -1023,7 +1032,7 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
   },
 
   importAiScene: (raw) => {
-    set({ chart: null });
+    set({ charts: [] });
     commitImportedScene(set, mergeAiScene(raw));
   },
 
