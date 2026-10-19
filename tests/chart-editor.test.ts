@@ -48,6 +48,28 @@ describe("начальные настройки диаграмм от ИИ", () 
 });
 
 describe("ручные диаграммы", () => {
+  test("подпись оси независима от рядов и сохраняется при проверке", () => {
+    const chart = createEmptyChart("bar");
+    chart.data.columns = [["Город", "Сосновск", "Берёзовск"], ["2010 год", 83, 67], ["2025 год", 111, 53]];
+    chart.rendering = { ...chart.rendering, showGrid: true, valueAxisLabel: "тыс. чел." };
+    const saved = normalizeChart(validateStatDecoJson(JSON.parse(JSON.stringify(chart))));
+    expect(saved.rendering.valueAxisLabel).toBe("тыс. чел.");
+    const option = buildStatDecoOption(saved).option as { yAxis: { name: string }; legend: { data: string[] } };
+    expect(option.yAxis.name).toBe("тыс. чел.");
+    expect(option.legend.data).toEqual(["2010 год", "2025 год"]);
+  });
+  test("очищенная подпись не восстанавливается из таблицы", () => {
+    const chart = createEmptyChart("bar");
+    chart.rendering = { ...chart.rendering, showGrid: true, valueAxisLabel: "" };
+    const saved = validateStatDecoJson(chart);
+    expect(saved.rendering.valueAxisLabel).toBe("");
+    expect((buildStatDecoOption(saved).option as { yAxis: { name: string } }).yAxis.name).toBe("");
+  });
+  test("в горизонтальной диаграмме отдельная подпись следует за осью значений", () => {
+    const chart = createEmptyChart("bar");
+    chart.rendering = { ...chart.rendering, showGrid: true, orientation: "horizontal", valueAxisLabel: "тыс. чел." };
+    expect((buildStatDecoOption(chart).option as { xAxis: { name: string } }).xAxis.name).toBe("тыс. чел.");
+  });
   test("ответ ИИ без оформления дополняется значениями по умолчанию", () => {
     const ai = validateStatDecoJson({ chartType: "pie", title: "Опрос", data: { columns: [["Ответ", "Да", "Нет"], ["Голосов", 7, 3]] } });
     const c = normalizeChart({ ...ai, rendering: {} });
@@ -101,7 +123,7 @@ describe("ручные диаграммы", () => {
     expect(yOn.show).not.toBe(false);
     expect(yOn.splitLine.show).toBe(true);
     expect(yOn.max).toBe(12);
-    expect(yOn.name).toBe("Учеников");
+    expect(yOn.name).toBe("");
   });
   test("несколько рядов: легенда появляется автоматически, ряды разных цветов", () => {
     const chart = createEmptyChart("bar");

@@ -8,5 +8,6 @@
 - AI chart generation uses `validateAiChartJson` before store ingestion; ordinary validation preserves saved and manually edited settings. Why: initial AI presentation defaults must not overwrite subsequent edits or saved diagrams.
 
 - Value-axis bounds and intervals are derived from plotted data by `grid-scale.ts`; legacy headroom never affects a visible grid. Why: manual and AI charts must use the same scale without model-chosen bounds.
+- Value-axis captions use the optional `rendering.valueAxisLabel` input, with empty or absent captions hidden rather than inferred from series headers. Why: series names belong in the legend and need not describe the measured quantity.
 - Horizontal category labels use measured bounded width and Russian hyphenation in `category-labels.ts`; value-axis captions sit below the axis at its center. Why: labels must not create unused margins or clipped captions.
 - Volume bars use custom ECharts series with explicit prism faces; volume pies use elliptical sectors with extruded walls in `volume.ts`, shared by preview and PNG. Why: geometry must preserve the flat chart's data and palette rather than substitute gradients.
