@@ -1,8 +1,9 @@
 /** Плашка одной диаграммы: тип, оформление и таблица данных (формат — как у ИИ). */
 import { useEffect, useState } from "react";
-import { Eraser, Plus, Table2, Trash2, X } from "lucide-react";
+import { ChevronDown, Eraser, Plus, Table2, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -23,6 +24,7 @@ import {
   type StatDecoJson,
   type StatDecoRendering,
 } from "@/lib/plotting/chart";
+import { CHART_COLOR_CHOICES } from "@/lib/plotting/chart/colors";
 import { usePlotStore } from "@/lib/plotting/store";
 
 const CHART_TYPES = Object.keys(CHART_TYPE_LABELS) as StatDecoChartType[];
@@ -35,25 +37,48 @@ const VOLUME_TYPES: StatDecoChartType[] = ["bar", "histogram", "waterfall", "pie
 export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number }) {
   const updateChart = usePlotStore((s) => s.updateChart);
   const removeChart = usePlotStore((s) => s.removeChart);
+  const [extraOpen, setExtraOpen] = useState(false);
   const r = chart.rendering;
   const columns = chart.data.columns;
   const rows = chartRowCount(columns);
   const type = chart.chartType;
+  const colorMode = r.colorMode ?? "different";
 
   const update = (patch: Partial<StatDecoJson>) => updateChart(index, { ...chart, ...patch });
   const render = (patch: Partial<StatDecoRendering>) => update({ rendering: { ...r, ...patch } });
   const setColumns = (next: StatDecoJson["data"]["columns"]) => update({ data: { columns: next } });
 
+  // Цели раскраски: несколько рядов — по рядам, один ряд — по категориям.
+  const seriesCount = Math.max(0, columns.length - 1);
+  const colorTargets: string[] =
+    colorMode === "different"
+      ? seriesCount > 1
+        ? columns.slice(1).map((col, i) => String(col[0] ?? `Ряд ${i + 1}`))
+        : Array.from({ length: rows }, (_, i) => String(columns[0]?.[i + 1] ?? `Значение ${i + 1}`))
+      : ["Основной цвет"];
+  const customColors = r.customColors ?? [];
+  const setCustomColor = (i: number, color: string) => {
+    const next = [...customColors];
+    next[i] = color;
+    render({ customColors: next });
+  };
+
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="text-base">Диаграмма {index + 1}</CardTitle>
-        <Button type="button" size="icon" variant="ghost" aria-label="Удалить диаграмму" onClick={() => removeChart(index)}>
-          <Trash2 className="size-4" />
-        </Button>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="grid gap-3 sm:grid-cols-2">
+      <CardContent className="space-y-3 p-3">
+        <div className="flex items-center gap-1.5">
+          <CommitInput
+            value={chart.title}
+            placeholder={`Диаграмма ${index + 1}`}
+            className="h-9 flex-1 font-medium"
+            onCommit={(title) => update({ title })}
+          />
+          <Button type="button" size="icon" variant="ghost" aria-label="Удалить диаграмму" onClick={() => removeChart(index)}>
+            <Trash2 className="size-4" />
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1">
             <Label className="text-xs">Тип</Label>
             <Select value={type} onValueChange={(v) => update({ chartType: v as StatDecoChartType })}>
@@ -66,12 +91,8 @@ export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Заголовок</Label>
-            <CommitInput value={chart.title} placeholder="Без заголовка" onCommit={(title) => update({ title })} />
-          </div>
-          <div className="space-y-1">
             <Label className="text-xs">Цвета</Label>
-            <Select value={r.colorMode ?? "different"} onValueChange={(v) => render({ colorMode: v as StatDecoRendering["colorMode"] })}>
+            <Select value={colorMode} onValueChange={(v) => render({ colorMode: v as StatDecoRendering["colorMode"] })}>
               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="same">Один цвет</SelectItem>
@@ -80,86 +101,18 @@ export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number
               </SelectContent>
             </Select>
           </div>
-          {(type === "bar" || type === "waterfall" || type === "histogram") && (
-            <div className="space-y-1">
-              <Label className="text-xs">Ориентация</Label>
-              <Select value={r.orientation ?? "vertical"} onValueChange={(v) => render({ orientation: v as "vertical" | "horizontal" })}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="vertical">Вертикально</SelectItem>
-                  <SelectItem value="horizontal">Горизонтально</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          {MULTI_SERIES.includes(type) && type !== "radar" && columns.length > 2 && (
-            <div className="space-y-1">
-              <Label className="text-xs">Несколько рядов</Label>
-              <Select value={r.seriesLayout ?? "grouped"} onValueChange={(v) => render({ seriesLayout: v as StatDecoRendering["seriesLayout"] })}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="grouped">Рядом</SelectItem>
-                  <SelectItem value="stacked">Друг на друге</SelectItem>
-                  <SelectItem value="stacked100">Доли до 100%</SelectItem>
-                  <SelectItem value="overlay">Наложением</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          {(type === "line" || type === "area") && (
-            <div className="space-y-1">
-              <Label className="text-xs">Линия</Label>
-              <Select value={r.lineShape ?? "straight"} onValueChange={(v) => render({ lineShape: v as "straight" | "smooth" })}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="straight">Ломаная</SelectItem>
-                  <SelectItem value="smooth">Плавная</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          {type === "pie" && (
-            <div className="space-y-1">
-              <Label className="text-xs">Отверстие в центре</Label>
-              <Select value={r.innerHole ?? "none"} onValueChange={(v) => render({ innerHole: v as StatDecoRendering["innerHole"] })}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Нет</SelectItem>
-                  <SelectItem value="small">Маленькое</SelectItem>
-                  <SelectItem value="medium">Среднее</SelectItem>
-                  <SelectItem value="large">Большое</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </div>
-        <div className="flex items-center justify-between rounded-md border border-border px-2 py-1.5">
-          <Label className="text-xs">Подписывать значения</Label>
-          <Switch checked={r.showValues ?? false} onCheckedChange={(showValues) => render({ showValues })} />
-        </div>
-        {GRID_TYPES.includes(type) && (
-          <div className="space-y-1">
-            <Label htmlFor={`chart-axis-label-${index}`} className="text-xs">Подпись оси{type === "scatter" ? " Y" : " значений"}</Label>
-            <CommitInput
-              id={`chart-axis-label-${index}`}
-              value={r.valueAxisLabel ?? ""}
-              placeholder="Без подписи"
-              onCommit={(valueAxisLabel) => render({ valueAxisLabel })}
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          {colorTargets.map((name, i) => (
+            <ColorSwatch
+              key={`${i}-${name}`}
+              title={name}
+              value={customColors[i]}
+              onChange={(color) => setCustomColor(i, color)}
             />
-          </div>
-        )}
-        {GRID_TYPES.includes(type) && (
-          <div className="flex items-center justify-between rounded-md border border-border px-2 py-1.5">
-            <Label className="text-xs">Ось и сетка</Label>
-            <Switch checked={r.showGrid ?? false} onCheckedChange={(showGrid) => render({ showGrid })} />
-          </div>
-        )}
-        {VOLUME_TYPES.includes(type) && (
-          <div className="flex items-center justify-between rounded-md border border-border px-2 py-1.5">
-            <Label className="text-xs">Объёмное</Label>
-            <Switch checked={r.volume ?? false} onCheckedChange={(volume) => render({ volume })} />
-          </div>
-        )}
+          ))}
+        </div>
 
         <div className="overflow-x-auto rounded-md border border-border">
           <table className="w-full border-collapse text-sm">
@@ -226,8 +179,128 @@ export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number
             Очистить
           </Button>
         </div>
+
+        <Collapsible open={extraOpen} onOpenChange={setExtraOpen}>
+          <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground">
+            <ChevronDown className={`size-3.5 transition-transform ${extraOpen ? "" : "-rotate-90"}`} />
+            Дополнительно
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-2 pt-2">
+            <div className="grid grid-cols-2 gap-2">
+              {(type === "bar" || type === "waterfall" || type === "histogram") && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Ориентация</Label>
+                  <Select value={r.orientation ?? "vertical"} onValueChange={(v) => render({ orientation: v as "vertical" | "horizontal" })}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="vertical">Вертикально</SelectItem>
+                      <SelectItem value="horizontal">Горизонтально</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {MULTI_SERIES.includes(type) && type !== "radar" && columns.length > 2 && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Несколько рядов</Label>
+                  <Select value={r.seriesLayout ?? "grouped"} onValueChange={(v) => render({ seriesLayout: v as StatDecoRendering["seriesLayout"] })}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="grouped">Рядом</SelectItem>
+                      <SelectItem value="stacked">Друг на друге</SelectItem>
+                      <SelectItem value="stacked100">Доли до 100%</SelectItem>
+                      <SelectItem value="overlay">Наложением</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {(type === "line" || type === "area") && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Линия</Label>
+                  <Select value={r.lineShape ?? "straight"} onValueChange={(v) => render({ lineShape: v as "straight" | "smooth" })}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="straight">Ломаная</SelectItem>
+                      <SelectItem value="smooth">Плавная</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {type === "pie" && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Отверстие в центре</Label>
+                  <Select value={r.innerHole ?? "none"} onValueChange={(v) => render({ innerHole: v as StatDecoRendering["innerHole"] })}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Нет</SelectItem>
+                      <SelectItem value="small">Маленькое</SelectItem>
+                      <SelectItem value="medium">Среднее</SelectItem>
+                      <SelectItem value="large">Большое</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-between rounded-md border border-border px-2 py-1.5">
+              <Label className="text-xs">Подписывать значения</Label>
+              <Switch checked={r.showValues ?? false} onCheckedChange={(showValues) => render({ showValues })} />
+            </div>
+            {GRID_TYPES.includes(type) && (
+              <div className="flex items-center justify-between rounded-md border border-border px-2 py-1.5">
+                <Label className="text-xs">Ось и сетка</Label>
+                <Switch checked={r.showGrid ?? true} onCheckedChange={(showGrid) => render({ showGrid })} />
+              </div>
+            )}
+            {GRID_TYPES.includes(type) && (
+              <div className="space-y-1">
+                <Label htmlFor={`chart-axis-label-${index}`} className="text-xs">Подпись оси{type === "scatter" ? " Y" : " значений"}</Label>
+                <CommitInput
+                  id={`chart-axis-label-${index}`}
+                  value={r.valueAxisLabel ?? ""}
+                  placeholder="Без подписи"
+                  onCommit={(valueAxisLabel) => render({ valueAxisLabel })}
+                />
+              </div>
+            )}
+            {VOLUME_TYPES.includes(type) && (
+              <div className="flex items-center justify-between rounded-md border border-border px-2 py-1.5">
+                <Label className="text-xs">Объёмное</Label>
+                <Switch checked={r.volume ?? false} onCheckedChange={(volume) => render({ volume })} />
+              </div>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
       </CardContent>
     </Card>
+  );
+}
+
+/** Цветная точка с выбором цвета из фиксированного набора. */
+function ColorSwatch({ value, title, onChange }: { value: string | undefined; title: string; onChange: (color: string) => void }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          title={title}
+          className="size-6 rounded-full border border-border"
+          style={{ backgroundColor: value ?? "transparent", backgroundImage: value ? undefined : "linear-gradient(45deg, var(--border) 50%, transparent 50%)" }}
+        />
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-2" align="start">
+        <div className="grid grid-cols-6 gap-1.5">
+          {CHART_COLOR_CHOICES.map((color) => (
+            <button
+              key={color}
+              type="button"
+              title={color}
+              className={`size-6 rounded-full border ${value === color ? "ring-2 ring-primary ring-offset-1" : "border-border"}`}
+              style={{ backgroundColor: color }}
+              onClick={() => onChange(color)}
+            />
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 

@@ -195,6 +195,8 @@ interface PlotStore {
   updatePointDraft: (patch: Partial<PointMath>) => void;
   cancelPointDraft: () => void;
   commitPointDraft: () => void;
+  /** Сразу создаёт пустую точку на плоскости; дальше она живёт как обычная карточка. */
+  addPoint: () => void;
   updatePointMath: (id: string, patch: Partial<PointMath>) => void;
   updatePointStyle: (id: string, patch: Partial<PointStyle>) => void;
   togglePointSolution: (id: string, index: number, show: boolean) => void;
@@ -414,6 +416,17 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
   updateChart: (index, chart) =>
     set((state) => ({ charts: state.charts.map((c, i) => (i === index ? chart : c)) })),
   removeChart: (index) => set((state) => ({ charts: state.charts.filter((_, i) => i !== index) })),
+
+  addPoint: () => {
+    const state = get();
+    const point = createPoint(state.scene.points.length + 1);
+    const scene = { ...state.scene, points: [...state.scene.points, point] };
+    const report = buildScene(scene, { pointId: point.id });
+    set({
+      scene: report.scene,
+      status: { built: report.built, errors: report.errors, at: Date.now() },
+    });
+  },
 
   startPointDraft: () => set({ pointDraft: { ...EMPTY_POINT_MATH }, pointDraftError: null }),
 

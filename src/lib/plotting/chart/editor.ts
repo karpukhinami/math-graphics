@@ -13,7 +13,7 @@ export const DEFAULT_CHART_RENDERING: Required<
   orientation: "vertical",
   seriesLayout: "grouped",
   showValues: false,
-  showGrid: false,
+  showGrid: true,
   colorMode: "different",
   lineShape: "straight",
   innerHole: "none",

@@ -7,7 +7,6 @@ import { Switch } from "@/components/ui/switch";
 import { AxesSection } from "@/components/plotting/AxesSection";
 import { FunctionCard } from "@/components/plotting/FunctionCard";
 import { PointCard } from "@/components/plotting/PointCard";
-import { PointDraftPanel } from "@/components/plotting/PointDraftPanel";
 import { SpaceManualPanel } from "@/components/plotting/space/SpaceManualPanel";
 import { LineAxisSection } from "@/components/plotting/line/LineAxisSection";
 import { SetCard, SetDraftPanel } from "@/components/plotting/line/SetCard";
@@ -19,8 +18,7 @@ import { ChartManualPanel } from "@/components/plotting/chart/ChartManualPanel";
 export function PlotManualPanel() {
   const scene = usePlotStore((state) => state.scene);
   const addGraph = usePlotStore((state) => state.addGraph);
-  const startPointDraft = usePlotStore((state) => state.startPointDraft);
-  const pointDraft = usePlotStore((state) => state.pointDraft);
+  const addPoint = usePlotStore((state) => state.addPoint);
   const setDraft = usePlotStore((state) => state.setDraft);
   const linePointDraft = usePlotStore((state) => state.linePointDraft);
   const startSetDraft = usePlotStore((state) => state.startSetDraft);
@@ -126,18 +124,15 @@ export function PlotManualPanel() {
           <CardTitle className="text-base">Точки</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {scene.points.length === 0 && !pointDraft ? (
+          {scene.points.length === 0 ? (
             <p className="text-sm text-muted-foreground">Точки пока не добавлены.</p>
           ) : (
             scene.points.map((point) => <PointCard key={point.id} point={point} />)
           )}
-          <PointDraftPanel />
-          {!pointDraft && (
-            <Button type="button" variant="outline" size="sm" onClick={startPointDraft}>
-              <Plus className="size-4" />
-              Точка
-            </Button>
-          )}
+          <Button type="button" variant="outline" size="sm" onClick={addPoint}>
+            <Plus className="size-4" />
+            Точка
+          </Button>
         </CardContent>
       </Card>
     </div>

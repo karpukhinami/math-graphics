@@ -34,6 +34,22 @@ export function statDecoTheme(): StatDecoTheme {
   return THEME;
 }
 
+/** Расширенный набор цветов на выбор пользователя (без произвольного ввода). */
+export const CHART_COLOR_CHOICES: string[] = [
+  ...PLOT_PALETTE,
+  "#E15759",
+  "#F28E2B",
+  "#59A14F",
+  "#76B7B2",
+  "#EDC948",
+  "#B07AA1",
+  "#FF9DA7",
+  "#9C755F",
+  "#4E79A7",
+  "#A0CBE8",
+  "#86BCB6",
+];
+
 function shiftHsl(hex: string, dH: number, dS: number, dL: number): string {
   const { r, g, b } = hexToRgb(hex);
   const { h, s, l } = rgbToHsl(r, g, b);
@@ -84,12 +100,19 @@ export function resolveColors(
   theme: StatDecoTheme,
   mode: StatDecoColorMode | undefined,
   count: number,
+  custom?: string[],
 ): string[] {
   const n = Math.max(1, count);
   const effective: StatDecoColorMode = mode ?? (n > 1 ? "different" : "same");
-  if (effective === "same") return Array.from({ length: n }, () => theme.primary);
-  if (effective === "similar") return shades(theme.primary, n);
-  return distinctColors(theme, n);
+  let base: string[];
+  if (effective === "same") base = Array.from({ length: n }, () => custom?.[0] ?? theme.primary);
+  else if (effective === "similar") base = shades(custom?.[0] ?? theme.primary, n);
+  else base = distinctColors(theme, n);
+  // Ручные цвета (режим «different») перекрывают палитру по позициям.
+  if (effective === "different" && custom) {
+    return base.map((color, i) => custom[i] ?? color);
+  }
+  return base;
 }
 
 /** Функциональные цвета ролей каскадной диаграммы (роль важнее colorMode). */
