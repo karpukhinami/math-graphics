@@ -85,7 +85,6 @@ export function PlotEditorDialog({
   return (
     <Dialog open={open} onOpenChange={(next) => { if (next) onOpenChange(true); else requestClose(); }}>
       <DialogContent className="flex h-[92vh] max-w-[95vw] flex-col gap-3 lg:max-w-[66vw]"
-        // Clicks outside and Escape never close the editor: entered data must not be lost.
         onInteractOutside={(event) => event.preventDefault()}
         onEscapeKeyDown={(event) => event.preventDefault()}
         onOpenAutoFocus={(event) => {
