@@ -74,6 +74,19 @@ describe("аналог: шаблон и варианты", () => {
 
 import { buildRequestTaskAnalyzePrompt } from "../src/lib/plotting/ai/prompts";
 describe("задание по запросу", () => {
+  test("диаграммы поддерживаются шаблоном и сохраняют места во всех вариантах", () => {
+    const tpl = parseAnalogTemplate({ ...tplRaw, sceneType: "chart" });
+    expect(tpl.canDraw).toBe(true);
+    expect(tpl.sceneType).toBe("chart");
+    const variant = parseAnalogVariant({
+      task: { text: "Выберите диаграмму", options: [{ correct: true }, { correct: false }] },
+      figures: [{ id: "fig1", drawPlan: "Столбчатая диаграмма: А — 10, Б — 20" }, { id: "fig2", drawPlan: "Круговая диаграмма: А — 15, Б — 25" }],
+    }, tpl);
+    expect(variant.canDraw).toBe(true);
+    expect(variant.sceneType).toBe("chart");
+    expect(variant.task.options.map((o) => o.figure)).toEqual(["fig1", "fig2"]);
+    expect(variant.figures[0].drawPlan).toContain("А — 10, Б — 20");
+  });
   test("промпты первого и второго этапов без пропусков, второй этап без скриншота", () => {
     expect(buildRequestTaskAnalyzePrompt("парабола")).not.toMatch(/\{\{[A-Z_]+\}\}/);
     const tpl = parseAnalogTemplate(tplRaw);

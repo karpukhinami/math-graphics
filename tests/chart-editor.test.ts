@@ -17,6 +17,20 @@ async function generateAiChart(rendering: Record<string, unknown> = {}) {
   return usePlotStore.getState().charts[0];
 }
 
+test("генерация картинки по тексту задания использует те же настройки диаграммы", async () => {
+  const result = await generatePlotScene({
+    model: "unused", scenario: "task", manualText: "Численность", uploadedSourceText: "",
+    attachedImages: [], userRefinements: "",
+    analysis: { canDraw: true, sceneType: "chart", analysisText: "", stageData: {
+      chart: { chartType: "bar", title: "Население", rendering: { valueAxisLabel: "тыс. чел.", orientation: "horizontal", seriesLayout: "stacked", colorMode: "similar" },
+        data: { columns: [["Город", "А", "Б"], ["2010", 10, 20], ["2025", 15, 25]] } },
+    } },
+  });
+  if (!("chart" in result)) throw new Error("Ожидалась диаграмма");
+  expect(result.chart.rendering).toMatchObject({ valueAxisLabel: "тыс. чел.", orientation: "horizontal", seriesLayout: "stacked", colorMode: "similar", showGrid: true, volume: false, showValues: true });
+  expect(result.chart.data.columns).toEqual([["Город", "А", "Б"], ["2010", 10, 20], ["2025", 15, 25]]);
+});
+
 describe("начальные настройки диаграмм от ИИ", () => {
   test("сетка включена даже при устаревшем showGrid=false в ответе", async () => {
     const chart = await generateAiChart({ showGrid: false });
