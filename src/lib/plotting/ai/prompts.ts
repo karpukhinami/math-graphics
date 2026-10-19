@@ -109,7 +109,7 @@ export function buildAnalyzePrompt(opts: {
       break;
   }
   const prompt = withAnalysisRules(injectShared(template, sourceText));
-  // Режим диаграмм доступен только в сценарии «Нарисовать по заданию».
+  // Диаграммы: «draw» — правила извлечения из текста, «reproduce» — из изображения (уже в шаблоне).
   return scenario === "draw" ? prompt + "\n\n" + chartRules : prompt;
 }
 
