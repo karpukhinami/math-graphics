@@ -12,8 +12,18 @@ function asObject(value: unknown, field: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function parseSceneType(value: unknown): PlotSceneType {
-  if (value === "plane" || value === "line" || value === "space" || value === "chart") return value;
+const SCENE_ALIASES: Record<string, PlotSceneType> = {
+  plane: "plane", "coordinate plane": "plane", coordinate_plane: "plane", "координатная плоскость": "plane", плоскость: "plane",
+  line: "line", "number line": "line", number_line: "line", numberline: "line", "числовая прямая": "line", прямая: "line",
+  space: "space", "3d": "space", пространство: "space",
+  chart: "chart", diagram: "chart", диаграмма: "chart",
+};
+
+function parseSceneType(value: unknown, stageData?: Record<string, unknown>): PlotSceneType {
+  const key = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (SCENE_ALIASES[key]) return SCENE_ALIASES[key];
+  // Тип не указан, но данные диаграммы на месте — это диаграмма.
+  if (!key && stageData?.chart) return "chart";
   throw new Error('Поле sceneType должно быть "plane", "line", "space" или "chart"');
 }
 
@@ -38,10 +48,18 @@ export function validatePlotAnalysisJson(
   value: unknown,
   options: ValidateAnalysisOptions = {},
 ): PlotAnalysisResult {
-  const root = asObject(value, "корень");
-  const canDraw = Boolean(root.canDraw);
+  // Модель иногда оборачивает ответ: { "result": { … } } или [ { … } ].
+  let source = Array.isArray(value) && value.length === 1 ? value[0] : value;
+  if (source && typeof source === "object" && !Array.isArray(source)) {
+    const keys = Object.keys(source);
+    const inner = (source as Record<string, unknown>)[keys[0]];
+    if (keys.length === 1 && inner && typeof inner === "object" && !Array.isArray(inner) && "canDraw" in inner) source = inner;
+  }
+  const root = asObject(source, "корень");
+  const canDraw = root.canDraw === "false" ? false : Boolean(root.canDraw);
   // `reasoning` — имя поля в сценарии «draw»; `analysisText` остаётся для остальных сценариев.
-  const analysisText = asString(root.reasoning ?? root.analysisText ?? root.analysis ?? "", "reasoning");
+  const reasoningRaw = root.reasoning ?? root.analysisText ?? root.analysis ?? "";
+  const analysisText = asString(planToString(reasoningRaw) || (typeof reasoningRaw === "string" ? reasoningRaw : ""), "reasoning");
   const drawPlan = planToString(root.drawPlan);
 
   if (!canDraw) {
@@ -53,8 +71,14 @@ export function validatePlotAnalysisJson(
     };
   }
 
-  const sceneType = parseSceneType(root.sceneType);
-  const stageData = asObject(root.stageData ?? {}, "stageData");
+  const stageDataRaw = root.stageData;
+  const stageData: Record<string, unknown> =
+    stageDataRaw && typeof stageDataRaw === "object" && !Array.isArray(stageDataRaw)
+      ? { ...(stageDataRaw as Record<string, unknown>) }
+      : {};
+  // Данные диаграммы иногда кладут в корень, а не в stageData.chart.
+  if (!stageData.chart && root.chart && typeof root.chart === "object") stageData.chart = root.chart;
+  const sceneType = parseSceneType(root.sceneType, stageData);
 
   // Диаграмма: вместо плана построения анализ отдаёт таблицу данных в stageData.chart.
   if (options.requireDrawPlan && sceneType !== "chart" && drawPlan.length < 10) {

@@ -79,7 +79,7 @@ async function generateDrawBranchScene(opts: {
   });
   const schemaHint = drawSchemaHint(opts.sceneType);
 
-  const attempt = async (extraSuffix = "") => {
+  const attempt = async (extraSuffix = "", lenient = false) => {
     const draft = await callTextForJson({
       model: opts.model,
       prompt: basePrompt + extraSuffix,
@@ -87,12 +87,12 @@ async function generateDrawBranchScene(opts: {
       schemaHint,
       parse: (v) => v,
     });
-    return validateDrawDraft(draft, opts.sceneType, opts.variant === "task");
+    return validateDrawDraft(draft, opts.sceneType, opts.variant === "task", lenient);
   };
 
   let result = await attempt();
   if (!result.valid) {
-    result = await attempt(buildDrawRetrySuffix(result.errors));
+    result = await attempt(buildDrawRetrySuffix(result.errors), true);
   }
   if (!result.valid) {
     throw new Error(`Не удалось получить корректную сцену:\n${result.errors.join("\n")}`);
@@ -101,20 +101,26 @@ async function generateDrawBranchScene(opts: {
 }
 
 /** Урезанный ответ модели → полная сцена → проверка тем же валидатором, что и раньше. */
+/** Некритичные замечания: чертёж строится и без исправления (точка просто вне поля). */
+const SOFT_DRAFT_ERROR = /вне пределов оси/;
+
 export function validateDrawDraft(
   draft: unknown,
   sceneType: PlotDrawBranchType,
   minimalLabels = false,
+  /** Последняя попытка: некритичные замечания не мешают отдать чертёж. */
+  lenient = false,
 ): { valid: true; errors: []; scene: unknown } | { valid: false; errors: string[] } {
   try {
     const expanded = sceneType === "line"
         ? expandLineDraft(draft, { minimalLabels })
         : expandPlaneDraft(draft, { minimalLabels });
+    const blocking = lenient ? expanded.errors.filter((e) => !SOFT_DRAFT_ERROR.test(e)) : expanded.errors;
     // Ошибки содержимого черновика — сразу в повторный запрос, без построения.
-    if (expanded.errors.length || expanded.scene == null) {
+    if (blocking.length || expanded.scene == null) {
       return {
         valid: false,
-        errors: expanded.errors.length ? expanded.errors : ["Ответ не содержит чертежа"],
+        errors: blocking.length ? blocking : ["Ответ не содержит чертежа"],
       };
     }
     const { valid, errors } = validatePlotSceneJson({ scene: expanded.scene }, sceneType);
