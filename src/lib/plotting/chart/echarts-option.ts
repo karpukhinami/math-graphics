@@ -41,6 +41,15 @@ function axisMaxWithHeadroom(values: number[], headroom: keyof typeof HEADROOM =
   return Math.ceil((max / (1 - fraction)) * 100) / 100;
 }
 
+/** «Красивый» максимум оси: 1 / 2 / 2.5 / 5 / 10 × 10^n, не меньше max. */
+function niceMax(max: number | undefined): number | undefined {
+  if (max == null || !Number.isFinite(max) || max <= 0) return max;
+  const pow = Math.pow(10, Math.floor(Math.log10(max)));
+  const n = max / pow;
+  const nice = n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10;
+  return nice * pow;
+}
+
 type SeriesList = NonNullable<EChartsOption["series"]>;
 
 export interface StatDecoOptionResult {
@@ -100,12 +109,41 @@ export function buildStatDecoOption(json: StatDecoJson): StatDecoOptionResult {
   });
 
 
-  const valueAxis = (max: number | undefined) => ({
-    type: "value" as const,
-    max,
-    show: false,
-    splitLine: { show: false },
-  });
+  /**
+   * Ось значений. По тумблеру «Ось и сетка» — видимая ось с подписями делений,
+   * тонкой серой сеткой и подписью оси (без стрелки); иначе ось скрыта.
+   */
+  const showGrid = r.showGrid === true;
+  const valueAxis = (max: number | undefined, name?: string) => {
+    if (!showGrid) {
+      return { type: "value" as const, max, show: false, splitLine: { show: false } };
+    }
+    return {
+      type: "value" as const,
+      max: niceMax(max),
+      name: name ?? "",
+      nameLocation: "end" as const,
+      nameGap: 12,
+      nameTextStyle: { color: theme.ink, fontSize: 13, fontFamily, fontWeight: 600 as const },
+      axisLine: { show: true, lineStyle: { color: theme.muted } },
+      axisTick: { show: false },
+      axisLabel: {
+        color: theme.ink,
+        fontSize: 12,
+        fontFamily,
+        formatter: (v: number) => formatNum(v),
+      },
+      splitLine: { show: true, lineStyle: { color: theme.muted, opacity: 0.3, width: 1 } },
+    };
+  };
+
+  /** Подпись оси значений — заголовок первого числового столбца таблицы. */
+  const valueAxisName = (): string | undefined => {
+    const idx = json.mapping.value ?? firstNumericColumnIndex(json);
+    if (idx == null || idx < 0) return undefined;
+    const name = header(json.data.columns[idx]);
+    return name || undefined;
+  };
 
   switch (json.chartType) {
     /* ------------------------------- bar ------------------------------- */
