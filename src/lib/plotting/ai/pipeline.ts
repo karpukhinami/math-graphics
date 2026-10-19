@@ -14,10 +14,12 @@ import {
 } from "./prompts";
 import { expandLineDraft } from "./draft-line";
 import { expandPlaneDraft } from "./draft-plane";
+import { validateStatDecoJson } from "@/lib/plotting/chart";
 import {
   type PlotAiScenario,
   type PlotAnalysisResult,
   type PlotGenerateAnalogResult,
+  type PlotGenerateChartResult,
   type PlotGenerateSceneResult,
   type PlotSceneType,
   isPlanScenario,
@@ -134,10 +136,21 @@ export async function generatePlotScene(opts: {
   attachedImages: string[];
   analysis: PlotAnalysisResult;
   userRefinements: string;
-}): Promise<PlotGenerateSceneResult | PlotGenerateAnalogResult> {
+}): Promise<PlotGenerateSceneResult | PlotGenerateAnalogResult | PlotGenerateChartResult> {
   const sceneType = opts.analysis.sceneType;
   if (!sceneType) {
     throw new Error("Анализ не содержит sceneType");
+  }
+
+  // Диаграмма: второй этап без LLM — таблица и тип уже извлечены на анализе.
+  if (sceneType === "chart") {
+    const raw = (opts.analysis.stageData as Record<string, unknown>).chart;
+    if (!raw) throw new Error("Анализ не содержит данных диаграммы");
+    try {
+      return { chart: validateStatDecoJson(raw) };
+    } catch (e) {
+      throw new Error(`Не удалось прочитать данные диаграммы: ${e instanceof Error ? e.message : e}`);
+    }
   }
 
   // Прямая и плоскость: своя ветка, на вход — только итог анализа. Пространство — прежний путь.
