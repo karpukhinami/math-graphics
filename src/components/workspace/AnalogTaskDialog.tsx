@@ -93,8 +93,13 @@ export function AnalogTaskDialog({ open, onOpenChange, onCreate, mode = "screens
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
+    <Dialog open={open} onOpenChange={(next) => {
+      if (!next && (busy !== null || !window.confirm("Закрыть окно? Введённые данные будут потеряны."))) return;
+      onOpenChange(next);
+    }}>
+      <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto"
+        onInteractOutside={(event) => event.preventDefault()}
+        onEscapeKeyDown={(event) => event.preventDefault()}>
         <DialogTitle>{isShot ? "Аналог по скриншоту" : "Задание с чертежом по запросу"}</DialogTitle>
         <fieldset disabled={busy !== null} className="space-y-4">
           {isShot && <SourceImageInput images={images} onChange={setImages} />}
