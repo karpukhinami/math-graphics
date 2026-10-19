@@ -10,6 +10,7 @@ import { usePlotSvg } from "@/lib/plotting/use-plot-svg";
 import { usePlotStore } from "@/lib/plotting/store";
 import type { PlotScene } from "@/lib/plotting/types";
 import { standalonePlotSvg } from "@/lib/plotting/standalone-svg";
+import { renderStatDecoChartPng } from "@/lib/plotting/chart";
 
 export interface PlotInsertResult {
   src: string;
@@ -41,18 +42,23 @@ export function PlotEditorDialog({
   const isAi = usePlotStore((s) => s.inputMode === "ai");
   const svg = usePlotSvg();
   const scene = usePlotStore((s) => s.scene);
+  const chart = usePlotStore((s) => s.chart);
 
   async function insert() {
     if (beautifying) return;
-    if (!svg || (isAi && !resultReady)) {
+    if ((!svg && !chart) || (isAi && !resultReady)) {
       toast.error("Сначала постройте чертёж");
       return;
     }
     setInserting(true);
     try {
-    const standalone = await standalonePlotSvg(svg);
+    // Диаграмма вставляется как PNG (ECharts), чертёж — как автономный SVG.
+    const src = chart
+      ? await renderStatDecoChartPng(chart)
+      : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(await standalonePlotSvg(svg!))}`;
+    if (!src) throw new Error("Не удалось подготовить изображение диаграммы");
     onInsert({
-      src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(standalone)}`,
+      src,
       scene: structuredClone(scene),
       text: aiInitial?.initialScenario === "task" ? text : undefined,
       newTaskText,
@@ -83,7 +89,7 @@ export function PlotEditorDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Отмена
           </Button>
-          <Button onClick={insert} disabled={inserting || beautifying || !svg || (isAi && !resultReady)}>
+          <Button onClick={insert} disabled={inserting || beautifying || (!svg && !chart) || (isAi && !resultReady)}>
             <Check className="size-4" /> {inserting ? "Подготовка…" : "Вставить чертёж"}
           </Button>
         </div>
