@@ -1,20 +1,23 @@
 /** Плашка одной диаграммы: тип, оформление и таблица данных (формат — как у ИИ). */
 import { useEffect, useState } from "react";
-import { Plus, Trash2, X } from "lucide-react";
+import { Eraser, Plus, Table2, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   CHART_TYPE_LABELS,
   addRow,
   addSeries,
   chartRowCount,
+  clearCells,
   parseCell,
   removeColumn,
   removeRow,
+  resizeTable,
   setCell,
   type StatDecoChartType,
   type StatDecoJson,
@@ -24,6 +27,8 @@ import { usePlotStore } from "@/lib/plotting/store";
 
 const CHART_TYPES = Object.keys(CHART_TYPE_LABELS) as StatDecoChartType[];
 const MULTI_SERIES: StatDecoChartType[] = ["bar", "line", "area", "radar"];
+/** Типы, где логична ось значений с сеткой. */
+const GRID_TYPES: StatDecoChartType[] = ["bar", "line", "area", "scatter", "histogram", "waterfall", "boxplot"];
 
 export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number }) {
   const updateChart = usePlotStore((s) => s.updateChart);
