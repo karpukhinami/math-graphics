@@ -152,7 +152,9 @@ export function buildStatDecoOption(json: StatDecoJson): StatDecoOptionResult {
       if (!categories.length || !series.length) return emptyResult(base, "Нет категорий или числовых рядов");
       const stacked = r.seriesLayout === "stacked" || r.seriesLayout === "stacked100";
       const normalize = r.seriesLayout === "stacked100";
-      const colors = resolveColors(theme, r.colorMode, series.length > 1 ? series.length : categories.length);
+      // Несколько рядов: каждый ряд своего цвета, чтобы легенда читалась.
+      const barMode = series.length > 1 && (r.colorMode ?? "different") === "same" ? "different" : r.colorMode;
+      const colors = resolveColors(theme, barMode, series.length > 1 ? series.length : categories.length);
       const widthFraction = BAR_WIDTH[r.barWidth ?? "medium"];
       const perBar = series.length > 1 && !stacked ? widthFraction / series.length : widthFraction;
       const totals = categories.map((_, i) =>
@@ -191,8 +193,8 @@ export function buildStatDecoOption(json: StatDecoJson): StatDecoOptionResult {
         option: {
           ...base,
           legend: legendFor(series, theme),
-          xAxis: horizontal ? valueAxis(vMax) : catAxis(categories),
-          yAxis: horizontal ? catAxis(categories) : valueAxis(vMax),
+          xAxis: horizontal ? valueAxis(vMax, valueAxisName()) : catAxis(categories),
+          yAxis: horizontal ? catAxis(categories) : valueAxis(vMax, valueAxisName()),
           series: echSeries as SeriesList,
         },
       };
@@ -206,7 +208,8 @@ export function buildStatDecoOption(json: StatDecoJson): StatDecoOptionResult {
       const isArea = json.chartType === "area";
       const stacked = r.seriesLayout === "stacked" || r.seriesLayout === "stacked100";
       const normalize = r.seriesLayout === "stacked100";
-      const colors = resolveColors(theme, r.colorMode, Math.max(series.length, 1));
+      const lineMode = series.length > 1 && (r.colorMode ?? "different") === "same" ? "different" : r.colorMode;
+      const colors = resolveColors(theme, lineMode, Math.max(series.length, 1));
       const radius = POINT_RADIUS[r.pointSize ?? (isArea ? "none" : "medium")];
       const totals = categories.map((_, i) => series.reduce<number>((a, s) => a + (s.values[i] ?? 0), 0));
 
@@ -242,7 +245,7 @@ export function buildStatDecoOption(json: StatDecoJson): StatDecoOptionResult {
           ...base,
           legend: legendFor(series, theme),
           xAxis: { ...catAxis(categories), boundaryGap: false },
-          yAxis: valueAxis(vMax),
+          yAxis: valueAxis(vMax, valueAxisName()),
           series: echSeries as SeriesList,
         },
       };
@@ -332,14 +335,18 @@ export function buildStatDecoOption(json: StatDecoJson): StatDecoOptionResult {
             nameGap: 28,
             axisLine: { lineStyle: { color: theme.ink } },
             axisLabel: { color: theme.ink, fontFamily },
-            splitLine: { show: false },
+            splitLine: showGrid
+              ? { show: true, lineStyle: { color: theme.muted, opacity: 0.3, width: 1 } }
+              : { show: false },
           },
           yAxis: {
             type: "value",
             name: yName,
             axisLine: { lineStyle: { color: theme.ink } },
             axisLabel: { color: theme.ink, fontFamily },
-            splitLine: { show: false },
+            splitLine: showGrid
+              ? { show: true, lineStyle: { color: theme.muted, opacity: 0.3, width: 1 } }
+              : { show: false },
           },
           series: ([
             {
@@ -377,7 +384,7 @@ export function buildStatDecoOption(json: StatDecoJson): StatDecoOptionResult {
         option: {
           ...base,
           xAxis: catAxis(labels),
-          yAxis: valueAxis(axisMaxWithHeadroom(counts, r.headroom ?? "medium")),
+          yAxis: valueAxis(axisMaxWithHeadroom(counts, r.headroom ?? "medium"), "Частота"),
           series: ([
             {
               type: "bar",
@@ -539,8 +546,8 @@ export function buildStatDecoOption(json: StatDecoJson): StatDecoOptionResult {
       return {
         option: {
           ...base,
-          xAxis: horizontal ? valueAxis(vMax) : catAxis(names),
-          yAxis: horizontal ? catAxis(names) : valueAxis(vMax),
+          xAxis: horizontal ? valueAxis(vMax, valueAxisName()) : catAxis(names),
+          yAxis: horizontal ? catAxis(names) : valueAxis(vMax, valueAxisName()),
           series: series as SeriesList,
         },
       };
@@ -563,8 +570,8 @@ export function buildStatDecoOption(json: StatDecoJson): StatDecoOptionResult {
       return {
         option: {
           ...base,
-          xAxis: horizontal ? valueAxis(vMax) : catAxis(names),
-          yAxis: horizontal ? catAxis(names) : valueAxis(vMax),
+          xAxis: horizontal ? valueAxis(vMax, valueAxisName()) : catAxis(names),
+          yAxis: horizontal ? catAxis(names) : valueAxis(vMax, valueAxisName()),
           series: ([
             {
               type: "boxplot",
