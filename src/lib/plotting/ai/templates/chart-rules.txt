@@ -24,43 +24,4 @@
    Если тип прямо назван в тексте — используй названный.
 3. Поле drawPlan заполнять НЕ нужно. Вместо него заполни stageData.chart — объект строго по схеме:
 
-{
-  "kind": "stat-deco",
-  "sourceMode": "text",
-  "topic": string,
-  "subject": string | null,
-  "grade": string | null,
-  "chartType": "bar" | "line" | "area" | "pie" | "scatter" | "histogram" | "radar" | "funnel" | "treemap" | "waterfall" | "boxplot",
-  "title": string,
-  "summary": string,
-  "dataStatus": { "canRender": boolean, "reason": string },
-  "data": { "columns": [ [заголовок, значение1, значение2, …], … ] },
-  "mapping": { "category"?: number, "value"?: number, "x"?: number, "y"?: number, "series"?: number, "parent"?: number, "size"?: number },
-  "rendering": {
-    "orientation"?: "vertical" | "horizontal",
-    "seriesLayout"?: "grouped" | "stacked" | "stacked100" | "overlay",
-    "barWidth"?: "narrow" | "medium" | "wide",
-    "categoryGap"?: "narrow" | "medium" | "wide",
-    "seriesGap"?: "narrow" | "medium" | "wide",
-    "showValues"?: boolean,
-    "colorMode"?: "same" | "similar" | "different",
-    "chartSize"?: "small" | "medium" | "large",
-    "sliceGap"?: "none" | "narrow" | "medium" | "wide",
-    "innerHole"?: "none" | "small" | "medium" | "large",
-    "lineWidth"?: "thin" | "medium" | "thick",
-    "lineShape"?: "straight" | "smooth",
-    "pointSize"?: "none" | "small" | "medium" | "large"
-  },
-  "warnings": string[]
-}
-
-Правила данных:
-- Таблица хранится ПО СТОЛБЦАМ: первый элемент каждого столбца — его заголовок, остальные — значения.
-- Первый столбец — категории (подписи), следующие числовые столбцы — ряды данных.
-- Числа — числами JSON, а не строками. Прочерки («—», «н/д») в числовых столбцах заменяй на 0.
-- Никаких цветов, пикселей и процентов в rendering — только перечисленные категориальные значения.
-- Максимум, минимум, шаг сетки, запас над значениями (headroom), max, min, interval и настройки осей НЕ заполняй: они всегда вычисляются программно по данным таблицы.
-- Поля showGrid и volume не входят в формат ответа ИИ: сетку включает приложение там, где она применима, объёмность при первом построении выключена.
-- По умолчанию показываются заголовок, названия категорий и значения данных: заполняй title и заголовки столбцов, showValues не задавай либо ставь true. false допустимо только при явном запросе скрыть значения.
-- dataStatus.canRender = false, если данных недостаточно для диаграммы; тогда в reason объясни, чего не хватает.
-- Все тексты (topic, title, summary, заголовки столбцов) — только на русском языке.
+{{TECH_CHART_JSON}}

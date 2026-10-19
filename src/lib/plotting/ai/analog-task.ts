@@ -11,9 +11,10 @@ import {
   buildAnalogTaskVariantsPrompt,
   buildRequestTaskAnalyzePrompt,
   buildDrawRetrySuffix,
-  type PlotDrawBranchType,
+  type TaskFigureSceneType,
 } from "./prompts";
 import { validateDrawDraft } from "./pipeline";
+import { validateAiChartJson } from "@/lib/plotting/chart";
 
 export type FigurePlacement = "text" | "option";
 export interface AnalogFigurePlan { id: string; placement: FigurePlacement; drawPlan: string }
@@ -23,7 +24,7 @@ export interface AnalogTaskAnalysis {
   reasoning: string;
   originalText: string;
   canDraw: boolean;
-  sceneType: PlotDrawBranchType | null;
+  sceneType: TaskFigureSceneType | null;
   task: { type: "input" | "choice"; text: string; answer: string; options: AnalogOption[] };
   figures: AnalogFigurePlan[];
 }
@@ -33,7 +34,7 @@ export interface AnalogTemplate {
   reasoning: string;
   originalText: string;
   canDraw: boolean;
-  sceneType: PlotDrawBranchType | null;
+  sceneType: TaskFigureSceneType | null;
   template: {
     type: "input" | "choice";
     optionCount: number;
@@ -83,7 +84,7 @@ export function parseAnalogTemplate(value: unknown): AnalogTemplate {
     else usedIdx.add(f.optionIndex);
   }
   if (errors.length) throw new Error(errors.join("; "));
-  const sceneType = root.sceneType === "line" ? "line" : root.sceneType === "plane" ? "plane" : null;
+  const sceneType = root.sceneType === "line" ? "line" : root.sceneType === "plane" ? "plane" : root.sceneType === "chart" ? "chart" : null;
   return {
     reasoning: str(root.reasoning),
     originalText: str(root.originalText),
@@ -122,7 +123,7 @@ export function parseAnalogTaskAnalysis(value: unknown): AnalogTaskAnalysis {
     : [];
   if (type === "choice" && options.length < 2) throw new Error("Для задания с выбором нужно не меньше двух вариантов");
   if (type === "choice" && !options.some((o) => o.correct)) throw new Error("Не отмечен правильный вариант ответа");
-  const sceneType = root.sceneType === "line" ? "line" : root.sceneType === "plane" ? "plane" : null;
+  const sceneType = root.sceneType === "line" ? "line" : root.sceneType === "plane" ? "plane" : root.sceneType === "chart" ? "chart" : null;
   const canDraw = root.canDraw !== false && figures.length > 0 && sceneType !== null;
   if (canDraw) {
     const errors: string[] = [];
@@ -167,7 +168,7 @@ export async function analyzeAnalogTask(opts: { model: string; image: string; us
     model: opts.model,
     prompt: buildAnalogTaskAnalyzePrompt(opts.userRefinements),
     label: "analog-task-analyze",
-    schemaHint: '{ reasoning, originalText, canDraw, sceneType: "plane"|"line", template: { type, optionCount, pattern, mustPreserve, mayChange, answerRule, visibility }, figures: [{ id, placement, optionIndex, role }] }',
+    schemaHint: '{ reasoning, originalText, canDraw, sceneType: "plane"|"line"|"chart", template: { type, optionCount, pattern, mustPreserve, mayChange, answerRule, visibility }, figures: [{ id, placement, optionIndex, role }] }',
     images: [opts.image],
     parse: parseAnalogTemplate,
   });
@@ -179,7 +180,7 @@ export async function analyzeRequestTask(opts: { model: string; request: string 
     model: opts.model,
     prompt: buildRequestTaskAnalyzePrompt(opts.request),
     label: "request-task-analyze",
-    schemaHint: '{ reasoning, originalText, canDraw, sceneType: "plane"|"line", template: { type, optionCount, pattern, mustPreserve, mayChange, answerRule, visibility }, figures: [{ id, placement, optionIndex, role }] }',
+    schemaHint: '{ reasoning, originalText, canDraw, sceneType: "plane"|"line"|"chart", template: { type, optionCount, pattern, mustPreserve, mayChange, answerRule, visibility }, figures: [{ id, placement, optionIndex, role }] }',
     parse: parseAnalogTemplate,
   });
 }
@@ -229,13 +230,18 @@ export async function generateAnalogFigures(opts: { model: string; analysis: Ana
     const byId = new Map<string, unknown>();
     list.forEach((item, i) => {
       const r = (item ?? {}) as Record<string, unknown>;
-      byId.set(str(r.id) || analysis.figures[i]?.id || "", r.scene ?? r);
+      byId.set(str(r.id) || analysis.figures[i]?.id || "", sceneType === "chart" ? r.chart ?? r.scene ?? r : r.scene ?? r);
     });
     const scenes: Record<string, unknown> = {};
     const errors: string[] = [];
     for (const f of analysis.figures) {
       const draft = byId.get(f.id);
       if (draft === undefined) { errors.push(`Нет чертежа ${f.id}`); continue; }
+      if (sceneType === "chart") {
+        try { scenes[f.id] = { charts: [validateAiChartJson(draft)] }; }
+        catch (error) { errors.push(`${f.id}: ${error instanceof Error ? error.message : error}`); }
+        continue;
+      }
       const res = validateDrawDraft(draft, sceneType, true);
       if (res.valid) scenes[f.id] = res.scene;
       else errors.push(...res.errors.map((e) => `${f.id}: ${e}`));

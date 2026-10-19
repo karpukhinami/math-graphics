@@ -1,7 +1,10 @@
 import type { PlotScene } from "../plotting/types";
+import type { StatDecoJson } from "../plotting/chart/types";
 
-export function plotInsertionImages(src: string, scene: PlotScene, beautifiedSrc?: string | null) {
-  const images: { src: string; scene?: PlotScene }[] = [{ src, scene }];
+export interface WorkspacePlotImage { src: string; scene?: PlotScene; charts?: StatDecoJson[] }
+
+export function plotInsertionImages(src: string, scene: PlotScene, beautifiedSrc?: string | null, charts?: StatDecoJson[]) {
+  const images: WorkspacePlotImage[] = [charts?.length ? { src, charts: structuredClone(charts) } : { src, scene }];
   if (beautifiedSrc) images.push({ src: beautifiedSrc });
   return images;
 }
