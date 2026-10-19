@@ -8,11 +8,12 @@ import { renderStatDecoChartPng } from "./chart-png";
 
 /** Значения по умолчанию для полей плашки, которых ИИ может не прислать. */
 export const DEFAULT_CHART_RENDERING: Required<
-  Pick<StatDecoRendering, "orientation" | "seriesLayout" | "showValues" | "colorMode" | "lineShape" | "innerHole">
+  Pick<StatDecoRendering, "orientation" | "seriesLayout" | "showValues" | "showGrid" | "colorMode" | "lineShape" | "innerHole">
 > = {
   orientation: "vertical",
   seriesLayout: "grouped",
   showValues: false,
+  showGrid: false,
   colorMode: "different",
   lineShape: "straight",
   innerHole: "none",
@@ -107,6 +108,25 @@ export function addSeries(columns: StatDecoColumn[]): StatDecoColumn[] {
 
 export function removeColumn(columns: StatDecoColumn[], col: number): StatDecoColumn[] {
   return columns.filter((_, i) => i !== col);
+}
+
+/** Очистить все ячейки данных, заголовки столбцов сохраняются. */
+export function clearCells(columns: StatDecoColumn[]): StatDecoColumn[] {
+  return columns.map((c) => [c[0] ?? "", ...c.slice(1).map(() => null)]);
+}
+
+/**
+ * Задать размер таблицы разом: `rows` строк данных и `cols` столбцов.
+ * Существующие значения в пределах нового размера сохраняются.
+ */
+export function resizeTable(columns: StatDecoColumn[], rows: number, cols: number): StatDecoColumn[] {
+  const r = Math.max(1, Math.min(50, Math.round(rows)));
+  const c = Math.max(2, Math.min(12, Math.round(cols)));
+  return Array.from({ length: c }, (_, ci) => {
+    const old = columns[ci];
+    const header = old?.[0] ?? (ci === 0 ? "Категория" : `Ряд ${ci}`);
+    return [header, ...Array.from({ length: r }, (_, ri) => old?.[ri + 1] ?? null)];
+  });
 }
 
 /** Несколько диаграмм → одна PNG, диаграммы друг под другом. */

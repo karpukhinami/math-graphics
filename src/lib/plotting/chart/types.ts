@@ -45,6 +45,8 @@ export interface StatDecoRendering {
   volume?: boolean;
   headroom?: "small" | "medium" | "large";
   showValues?: boolean;
+  /** Ось значений с серой сеткой и подписями делений (для диаграмм с осями). */
+  showGrid?: boolean;
   colorMode?: StatDecoColorMode;
   chartSize?: "small" | "medium" | "large";
   sliceGap?: "none" | "narrow" | "medium" | "wide";

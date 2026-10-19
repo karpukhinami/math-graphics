@@ -1,20 +1,23 @@
 /** Плашка одной диаграммы: тип, оформление и таблица данных (формат — как у ИИ). */
 import { useEffect, useState } from "react";
-import { Plus, Trash2, X } from "lucide-react";
+import { Eraser, Plus, Table2, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   CHART_TYPE_LABELS,
   addRow,
   addSeries,
   chartRowCount,
+  clearCells,
   parseCell,
   removeColumn,
   removeRow,
+  resizeTable,
   setCell,
   type StatDecoChartType,
   type StatDecoJson,
@@ -24,6 +27,8 @@ import { usePlotStore } from "@/lib/plotting/store";
 
 const CHART_TYPES = Object.keys(CHART_TYPE_LABELS) as StatDecoChartType[];
 const MULTI_SERIES: StatDecoChartType[] = ["bar", "line", "area", "radar"];
+/** Типы, где логична ось значений с сеткой. */
+const GRID_TYPES: StatDecoChartType[] = ["bar", "line", "area", "scatter", "histogram", "waterfall", "boxplot"];
 
 export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number }) {
   const updateChart = usePlotStore((s) => s.updateChart);
@@ -130,6 +135,12 @@ export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number
           <Label className="text-xs">Подписывать значения</Label>
           <Switch checked={r.showValues ?? false} onCheckedChange={(showValues) => render({ showValues })} />
         </div>
+        {GRID_TYPES.includes(type) && (
+          <div className="flex items-center justify-between rounded-md border border-border px-2 py-1.5">
+            <Label className="text-xs">Ось и сетка</Label>
+            <Switch checked={r.showGrid ?? false} onCheckedChange={(showGrid) => render({ showGrid })} />
+          </div>
+        )}
 
         <div className="overflow-x-auto rounded-md border border-border">
           <table className="w-full border-collapse text-sm">
@@ -186,9 +197,67 @@ export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number
             <Plus className="size-4" />
             Ряд данных
           </Button>
+          <TableSizePopover
+            rows={rows}
+            cols={columns.length}
+            onApply={(nextRows, nextCols) => setColumns(resizeTable(columns, nextRows, nextCols))}
+          />
+          <Button type="button" size="sm" variant="outline" onClick={() => setColumns(clearCells(columns))}>
+            <Eraser className="size-4" />
+            Очистить
+          </Button>
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/** Кнопка «Сетка»: задать размер таблицы разом (строки × столбцы). */
+function TableSizePopover({ rows, cols, onApply }: { rows: number; cols: number; onApply: (rows: number, cols: number) => void }) {
+  const [open, setOpen] = useState(false);
+  const [nextRows, setNextRows] = useState(String(rows));
+  const [nextCols, setNextCols] = useState(String(cols));
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) {
+          setNextRows(String(rows));
+          setNextCols(String(cols));
+        }
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button type="button" size="sm" variant="outline">
+          <Table2 className="size-4" />
+          Сетка
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 space-y-3" align="start">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs">Строк</Label>
+            <Input type="number" min={1} max={50} value={nextRows} onChange={(e) => setNextRows(e.target.value)} className="h-8" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Столбцов</Label>
+            <Input type="number" min={2} max={12} value={nextCols} onChange={(e) => setNextCols(e.target.value)} className="h-8" />
+          </div>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          className="w-full"
+          onClick={() => {
+            onApply(Number(nextRows) || rows, Number(nextCols) || cols);
+            setOpen(false);
+          }}
+        >
+          Применить
+        </Button>
+      </PopoverContent>
+    </Popover>
   );
 }
 
