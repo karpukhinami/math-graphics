@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { ToggleChip } from "../ToggleChip";
 import { Slider } from "@/components/ui/slider";
 import { SpacePointCard } from "./SpacePointCard";
 import { SpaceLineCard } from "./SpaceLineCard";
