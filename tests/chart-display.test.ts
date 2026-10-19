@@ -4,6 +4,31 @@ import { wrapCategoryLabel } from "@/lib/plotting/chart/category-labels";
 import { prismSeries, volumePieSeries } from "@/lib/plotting/chart/volume";
 import { buildStatDecoOption, createEmptyChart, validateStatDecoJson } from "@/lib/plotting/chart";
 import { PLOT_PALETTE } from "@/lib/plotting/shared";
+import * as echarts from "echarts";
+
+describe("линейная диаграмма с повторяющимся временем", () => {
+  test("сохраняет пять наблюдений и обе подписи «6 утра» на разных позициях", () => {
+    const labels = ["6 утра", "12 дня", "6 вечера", "12 ночи", "6 утра"];
+    const values = [10, 18, 15, 8, 11];
+    const chart = validateStatDecoJson({
+      ...createEmptyChart(), chartType: "line",
+      data: { columns: [["Время", ...labels], ["Температура", ...values]] },
+    });
+    const { option } = buildStatDecoOption(chart);
+    expect(option.xAxis).toMatchObject({ type: "category", data: labels });
+    expect(option.series).toMatchObject([{ type: "line", data: values }]);
+    const rendered = echarts.init(null, undefined, { renderer: "svg", ssr: true, width: 900, height: 500 });
+    try {
+      rendered.setOption(option);
+      const svg = rendered.renderToSVGString();
+      const repeatedLabels = [...svg.matchAll(/<text\b[^>]*\bx="([^"]+)"[^>]*>6 утра<\/text>/g)];
+      expect(repeatedLabels).toHaveLength(2);
+      expect(repeatedLabels[0]?.[1]).not.toBe(repeatedLabels[1]?.[1]);
+    } finally {
+      rendered.dispose();
+    }
+  });
+});
 
 describe("автоматическая сетка", () => {
   test("максимум 30 на линии не получает дополнительного запаса", () => {
