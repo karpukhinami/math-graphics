@@ -49,6 +49,9 @@ export interface PlotGeometry {
   axisStartY: number;
   axisEndX: number;
   axisEndY: number;
+  /** Только визуальные продолжения сетки, не математические пределы. */
+  gridRight: number;
+  gridTop: number;
 
   sx: (value: number) => number;
   sy: (value: number) => number;
@@ -116,8 +119,8 @@ function computeGutters(
 
   return {
     padLeft: pad + (xMin >= 0 ? yGutter : 0),
-    padRight: pad + (xMax <= 0 ? yGutter : 0),
-    padTop: pad + (yMax <= 0 ? xGutter : 0),
+    padRight: pad + (xMax <= 0 ? Math.max(yGutter, measureTextWidth(axisLabelText(scene.xAxis), font) + 18) : 0),
+    padTop: pad + (yMax <= 0 ? Math.max(xGutter, font * 1.5 + 12) : 0),
     padBottom: pad + (yMin >= 0 ? xGutter : 0),
   };
 }
@@ -183,8 +186,10 @@ function finishGeometry(
     canvasHeight,
     axisStartX: left,
     axisStartY: bottom,
-    axisEndX: right,
-    axisEndY: top,
+    axisEndX: right + (xMax <= 0 ? (right - left) * Math.min(steps.gridStepX, xMax - xMin) / (xMax - xMin) / 2 : 0),
+    axisEndY: top - (yMax <= 0 ? (bottom - top) * Math.min(steps.gridStepY, yMax - yMin) / (yMax - yMin) / 2 : 0),
+    gridRight: right + (xMax <= 0 ? (right - left) * Math.min(steps.gridStepX, xMax - xMin) / (xMax - xMin) / 2 : 0),
+    gridTop: top - (yMax <= 0 ? (bottom - top) * Math.min(steps.gridStepY, yMax - yMin) / (yMax - yMin) / 2 : 0),
     sx,
     sy,
     xAxisY,
@@ -214,7 +219,9 @@ function resolveGeometryEqual(scene: PlotScene, bounds: AxisBounds): PlotGeometr
   // занимает всё доступное место, вторая — столько, сколько позволяет тот же масштаб.
   const availWidth = Math.max(10, appearance.width - padLeft - padRight);
   const availHeight = Math.max(10, appearance.height - padTop - padBottom);
-  const scale = Math.min(availWidth / (xMax - xMin), availHeight / (yMax - yMin));
+  const extraX = xMax <= 0 ? Math.min(gridStepX, xMax - xMin) / 2 : 0;
+  const extraY = yMax <= 0 ? Math.min(gridStepY, yMax - yMin) / 2 : 0;
+  const scale = Math.min(availWidth / (xMax - xMin + extraX), availHeight / (yMax - yMin + extraY));
   const areaWidth = scale * (xMax - xMin);
   const areaHeight = scale * (yMax - yMin);
 
@@ -222,12 +229,12 @@ function resolveGeometryEqual(scene: PlotScene, bounds: AxisBounds): PlotGeometr
   // центрируется на полотне.
   const canvasWidth = appearance.width;
   const canvasHeight = appearance.height;
-  const offsetX = Math.max(0, (canvasWidth - (padLeft + areaWidth + padRight)) / 2);
-  const offsetY = Math.max(0, (canvasHeight - (padTop + areaHeight + padBottom)) / 2);
+  const offsetX = Math.max(0, (canvasWidth - (padLeft + areaWidth + extraX * scale + padRight)) / 2);
+  const offsetY = Math.max(0, (canvasHeight - (padTop + areaHeight + extraY * scale + padBottom)) / 2);
 
   const left = offsetX + padLeft;
   const right = left + areaWidth;
-  const top = offsetY + padTop;
+  const top = offsetY + padTop + extraY * scale;
   const bottom = top + areaHeight;
 
   return finishGeometry(
@@ -255,9 +262,13 @@ function resolveGeometryIndependent(scene: PlotScene, bounds: AxisBounds): PlotG
   const fitted = fitPlotArea(availWidth, availHeight, scene.plotAspectRatio);
 
   const left = padLeft + fitted.offsetX;
-  const top = padTop + fitted.offsetY;
-  const right = left + fitted.width;
-  const bottom = top + fitted.height;
+  const extraX = xMax <= 0 ? Math.min(gridStepX, xMax - xMin) / (xMax - xMin) / 2 : 0;
+  const extraY = yMax <= 0 ? Math.min(gridStepY, yMax - yMin) / (yMax - yMin) / 2 : 0;
+  const areaWidth = fitted.width / (1 + extraX);
+  const areaHeight = fitted.height / (1 + extraY);
+  const top = padTop + fitted.offsetY + extraY * areaHeight;
+  const right = left + areaWidth;
+  const bottom = top + areaHeight;
   const canvasWidth = appearance.width;
   const canvasHeight = appearance.height;
 
@@ -353,29 +364,57 @@ function rectsOverlap(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 }
 
-/** Прямоугольники названий осей (те же координаты, что и при отрисовке). */
-function axisNameRects(geometry: PlotGeometry, scene: PlotScene, a: PlotAppearance): Rect[] {
-  const xNameY = Math.min(geometry.canvasHeight - 4, geometry.xAxisY + a.labelFontSize + 4);
-  const yNameRaw = geometry.yAxisX - 12;
-  const yNameX = yNameRaw < a.labelFontSize * 0.6 ? geometry.yAxisX + 12 : yNameRaw;
-  const yNameAnchor = yNameRaw < a.labelFontSize * 0.6 ? "start" : "end";
-  return [
-    textBoundingRect(geometry.axisEndX - 10, xNameY, axisLabelText(scene.xAxis), a.labelFontSize, "end"),
-    textBoundingRect(yNameX, geometry.axisEndY + a.labelFontSize + 4, axisLabelText(scene.yAxis), a.labelFontSize, yNameAnchor),
-  ];
+/** Общие позиции для рендера, проверки пересечений и препятствий подписей. */
+export function axisNamePositions(g: PlotGeometry, scene: PlotScene, a: PlotAppearance) {
+  const xText = axisLabelText(scene.xAxis);
+  const yText = axisLabelText(scene.yAxis);
+  const xOutside = g.xMax <= 0;
+  const x = xOutside ? Math.max(g.yAxisX + a.tickSize + 8, g.axisEndX - 10) : g.axisEndX - 10;
+  const xAnchor = xOutside ? "start" as const : "end" as const;
+  const xY = Math.min(g.canvasHeight - 4, g.xAxisY + a.labelFontSize + 4);
+  const yRaw = g.yAxisX - 12;
+  const yX = yRaw < a.labelFontSize * 0.6 ? g.yAxisX + 12 : yRaw;
+  const yAnchor = yRaw < a.labelFontSize * 0.6 ? "start" as const : "end" as const;
+  const yY = g.yMax <= 0
+    ? Math.min(g.axisEndY + a.labelFontSize + 4, g.xAxisY - a.tickSize - 8)
+    : g.axisEndY + a.labelFontSize + 4;
+  return {
+    x: { x, y: xY, anchor: xAnchor, text: xText },
+    y: { x: yX, y: yY, anchor: yAnchor, text: yText },
+  };
 }
 
-function xMarkLabelRect(geometry: PlotGeometry, scene: PlotScene, a: PlotAppearance, value: number): Rect {
+function axisNameRects(g: PlotGeometry, scene: PlotScene, a: PlotAppearance): Rect[] {
+  return Object.values(axisNamePositions(g, scene, a)).map((p) => textBoundingRect(p.x, p.y, p.text, a.labelFontSize, p.anchor));
+}
+
+function xMarkPosition(g: PlotGeometry, a: PlotAppearance, value: number, text: string) {
   const isZero = Math.abs(value) < 1e-12;
-  const x = geometry.sx(value);
-  const offsetX = isZero ? x - a.tickSize - 7 : x;
-  const baseline = geometry.xAxisY + a.tickSize + a.labelFontSize + 3;
-  return textBoundingRect(offsetX, baseline, displayNumber(value, scene.xAxis.labelFormat), a.labelFontSize, isZero ? "end" : "middle");
+  let x = isZero ? g.sx(value) - a.tickSize - 7 : g.sx(value);
+  let anchor: "end" | "middle" = isZero ? "end" : "middle";
+  // Подписи справа от отрицательной шкалы не пересекают вертикальную ось.
+  if (g.xMax <= 0 && x + (anchor === "middle" ? measureTextWidth(text, a.labelFontSize) / 2 : 0) >= g.yAxisX - a.tickSize - 4) {
+    x = g.yAxisX - a.tickSize - 7;
+    anchor = "end";
+  }
+  return { x, y: g.xAxisY + a.tickSize + a.labelFontSize + 3, anchor };
 }
 
-function yMarkLabelRect(geometry: PlotGeometry, scene: PlotScene, a: PlotAppearance, value: number): Rect {
-  const y = geometry.sy(value);
-  return textBoundingRect(geometry.yAxisX - a.tickSize - 7, y + a.labelFontSize * 0.35, displayNumber(value, scene.yAxis.labelFormat), a.labelFontSize, "end");
+function yMarkPosition(g: PlotGeometry, a: PlotAppearance, value: number) {
+  let y = g.sy(value) + a.labelFontSize * 0.35;
+  if (g.yMax <= 0) y = Math.max(y, g.xAxisY + a.tickSize + a.labelFontSize + 3);
+  return { x: g.yAxisX - a.tickSize - 7, y, anchor: "end" as const };
+}
+
+function xMarkLabelRect(g: PlotGeometry, scene: PlotScene, a: PlotAppearance, value: number): Rect {
+  const text = displayNumber(value, scene.xAxis.labelFormat);
+  const p = xMarkPosition(g, a, value, text);
+  return textBoundingRect(p.x, p.y, text, a.labelFontSize, p.anchor);
+}
+
+function yMarkLabelRect(g: PlotGeometry, scene: PlotScene, a: PlotAppearance, value: number): Rect {
+  const p = yMarkPosition(g, a, value);
+  return textBoundingRect(p.x, p.y, displayNumber(value, scene.yAxis.labelFormat), a.labelFontSize, p.anchor);
 }
 
 /**
@@ -391,10 +430,12 @@ export function labeledMarks(
 ): { x: number[]; y: number[] } {
   const names = axisNameRects(geometry, scene, a);
   const free = (rect: Rect) => !names.some((name) => rectsOverlap(rect, name));
-  return {
-    x: xMarks.filter((value) => free(xMarkLabelRect(geometry, scene, a, value))),
-    y: yMarks.filter((value) => free(yMarkLabelRect(geometry, scene, a, value))),
-  };
+  const x = xMarks.filter((value) => free(xMarkLabelRect(geometry, scene, a, value)));
+  const y = yMarks.filter((value) => {
+    const rect = yMarkLabelRect(geometry, scene, a, value);
+    return free(rect) && !x.some((mark) => rectsOverlap(rect, xMarkLabelRect(geometry, scene, a, mark)));
+  });
+  return { x, y };
 }
 
 function pointCaptionText(point: RenderPoint): string {
@@ -438,58 +479,13 @@ function buildLabelObstacles(
   });
 
   for (const value of xMarks) {
-    const x = geometry.sx(value);
-    const isZero = Math.abs(value) < 1e-12;
-    const text = displayNumber(value, scene.xAxis.labelFormat);
-    const offsetX = isZero ? x - a.tickSize - 7 : x;
-    const baseline = geometry.xAxisY + a.tickSize + a.labelFontSize + 3;
-    obstacles.push({
-      kind: "axisLabel",
-      rect: textBoundingRect(offsetX, baseline, text, a.labelFontSize, isZero ? "end" : "middle"),
-    });
+    obstacles.push({ kind: "axisLabel", rect: xMarkLabelRect(geometry, scene, a, value) });
   }
-
   for (const value of yMarks) {
-    const isZero = Math.abs(value) < 1e-12;
-    if (isZero && xMarks.some((mark) => Math.abs(mark) < 1e-12)) continue;
-    const y = geometry.sy(value);
-    const text = displayNumber(value, scene.yAxis.labelFormat);
-    obstacles.push({
-      kind: "axisLabel",
-      rect: textBoundingRect(
-        geometry.yAxisX - a.tickSize - 7,
-        y + a.labelFontSize * 0.35,
-        text,
-        a.labelFontSize,
-        "end",
-      ),
-    });
+    if (Math.abs(value) < 1e-12 && xMarks.some((mark) => Math.abs(mark) < 1e-12)) continue;
+    obstacles.push({ kind: "axisLabel", rect: yMarkLabelRect(geometry, scene, a, value) });
   }
-
-  const xNameY = Math.min(geometry.canvasHeight - 4, geometry.xAxisY + a.labelFontSize + 4);
-  const yNameRaw = geometry.yAxisX - 12;
-  const yNameX = yNameRaw < a.labelFontSize * 0.6 ? geometry.yAxisX + 12 : yNameRaw;
-  const yNameAnchor = yNameRaw < a.labelFontSize * 0.6 ? "start" : "end";
-  obstacles.push({
-    kind: "axisLabel",
-    rect: textBoundingRect(
-      geometry.axisEndX - 10,
-      xNameY,
-      axisLabelText(scene.xAxis),
-      a.labelFontSize,
-      "end",
-    ),
-  });
-  obstacles.push({
-    kind: "axisLabel",
-    rect: textBoundingRect(
-      yNameX,
-      geometry.axisEndY + a.labelFontSize + 4,
-      axisLabelText(scene.yAxis),
-      a.labelFontSize,
-      yNameAnchor,
-    ),
-  });
+  for (const rect of axisNameRects(geometry, scene, a)) obstacles.push({ kind: "axisLabel", rect });
 
   for (const curve of curves) {
     for (const segment of curve.segments) {
@@ -712,13 +708,13 @@ export function renderPlotSvg(
     for (const value of vertical) {
       const x = geometry.sx(value);
       lines.push(
-        `<line x1="${round(x)}" y1="${round(geometry.top)}" x2="${round(x)}" y2="${round(geometry.bottom)}"/>`,
+        `<line x1="${round(x)}" y1="${round(geometry.gridTop)}" x2="${round(x)}" y2="${round(geometry.bottom)}"/>`,
       );
     }
     for (const value of horizontal) {
       const y = geometry.sy(value);
       lines.push(
-        `<line x1="${round(geometry.left)}" y1="${round(y)}" x2="${round(geometry.right)}" y2="${round(y)}"/>`,
+        `<line x1="${round(geometry.left)}" y1="${round(y)}" x2="${round(geometry.gridRight)}" y2="${round(y)}"/>`,
       );
     }
     parts.push(
@@ -726,13 +722,13 @@ export function renderPlotSvg(
     );
   }
 
-  // Рамка — по границе математической области, но под осями: если ось лежит
+  // Рамка — по визуальной границе сетки, но под осями: если ось лежит
   // на краю (полуось или диапазон без нуля), она должна быть видна поверх рамки.
   if (a.frame) {
     parts.push(
-      `<rect x="${round(geometry.left)}" y="${round(geometry.top)}" width="${round(
-        geometry.right - geometry.left,
-      )}" height="${round(geometry.bottom - geometry.top)}" fill="none" stroke="${a.frameColor}" stroke-width="${a.frameWidth}"/>`,
+      `<rect x="${round(geometry.left)}" y="${round(geometry.gridTop)}" width="${round(
+        geometry.gridRight - geometry.left,
+      )}" height="${round(geometry.bottom - geometry.gridTop)}" fill="none" stroke="${a.frameColor}" stroke-width="${a.frameWidth}"/>`,
     );
   }
 
@@ -783,11 +779,10 @@ export function renderPlotSvg(
     const text = displayNumber(value, scene.xAxis.labelFormat);
     // Ноль — снизу-слева от пересечения осей, но на том же удалении от осей,
     // что и остальные подписи (иначе он «липнет» к осям).
-    const offsetX = isZero ? x - a.tickSize - 7 : x;
-    const baseline = geometry.xAxisY + a.tickSize + a.labelFontSize + 3;
+    const pos = xMarkPosition(geometry, a, value, text);
     if (xLabelSet.has(value)) labels.push(
-      `<text x="${round(offsetX)}" y="${round(baseline)}" text-anchor="${
-        isZero ? "end" : "middle"
+      `<text x="${round(pos.x)}" y="${round(pos.y)}" text-anchor="${
+        pos.anchor
       }" font-style="normal" ${labelStyle}>${escapeText(text)}</text>`,
     );
 
@@ -804,34 +799,19 @@ export function renderPlotSvg(
       );
     }
     const text = displayNumber(value, scene.yAxis.labelFormat);
+    const pos = yMarkPosition(geometry, a, value);
     if (yLabelSet.has(value)) labels.push(
-      `<text x="${round(geometry.yAxisX - a.tickSize - 7)}" y="${round(y + a.labelFontSize * 0.35)}" text-anchor="end" font-style="normal" ${labelStyle}>${escapeText(
+      `<text x="${round(pos.x)}" y="${round(pos.y)}" text-anchor="end" font-style="normal" ${labelStyle}>${escapeText(
         text,
       )}</text>`,
     );
   }
   parts.push(ticks.join(""), labels.join(""));
 
-  // Названия осей: подпись x всегда под осью, подпись y всегда слева от оси —
-  // даже если ось лежит на краю рамки (тогда они уходят в свободные поля).
-  const xNameY = Math.min(
-    geometry.canvasHeight - 4,
-    geometry.xAxisY + a.labelFontSize + 4,
-  );
-  const yNameRaw = geometry.yAxisX - 12;
-  const yNameX = yNameRaw < a.labelFontSize * 0.6 ? geometry.yAxisX + 12 : yNameRaw;
-  const yNameAnchor = yNameRaw < a.labelFontSize * 0.6 ? "start" : "end";
-
-  parts.push(
-    `<text x="${round(xEnd - 10)}" y="${round(xNameY)}" text-anchor="end" font-style="italic" ${labelStyle}>${escapeText(
-      axisLabelText(scene.xAxis),
-    )}</text>`,
-    `<text x="${round(yNameX)}" y="${round(yEnd + a.labelFontSize + 4)}" text-anchor="${yNameAnchor}" font-style="italic" ${labelStyle}>${escapeText(
-      axisLabelText(scene.yAxis),
-    )}</text>`,
-
-  );
-
+  // Позиции названий едины с геометрией проверки пересечений.
+  for (const pos of Object.values(axisNamePositions(geometry, scene, a))) {
+    parts.push(`<text x="${round(pos.x)}" y="${round(pos.y)}" text-anchor="${pos.anchor}" font-style="italic" ${labelStyle}>${escapeText(pos.text)}</text>`);
+  }
 
   // Графики (клипуются по математической области).
   const curveParts: string[] = [];
