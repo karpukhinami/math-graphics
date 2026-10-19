@@ -1,10 +1,15 @@
 /** Bounds and tick spacing belong to the renderer, never to AI or saved layout. */
-export function chartGridScale(values: number[]) {
+export function chartGridScale(values: number[], step?: number) {
   const finite = values.filter(Number.isFinite);
   const low = Math.min(0, ...finite);
   const high = Math.max(0, ...finite);
   const span = high - low;
   if (!span) return { min: 0, max: 2, interval: 1 };
+  if (step && step > 0 && span / step <= 200) {
+    const min = Number((Math.floor(low / step + 1e-9) * step).toPrecision(12));
+    const max = Number((Math.ceil(high / step - 1e-9) * step).toPrecision(12));
+    return { min, max: max > min ? max : min + step, interval: step };
+  }
   const power = Math.floor(Math.log10(span / 5));
   const candidates = new Set<number>();
   for (let p = power - 2; p <= power + 3; p++) {

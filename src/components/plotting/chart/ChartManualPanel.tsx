@@ -240,6 +240,21 @@ export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number
                 <Switch checked={r.showGrid ?? true} onCheckedChange={(showGrid) => render({ showGrid })} />
               </div>
             )}
+            {GRID_TYPES.includes(type) && (r.showGrid ?? true) && (
+              <div className="space-y-1">
+                <Label htmlFor={`chart-grid-step-${index}`} className="text-xs">Шаг сетки</Label>
+                <CommitInput
+                  id={`chart-grid-step-${index}`}
+                  value={r.gridStep ? String(r.gridStep) : ""}
+                  placeholder="авто"
+                  inputMode="decimal"
+                  onCommit={(text) => {
+                    const n = Number(text.replace(",", ".").trim());
+                    render({ gridStep: text.trim() && Number.isFinite(n) && n > 0 ? n : undefined });
+                  }}
+                />
+              </div>
+            )}
             {GRID_TYPES.includes(type) && (
               <div className="space-y-1">
                 <Label htmlFor={`chart-axis-label-${index}`} className="text-xs">Подпись оси{type === "scatter" ? " Y" : " значений"}</Label>

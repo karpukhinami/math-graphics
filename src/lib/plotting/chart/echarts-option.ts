@@ -131,7 +131,7 @@ export function buildStatDecoOption(
     }
     return {
       type: "value" as const,
-      ...chartGridScale(values),
+      ...chartGridScale(values, r.gridStep),
       name: name ? wrapCategoryLabel(name, horizontal ? Math.max(100, layout.width - labelWidth - 72) : Math.min(210, layout.width * 0.45), measureLabel) : "",
       nameLocation: horizontal ? "middle" as const : "end" as const,
       nameGap: horizontal ? 36 : 12,
