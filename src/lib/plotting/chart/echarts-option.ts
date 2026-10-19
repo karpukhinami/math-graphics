@@ -556,7 +556,7 @@ export function buildStatDecoOption(
         option: {
           ...base,
           xAxis: horizontal ? valueAxis(vMax, valueAxisName()) : catAxis(names),
-          yAxis: horizontal ? catAxis(names) : valueAxis(vMax, valueAxisName()),
+          yAxis: horizontal ? catAxis(names, false) : valueAxis(vMax, valueAxisName()),
           series: series as SeriesList,
         },
       };
@@ -580,7 +580,7 @@ export function buildStatDecoOption(
         option: {
           ...base,
           xAxis: horizontal ? valueAxis(vMax, valueAxisName()) : catAxis(names),
-          yAxis: horizontal ? catAxis(names) : valueAxis(vMax, valueAxisName()),
+          yAxis: horizontal ? catAxis(names, false) : valueAxis(vMax, valueAxisName()),
           series: ([
             {
               type: "boxplot",
