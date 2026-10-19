@@ -434,10 +434,12 @@ export function labeledMarks(
 ): { x: number[]; y: number[] } {
   const names = axisNameRects(geometry, scene, a);
   const free = (rect: Rect) => !names.some((name) => rectsOverlap(rect, name));
-  const x = xMarks.filter((value) => free(xMarkLabelRect(geometry, scene, a, value)));
+  const requiredX = (value: number) => scene.xAxis.markRule === "zeroAndFirst" && Math.abs(value) > 1e-12;
+  const requiredY = (value: number) => scene.yAxis.markRule === "zeroAndFirst" && Math.abs(value) > 1e-12;
+  const x = xMarks.filter((value) => requiredX(value) || free(xMarkLabelRect(geometry, scene, a, value)));
   const y = yMarks.filter((value) => {
     const rect = yMarkLabelRect(geometry, scene, a, value);
-    return free(rect) && !x.some((mark) => rectsOverlap(rect, xMarkLabelRect(geometry, scene, a, mark)));
+    return requiredY(value) || (free(rect) && !x.some((mark) => rectsOverlap(rect, xMarkLabelRect(geometry, scene, a, mark))));
   });
   return { x, y };
 }
