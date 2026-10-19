@@ -55,7 +55,13 @@ export interface StatDecoOptionResult {
   error?: string;
 }
 
-export function buildStatDecoOption(json: StatDecoJson): StatDecoOptionResult {
+export function buildStatDecoOption(
+  json: StatDecoJson,
+  layout: { width: number; measureText: (text: string, font: string) => number } = {
+    width: 848,
+    measureText: (text) => Array.from(text).length * 7.5,
+  },
+): StatDecoOptionResult {
   const theme = statDecoTheme();
   const r = json.rendering;
   const showValues = r.showValues !== false;
@@ -83,7 +89,12 @@ export function buildStatDecoOption(json: StatDecoJson): StatDecoOptionResult {
     fontFamily,
   };
 
-  const catAxis = (categories: string[]) => ({
+  const catAxis = (categories: string[], horizontal = true) => {
+    const slotWidth = Math.max(1, (layout.width - 88) / Math.max(categories.length, 1) - 12);
+    const rotate = horizontal && categories.some(
+      (text) => layout.measureText(text, `13px ${fontFamily}`) > slotWidth,
+    ) ? 45 : 0;
+    return ({
     type: "category" as const,
     data: categories,
     axisLine: { lineStyle: { color: theme.ink } },
@@ -95,15 +106,16 @@ export function buildStatDecoOption(json: StatDecoJson): StatDecoOptionResult {
       // Every category must be labelled: never drop or hide labels.
       interval: 0,
       hideOverlap: false,
-      // Long names wrap onto several lines instead of being truncated.
-      overflow: "break" as const,
-      width: Math.max(56, Math.floor(760 / Math.max(categories.length, 1))),
+      // Horizontal labels stay on one line; crowded names tilt together.
+      rotate,
+      ...(horizontal ? {} : { overflow: "break" as const, width: 150 }),
       lineHeight: 15,
       margin: 10,
     },
     // Reference charts intentionally omit the measuring grid.
     splitLine: { show: false },
-  });
+    });
+  };
 
 
   /**
@@ -191,7 +203,7 @@ export function buildStatDecoOption(json: StatDecoJson): StatDecoOptionResult {
           ...base,
           legend: legendFor(series, theme),
           xAxis: horizontal ? valueAxis(vMax, valueAxisName()) : catAxis(categories),
-          yAxis: horizontal ? catAxis(categories) : valueAxis(vMax, valueAxisName()),
+          yAxis: horizontal ? catAxis(categories, false) : valueAxis(vMax, valueAxisName()),
           series: echSeries as SeriesList,
         },
       };
@@ -544,7 +556,7 @@ export function buildStatDecoOption(json: StatDecoJson): StatDecoOptionResult {
         option: {
           ...base,
           xAxis: horizontal ? valueAxis(vMax, valueAxisName()) : catAxis(names),
-          yAxis: horizontal ? catAxis(names) : valueAxis(vMax, valueAxisName()),
+          yAxis: horizontal ? catAxis(names, false) : valueAxis(vMax, valueAxisName()),
           series: series as SeriesList,
         },
       };
@@ -568,7 +580,7 @@ export function buildStatDecoOption(json: StatDecoJson): StatDecoOptionResult {
         option: {
           ...base,
           xAxis: horizontal ? valueAxis(vMax, valueAxisName()) : catAxis(names),
-          yAxis: horizontal ? catAxis(names) : valueAxis(vMax, valueAxisName()),
+          yAxis: horizontal ? catAxis(names, false) : valueAxis(vMax, valueAxisName()),
           series: ([
             {
               type: "boxplot",
