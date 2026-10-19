@@ -14,7 +14,7 @@ import {
 } from "./prompts";
 import { expandLineDraft } from "./draft-line";
 import { expandPlaneDraft } from "./draft-plane";
-import { validateStatDecoJson } from "@/lib/plotting/chart";
+import { validateAiChartJson } from "@/lib/plotting/chart";
 import {
   type PlotAiScenario,
   type PlotAnalysisResult,
@@ -147,7 +147,7 @@ export async function generatePlotScene(opts: {
     const raw = (opts.analysis.stageData as Record<string, unknown>).chart;
     if (!raw) throw new Error("Анализ не содержит данных диаграммы");
     try {
-      return { chart: validateStatDecoJson(raw) };
+      return { chart: validateAiChartJson(raw) };
     } catch (e) {
       throw new Error(`Не удалось прочитать данные диаграммы: ${e instanceof Error ? e.message : e}`);
     }

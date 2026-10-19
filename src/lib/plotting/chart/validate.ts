@@ -156,6 +156,15 @@ function normalizeRendering(raw: unknown): StatDecoRendering {
   };
 }
 
+/** Настройки первого построения от ИИ; ручные правки проходят обычную проверку. */
+export function validateAiChartJson(raw: unknown): StatDecoJson {
+  const chart = validateStatDecoJson(raw);
+  return {
+    ...chart,
+    rendering: { ...chart.rendering, showGrid: true, volume: false, showValues: chart.rendering.showValues ?? true },
+  };
+}
+
 export function validateStatDecoJson(raw: unknown): StatDecoJson {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     throw new Error("Ответ модели не является объектом");
