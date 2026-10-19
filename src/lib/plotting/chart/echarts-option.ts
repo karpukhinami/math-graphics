@@ -90,17 +90,12 @@ export function buildStatDecoOption(
   const chartGrid = (categories: string[], horizontal: boolean, legend = false) => {
     const wrapped = categories.map((text) => wrapCategoryLabel(text, labelWidth, measureLabel));
     const measured = Math.max(0, ...wrapped.flatMap((text) => text.split("\n").map(measureLabel)));
-    const tilted = categories.some((text) => measureLabel(text) > (layout.width - 88) / Math.max(categories.length, 1) - 12);
-    const left = tilted ? Math.max(40, Math.ceil(measureLabel(categories[0] ?? "") * Math.SQRT1_2) + 12) : 18;
     return horizontal
       ? { left: Math.ceil(measured) + 18, right: 36, top: 72, bottom: legend ? 94 : 68, containLabel: false }
-      : { left: Math.min(left, layout.width * 0.4), right: 36, top: 72, bottom: legend ? 72 : 32, containLabel: true };
+      : { left: 18, right: 36, top: 72, bottom: legend ? 72 : 32, containLabel: true };
   };
   const catAxis = (categories: string[], horizontal = true) => {
     const slotWidth = Math.max(1, (layout.width - 88) / Math.max(categories.length, 1) - 12);
-    const rotate = horizontal && categories.some(
-      (text) => layout.measureText(text, `13px ${fontFamily}`) > slotWidth,
-    ) ? 45 : 0;
     return ({
     type: "category" as const,
     data: categories,
@@ -113,9 +108,8 @@ export function buildStatDecoOption(
       // Every category must be labelled: never drop or hide labels.
       interval: 0,
       hideOverlap: false,
-      // Horizontal labels stay on one line; crowded names tilt together.
-      rotate,
-      ...(horizontal ? {} : { formatter: (text: string) => wrapCategoryLabel(text, labelWidth, measureLabel) }),
+      rotate: 0,
+      formatter: (text: string) => wrapCategoryLabel(text, horizontal ? slotWidth : labelWidth, measureLabel),
       lineHeight: 15,
       margin: 10,
     },

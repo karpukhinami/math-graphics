@@ -4,7 +4,7 @@
  * конкретные hex выводятся здесь.
  */
 import { PLOT_PALETTE, PLOT_PALETTE_GROUPS } from "../shared";
-import type { StatDecoColorMode } from "./types";
+import type { StatDecoColorMode, StatDecoRendering } from "./types";
 import { hexToRgb, hslToRgb, rgbToHex, rgbToHsl } from "./palette-math";
 
 export interface StatDecoTheme {
@@ -50,7 +50,7 @@ export function paletteShades(base: string): string[] | null {
 /** «Оттенки одного цвета» предлагаем, только если у базового цвета не меньше 3 фирменных оттенков. */
 export function similarAvailable(base: string): boolean {
   const shades = paletteShades(base);
-  return shades === null || shades.length >= 3;
+  return shades !== null && shades.length >= 3;
 }
 
 function shiftHsl(hex: string, dH: number, dS: number, dL: number): string {
@@ -72,27 +72,23 @@ export function darken(hex: string, amount: number): string {
   return shiftHsl(hex, 0, 0, -Math.round(amount * 100));
 }
 
-/** Оттенки одного базового цвета, равномерно по светлоте (для «similar»). */
-function shades(base: string, count: number): string[] {
-  if (count <= 1) return [base];
-  const out: string[] = [];
-  const span = 34;
-  for (let i = 0; i < count; i += 1) {
-    const t = count === 1 ? 0 : i / (count - 1);
-    out.push(shiftHsl(base, (t - 0.5) * 14, 0, Math.round((0.5 - t) * span)));
-  }
-  return out;
+/** После шести основных цветов повторяем палитру, не выдумывая новые. */
+function distinctColors(theme: StatDecoTheme, count: number): string[] {
+  return Array.from({ length: count }, (_, i) => theme.distinct[i % theme.distinct.length] ?? theme.primary);
 }
 
-/** Различимые цвета: сначала палитра, затем повороты оттенка от primary. */
-function distinctColors(theme: StatDecoTheme, count: number): string[] {
-  const out = theme.distinct.slice(0, count);
-  let step = 1;
-  while (out.length < count) {
-    out.push(shiftHsl(theme.primary, (step * 360) / (count + 1), 0, step % 2 ? -8 : 8));
-    step += 1;
+/** В режиме оттенков выбранная строка остаётся выбранного цвета, остальные следуют циклу группы. */
+export function changeChartColor(rendering: StatDecoRendering, index: number, color: string): StatDecoRendering {
+  if (rendering.colorMode === "similar") {
+    const shades = paletteShades(color);
+    if (!shades || shades.length < 3) return { ...rendering, colorMode: "same", customColors: [color] };
+    const base = shades[(shades.length - index % shades.length) % shades.length] ?? color;
+    return { ...rendering, customColors: [base] };
   }
-  return out;
+  if (rendering.colorMode === "same") return { ...rendering, customColors: [color] };
+  const customColors = [...(rendering.customColors ?? [])];
+  customColors[index] = color;
+  return { ...rendering, customColors };
 }
 
 /**
@@ -113,7 +109,7 @@ export function resolveColors(
     const baseColor = custom?.[0] ?? theme.primary;
     const fixed = paletteShades(baseColor);
     // Оттенков меньше, чем столбцов, — повторяем все по кругу; вне групп палитры — оттенки по светлоте.
-    base = fixed ? Array.from({ length: n }, (_, i) => fixed[i % fixed.length]) : shades(baseColor, n);
+    base = fixed ? Array.from({ length: n }, (_, i) => fixed[i % fixed.length]) : Array.from({ length: n }, () => theme.primary);
   }
   else base = distinctColors(theme, n);
   // Ручные цвета (режим «different») перекрывают палитру по позициям.

@@ -1,6 +1,7 @@
 # Chart mode (stat-deco) rules
 
-- Category-axis labels automatically tilt when measured text exceeds the available slot; preview recomputes on resize and PNG uses its export width through the same option builder. Why: label layout must follow actual image dimensions without persisting presentation state.
+- Category-axis labels wrap by words and Russian hyphenation within measured category slots; preview recomputes on resize and PNG uses its export width through the same option builder. Why: labels must not create diagonal overflow or persist presentation state.
+- Color controls show resolved renderer colors beside category rows or series headers; similar-mode edits rotate the shared palette cycle around the edited target. Why: editing any shade must update the entire group without inventing colors.
 
 - Chart mode (sceneType "chart") lives in `src/lib/plotting/chart/`: the model returns table + chartType in analysis `stageData.chart` (no second LLM stage); colors come only from PLOT_PALETTE via `chart/colors.ts`, ECharts option is built in `chart/echarts-option.ts`, preview is `ChartPreview.tsx`, PNG via `chart/chart-png.ts`; chart JSON is stored in the plot store, not in PlotScene. Why: diagrams are data-driven, not scene-driven, and must share the math palette.
 - Do not port the archive's palette wheel, design profiles, or artistic beautification instructions for charts. Why: charts use our palette and the shared "Сделать красиво" flow.

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { resolveGeometry } from "../src/lib/plotting/render";
+import { axisNamePositions, resolveGeometry } from "../src/lib/plotting/render";
 import { createScene } from "../src/lib/plotting/scene";
 
 function equalScene(xMin: string, xMax: string, yMin: string, yMax: string) {
@@ -11,6 +11,34 @@ function equalScene(xMin: string, xMax: string, yMin: string, yMax: string) {
 }
 
 describe("equal-scale geometry", () => {
+  for (const [name, bounds, extendX, extendY] of [
+    ["отрицательная x", ["-8", "-2", "-3", "5"], true, false],
+    ["отрицательная y", ["-3", "5", "-8", "-2"], false, true],
+    ["обе отрицательные", ["-8", "-2", "-6", "-1"], true, true],
+    ["ноль на границе", ["-8", "0", "-6", "0"], true, true],
+    ["обе положительные", ["2", "8", "1", "6"], false, false],
+  ] as const) {
+    test(`${name}: продолжение на половину ячейки, пределы неизменны`, () => {
+      const scene = equalScene(...bounds);
+      scene.xAxis.gridStep = "2";
+      scene.yAxis.gridStep = "1";
+      for (const mode of ["equal", "independent"] as const) {
+        scene.axisScaleMode = mode;
+        const g = resolveGeometry(scene);
+        if (!g) throw new Error("Геометрия отсутствует");
+        expect([g.xMin, g.xMax, g.yMin, g.yMax]).toEqual(bounds.map(Number));
+        expect(g.axisEndX - g.right).toBeCloseTo(extendX ? (g.sx(2) - g.sx(0)) / 2 : 0, 8);
+        expect(g.top - g.axisEndY).toBeCloseTo(extendY ? (g.sy(0) - g.sy(1)) / 2 : 0, 8);
+        expect(g.gridRight).toBe(g.axisEndX);
+        expect(g.gridTop).toBe(g.axisEndY);
+        expect(g.axisEndX).toBeLessThan(g.canvasWidth);
+        expect(g.axisEndY).toBeGreaterThan(0);
+        const positions = axisNamePositions(g, scene, scene.appearance);
+        if (extendX) expect(positions.x.x).toBeGreaterThan(g.yAxisX);
+        if (extendY) expect(positions.y.y).toBeLessThan(g.xAxisY);
+      }
+    });
+  }
   test("новая ручная плоскость подписывает 0 и первое деление по обеим осям", () => {
     const scene = createScene();
     expect(scene.xAxis.markRule).toBe("zeroAndFirst");

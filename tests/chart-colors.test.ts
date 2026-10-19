@@ -1,8 +1,20 @@
 import { describe, expect, test } from "bun:test";
-import { CHART_COLOR_CHOICES, paletteShades, resolveColors, similarAvailable, statDecoTheme } from "@/lib/plotting/chart/colors";
+import { CHART_COLOR_CHOICES, changeChartColor, paletteShades, resolveColors, similarAvailable, statDecoTheme } from "@/lib/plotting/chart/colors";
 import { PLOT_PALETTE, PLOT_PALETTE_GROUPS } from "@/lib/plotting/shared";
 
 describe("цвета диаграмм из палитры чертежей", () => {
+  test("после шести основных цветов повторяем их без новых оттенков", () => {
+    expect(resolveColors(statDecoTheme(), "different", 8)).toEqual([...PLOT_PALETTE, ...PLOT_PALETTE.slice(0, 2)]);
+  });
+  test("выбор оттенка в третьей строке обновляет весь цикл и сохраняет выбранную строку", () => {
+    const rendering = changeChartColor({ colorMode: "similar", customColors: ["#29A2E5"] }, 2, "#B878EF");
+    const colors = resolveColors(statDecoTheme(), "similar", 7, rendering.customColors);
+    expect(colors).toEqual(["#9050C7", "#A464DB", "#B878EF", "#6E25B9", "#8239CD", "#9050C7", "#A464DB"]);
+  });
+  test("смена цвета во второй строке same меняет все строки", () => {
+    const rendering = changeChartColor({ colorMode: "same" }, 1, "#FF3C8A");
+    expect(resolveColors(statDecoTheme(), "same", 3, rendering.customColors)).toEqual(["#FF3C8A", "#FF3C8A", "#FF3C8A"]);
+  });
   test("набор цветов на выбор не содержит посторонних", () => {
     const allowed = new Set([...PLOT_PALETTE, ...PLOT_PALETTE_GROUPS.flatMap((g) => g.colors)]);
     for (const color of CHART_COLOR_CHOICES) expect(allowed.has(color)).toBe(true);
