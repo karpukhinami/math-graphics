@@ -82,8 +82,12 @@ export function volumePieSeries(categories: string[], values: number[], colors: 
       tops.push(polygon([...arc(angle, end), ...(hole ? arc(angle, end, hole).reverse() : [[cx, cy]])], color));
       if (showValues) {
         const middle = (angle + end) / 2;
-        const [x, y] = point(middle, 1.15);
-        labels.push({ type: "text", style: { text: `${wrapCategoryLabel(name, api.getWidth() * 0.2, measure)}\n${formatNum(values[i])}`, x, y: y + (Math.sin(middle) > 0 ? depth : -6), align: Math.cos(middle) > 0.1 ? "left" : Math.cos(middle) < -0.1 ? "right" : "center", verticalAlign: Math.sin(middle) > 0 ? "top" : "bottom", fill: statDecoTheme().ink, font: "13px sans-serif", lineHeight: 16 } });
+        const [anchorX, y] = point(middle, 1.15);
+        const label = `${wrapCategoryLabel(name, api.getWidth() * 0.2, measure)}\n${formatNum(values[i])}`;
+        const labelWidth = Math.max(...label.split("\n").map(measure));
+        const align = Math.cos(middle) > 0.1 ? "left" as const : Math.cos(middle) < -0.1 ? "right" as const : "center" as const;
+        const x = align === "left" ? Math.min(anchorX, api.getWidth() - labelWidth - 8) : align === "right" ? Math.max(anchorX, labelWidth + 8) : Math.max(labelWidth / 2 + 8, Math.min(anchorX, api.getWidth() - labelWidth / 2 - 8));
+        labels.push({ type: "text", style: { text: label, x, y: y + (Math.sin(middle) > 0 ? depth : -6), align, verticalAlign: Math.sin(middle) > 0 ? "top" : "bottom", fill: statDecoTheme().ink, font: "13px sans-serif", lineHeight: 16 } });
       }
       angle = end;
     });

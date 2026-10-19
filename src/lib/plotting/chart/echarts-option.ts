@@ -69,7 +69,7 @@ export function buildStatDecoOption(
     animation: false,
     textStyle: { color: theme.ink, fontFamily },
     title: {
-      text: json.title || "",
+      text: wrapCategoryLabel(json.title || "", Math.max(100, layout.width - 32), (text) => layout.measureText(text, `700 22px ${fontFamily}`)),
       left: "center",
       top: 8,
       textStyle: { color: theme.header, fontSize: 22, fontWeight: 700, fontFamily },
@@ -91,9 +91,11 @@ export function buildStatDecoOption(
   const chartGrid = (categories: string[], horizontal: boolean, legend = false) => {
     const wrapped = categories.map((text) => wrapCategoryLabel(text, labelWidth, measureLabel));
     const measured = Math.max(0, ...wrapped.flatMap((text) => text.split("\n").map(measureLabel)));
+    const tilted = categories.some((text) => measureLabel(text) > (layout.width - 88) / Math.max(categories.length, 1) - 12);
+    const left = tilted ? Math.max(40, Math.ceil(measureLabel(categories[0] ?? "") * Math.SQRT1_2) + 12) : 18;
     return horizontal
       ? { left: Math.ceil(measured) + 18, right: 36, top: 72, bottom: legend ? 94 : 68, containLabel: false }
-      : { left: 18, right: 36, top: 72, bottom: legend ? 72 : 32, containLabel: true };
+      : { left: Math.min(left, layout.width * 0.4), right: 36, top: 72, bottom: legend ? 72 : 32, containLabel: true };
   };
   const catAxis = (categories: string[], horizontal = true) => {
     const slotWidth = Math.max(1, (layout.width - 88) / Math.max(categories.length, 1) - 12);
@@ -140,7 +142,7 @@ export function buildStatDecoOption(
       name: name ? wrapCategoryLabel(name, horizontal ? Math.max(100, layout.width - labelWidth - 72) : Math.min(210, layout.width * 0.45), measureLabel) : "",
       nameLocation: horizontal ? "middle" as const : "end" as const,
       nameGap: horizontal ? 36 : 12,
-      nameTextStyle: { color: theme.ink, fontSize: 13, fontFamily, fontWeight: 600 as const },
+      nameTextStyle: { color: theme.ink, fontSize: 13, fontFamily, fontWeight: 600 as const, align: horizontal ? "center" as const : "left" as const },
       axisLine: { show: true, lineStyle: { color: theme.muted } },
       axisTick: { show: false },
       axisLabel: {
@@ -519,7 +521,6 @@ export function buildStatDecoOption(
       const roles = waterfallColors(theme);
       const horizontal = r.orientation === "horizontal";
       const names = steps.map((s) => s.name);
-      const tops = steps.map((s) => s.base + s.span);
       const axisValues = steps.flatMap((s) => [s.base, s.base + s.span]);
       const series = [
         {
