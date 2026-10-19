@@ -10,7 +10,7 @@ export function ChartPreview({ chart }: { chart: StatDecoJson }) {
     const host = hostRef.current;
     if (!host) return;
     let disposed = false;
-    let instance: { dispose: () => void; resize: () => void } | null = null;
+    let instance: { dispose: () => void; resize: () => void; setOption: (o: unknown, m: boolean) => void } | null = null;
     const { option, error } = buildStatDecoOption(chart);
     if (error) return;
 
