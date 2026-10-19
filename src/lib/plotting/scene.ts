@@ -27,6 +27,7 @@ export { DEFAULT_APPEARANCE, nextId, PLOT_PALETTE, PLOT_PALETTE_GROUPS } from ".
 function createAxis(name: string): AxisSpec {
   return {
     name,
+    label: "",
     unit: "",
     min: "",
     max: "",
@@ -64,6 +65,7 @@ export function migrateAxisImport(
 
   return {
     name: merged.name,
+    label: typeof merged.label === "string" ? merged.label : "",
     unit: merged.unit,
     min: merged.min,
     max: merged.max,

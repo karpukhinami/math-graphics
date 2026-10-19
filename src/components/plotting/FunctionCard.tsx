@@ -44,7 +44,6 @@ export function FunctionCard({ graph }: { graph: SceneGraph }) {
   const updateGraphStyle = usePlotStore((state) => state.updateGraphStyle);
   const removeGraphAnchor = usePlotStore((state) => state.removeGraphAnchor);
   const removeGraph = usePlotStore((state) => state.removeGraph);
-  const buildGraph = usePlotStore((state) => state.buildGraph);
 
   const xName = scene.xAxis.name.trim() || "x";
   const yName = scene.yAxis.name.trim() || "y";
@@ -408,10 +407,6 @@ export function FunctionCard({ graph }: { graph: SceneGraph }) {
 
 
             {graph.error && <p className="text-xs text-destructive">{graph.error}</p>}
-
-            <Button type="button" size="sm" className="w-full" onClick={() => buildGraph(graph.id)}>
-              Построить
-            </Button>
           </CollapsibleContent>
         </Collapsible>
       </CardContent>

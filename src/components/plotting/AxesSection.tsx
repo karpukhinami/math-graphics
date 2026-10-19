@@ -40,19 +40,32 @@ const LABEL_FORMATS: Array<{ value: TickLabelFormat; label: string }> = [
 
 function AxisMainFields({ axis, title }: { axis: "xAxis" | "yAxis"; title: string }) {
   const spec = usePlotStore((state) => state.scene[axis]);
+  const independent = usePlotStore((state) => state.scene.axisScaleMode === "independent");
   const updateAxis = usePlotStore((state) => state.updateAxis);
   return (
     <div className="space-y-2">
       <p className="text-sm font-medium">{title}</p>
-      <div className="grid grid-cols-5 gap-1.5">
+      <div className={`grid gap-1.5 ${independent ? "grid-cols-6" : "grid-cols-5"}`}>
         <div className="min-w-0 space-y-1">
-          <Label className="text-xs text-muted-foreground">Название</Label>
+          <Label className="text-xs text-muted-foreground">Переменная</Label>
           <Input
             value={spec.name}
             className="h-8 px-2 text-sm"
             onChange={(event) => updateAxis(axis, { name: event.target.value })}
           />
         </div>
+        {independent && (
+          <div className="min-w-0 space-y-1">
+            <Label className="text-xs text-muted-foreground">Подпись</Label>
+            <Input
+              value={spec.label ?? ""}
+              placeholder={spec.name || "—"}
+              title="Словесная подпись оси на чертеже; пусто — подписывается переменная"
+              className="h-8 px-2 text-sm"
+              onChange={(event) => updateAxis(axis, { label: event.target.value })}
+            />
+          </div>
+        )}
         <div className="min-w-0 space-y-1">
           <Label className="text-xs text-muted-foreground">Ед. изм.</Label>
           <Input
@@ -202,7 +215,7 @@ export function AxesSection() {
           <RadioGroup
             value={axisScaleMode}
             onValueChange={(value) => updateAxisScale({ axisScaleMode: value as AxisScaleMode })}
-            className="grid gap-2"
+            className="grid grid-cols-2 gap-2"
           >
             <div className="flex items-start gap-2 rounded-md border border-border p-3">
               <RadioGroupItem value="equal" id="axis-scale-equal" className="mt-0.5" />
@@ -252,8 +265,10 @@ export function AxesSection() {
                 onCheckedChange={(checked) => updateGrid({ visible: checked })}
               />
             </div>
-            <AxisDetails axis="xAxis" title="Горизонтальная ось" />
-            <AxisDetails axis="yAxis" title="Вертикальная ось" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <AxisDetails axis="xAxis" title="Горизонтальная ось" />
+              <AxisDetails axis="yAxis" title="Вертикальная ось" />
+            </div>
           </CollapsibleContent>
         </Collapsible>
       </CardContent>

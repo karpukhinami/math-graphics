@@ -87,3 +87,18 @@ describe("compact scene JSON", () => {
     expect(svgOf(restored)).toBe(svgOf(original));
   });
 });
+
+describe("axis caption", () => {
+  test("словесная подпись оси сохраняется и загружается, переменная не меняется", () => {
+    const scene = createScene("plane");
+    scene.axisScaleMode = "independent";
+    scene.xAxis = { ...scene.xAxis, name: "t", label: "время", min: "0", max: "10" };
+    const json = sceneToJson(scene) as Record<string, any>;
+    expect(json.xAxis.label).toBe("время");
+    expect(json.xAxis.name).toBe("t");
+    const loaded = sceneFromJson(json);
+    expect(loaded.xAxis.label).toBe("время");
+    expect(loaded.xAxis.name).toBe("t");
+    expect(loaded.yAxis.label ?? "").toBe("");
+  });
+});

@@ -244,6 +244,8 @@ export function expandPlaneDraft(raw: unknown, options: DraftOptions = {}): Draf
 
   const xName = axisVariableName(text(axes.xName), "x");
   const yName = axisVariableName(text(axes.yName), "y");
+  const xCaption = text(axes.xCaption).trim();
+  const yCaption = text(axes.yCaption).trim();
   const xFormat = labelFormat(axes.xLabelFormat);
   const yFormat = labelFormat(axes.yLabelFormat);
 
@@ -509,6 +511,7 @@ export function expandPlaneDraft(raw: unknown, options: DraftOptions = {}): Draf
     plotAspectRatio: "4:3",
     xAxis: {
       name: xName,
+      label: xCaption,
       unit: "",
       min: xMin?.raw ?? "",
       max: xMax?.raw ?? "",
@@ -520,6 +523,7 @@ export function expandPlaneDraft(raw: unknown, options: DraftOptions = {}): Draf
     },
     yAxis: {
       name: yName,
+      label: yCaption,
       unit: "",
       min: yMin?.raw ?? "",
       max: yMax?.raw ?? "",

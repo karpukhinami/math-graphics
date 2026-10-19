@@ -56,6 +56,7 @@ function putIf(target: Record<string, unknown>, key: string, value: unknown) {
 function axisJson(scene: PlotScene, key: "xAxis" | "yAxis"): Record<string, unknown> {
   const axis = scene[key];
   const out: Record<string, unknown> = { name: axis.name, min: axis.min, max: axis.max };
+  putIf(out, "label", axis.label);
   putIf(out, "unit", axis.unit);
   // Шаг сетки: не храним, если он совпадает с тем, что конструктор подставит сам («авто»).
   const actual = resolveGeometry(scene);

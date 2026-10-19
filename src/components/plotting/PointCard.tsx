@@ -190,16 +190,6 @@ export function PointCard({ point }: { point: ScenePoint }) {
             )}
 
             {point.error && <p className="text-xs text-destructive">{point.error}</p>}
-
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="w-full"
-              onClick={() => buildPoint(point.id)}
-            >
-              Пересчитать
-            </Button>
           </CollapsibleContent>
         </Collapsible>
       </CardContent>

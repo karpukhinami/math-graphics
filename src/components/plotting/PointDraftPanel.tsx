@@ -57,7 +57,13 @@ export function PointDraftPanel() {
   const selectedGraphB = scene.graphs.find((graph) => graph.id === draft.graphIdB);
   const intersectionItems = scene.graphs.filter((graph) => graph.built).map((graph) => (
     <SelectItem key={graph.id} value={graph.id}>
-      <MathLatex latex={graphInlineLatex(graph, xName, yName)} />
+      <span className="flex items-center gap-2">
+        <span
+          className="size-2.5 rounded-full"
+          style={{ backgroundColor: graph.style.color }}
+        />
+        <MathLatex latex={graphInlineLatex(graph, xName, yName)} />
+      </span>
     </SelectItem>
   ));
 
@@ -149,7 +155,13 @@ export function PointDraftPanel() {
               >
                 <SelectTrigger className="bg-background">
                   {current ? (
-                    <MathLatex latex={graphInlineLatex(current, xName, yName)} />
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="size-2.5 rounded-full"
+                        style={{ backgroundColor: current.style.color }}
+                      />
+                      <MathLatex latex={graphInlineLatex(current, xName, yName)} />
+                    </span>
                   ) : AXIS_INTERSECTION_TARGETS.some((axis) => axis.id === draft[key]) ? (
                     <MathLatex latex={draft[key] === "axis:x=0" ? `${xName}=0` : `${yName}=0`} />
                   ) : (
