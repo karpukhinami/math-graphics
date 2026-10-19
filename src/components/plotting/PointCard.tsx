@@ -5,13 +5,22 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ColorDot } from "./ColorDot";
 import { Switch } from "@/components/ui/switch";
 import { ToggleChip } from "./ToggleChip";
-import { ValueFormula } from "./MathLatex";
+import { MathLatex, ValueFormula } from "./MathLatex";
 import { usePlotStore } from "@/lib/plotting/store";
-import { isSingleValued } from "@/lib/plotting/scene";
-import type { ScenePoint } from "@/lib/plotting/types";
+import { isSingleValued, sceneAnchorChoices } from "@/lib/plotting/scene";
+import { graphInlineLatex } from "@/lib/plotting/latex";
+import { AXIS_INTERSECTION_TARGETS } from "@/lib/plotting/intersection-targets";
+import type { PointMode, ScenePoint } from "@/lib/plotting/types";
 
 export function PointCard({ point }: { point: ScenePoint }) {
   const [open, setOpen] = useState(false);
@@ -27,6 +36,7 @@ export function PointCard({ point }: { point: ScenePoint }) {
   const math = point.math;
   const graph = scene.graphs.find((item) => item.id === math.graphId);
   const solution = point.built?.[0] ?? null;
+  const anchors = sceneAnchorChoices(scene);
 
   // Свободную точку можно двигать целиком; точку на однозначной функции —
   // только вдоль горизонтальной оси; рассчитанные точки не редактируются.
@@ -34,6 +44,34 @@ export function PointCard({ point }: { point: ScenePoint }) {
   const editableY = math.mode === "plane";
 
   const coordsText = solution ? `(${solution.displayX}; ${solution.displayY})` : "не построена";
+
+  const modes: Array<{ value: PointMode; label: string; disabled?: boolean }> = [
+    { value: "plane", label: "на плоскости" },
+    { value: "onGraph", label: "на графике", disabled: scene.graphs.length === 0 },
+    { value: "intersection", label: "на пересечении", disabled: !scene.graphs.some((g) => g.built) },
+    { value: "anchor", label: "из опорных точек", disabled: anchors.length === 0 },
+  ];
+
+  const graphItems = scene.graphs.map((item) => (
+    <SelectItem key={item.id} value={item.id}>
+      <span className="flex items-center gap-2">
+        <span className="size-2.5 rounded-full" style={{ backgroundColor: item.style.color }} />
+        <MathLatex latex={graphInlineLatex(item, xName, yName)} />
+      </span>
+    </SelectItem>
+  ));
+
+  const selectedGraph = scene.graphs.find((item) => item.id === math.graphId);
+  const selectedGraphB = scene.graphs.find((item) => item.id === math.graphIdB);
+  const intersectionItems = scene.graphs.filter((item) => item.built).map((item) => (
+    <SelectItem key={item.id} value={item.id}>
+      <span className="flex items-center gap-2">
+        <span className="size-2.5 rounded-full" style={{ backgroundColor: item.style.color }} />
+        <MathLatex latex={graphInlineLatex(item, xName, yName)} />
+      </span>
+    </SelectItem>
+  ));
+
   return (
     <Card className="border-border">
       <CardContent className="p-2.5">
@@ -114,6 +152,118 @@ export function PointCard({ point }: { point: ScenePoint }) {
           )}
 
           <CollapsibleContent className="space-y-2 pt-2 pl-6">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Как задаётся точка</Label>
+              <Select
+                value={math.mode}
+                onValueChange={(value) =>
+                  updatePointMath(point.id, {
+                    mode: value as PointMode,
+                    graphId: null,
+                    graphIdB: null,
+                    anchorIndex: null,
+                    intersectionIndex: undefined,
+                  })
+                }
+              >
+                <SelectTrigger className="h-8 bg-background text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {modes.map((mode) => (
+                    <SelectItem key={mode.value} value={mode.value} disabled={mode.disabled}>
+                      {mode.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {math.mode === "onGraph" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">График</Label>
+                <Select
+                  value={math.graphId ?? ""}
+                  onValueChange={(value) => updatePointMath(point.id, { graphId: value })}
+                >
+                  <SelectTrigger className="h-8 bg-background text-xs">
+                    {selectedGraph ? (
+                      <span className="flex items-center gap-2">
+                        <span className="size-2.5 rounded-full" style={{ backgroundColor: selectedGraph.style.color }} />
+                        <MathLatex latex={graphInlineLatex(selectedGraph, xName, yName)} />
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">выберите график</span>
+                    )}
+                  </SelectTrigger>
+                  <SelectContent>{graphItems}</SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {math.mode === "intersection" && (
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  ["graphId", "Первый график", selectedGraph],
+                  ["graphIdB", "Второй график", selectedGraphB],
+                ] as const).map(([key, title, current]) => (
+                  <div key={key} className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">{title}</Label>
+                    <Select
+                      value={math[key] ?? ""}
+                      onValueChange={(value) => updatePointMath(point.id, { [key]: value })}
+                    >
+                      <SelectTrigger className="h-8 bg-background text-xs">
+                        {current ? (
+                          <span className="flex items-center gap-2">
+                            <span className="size-2.5 rounded-full" style={{ backgroundColor: current.style.color }} />
+                            <MathLatex latex={graphInlineLatex(current, xName, yName)} />
+                          </span>
+                        ) : AXIS_INTERSECTION_TARGETS.some((axis) => axis.id === math[key]) ? (
+                          <MathLatex latex={math[key] === "axis:x=0" ? `${xName}=0` : `${yName}=0`} />
+                        ) : (
+                          <span className="text-muted-foreground">выберите</span>
+                        )}
+                      </SelectTrigger>
+                      <SelectContent>
+                        {intersectionItems}
+                        {AXIS_INTERSECTION_TARGETS.map((axis) => (
+                          <SelectItem key={axis.id} value={axis.id}>
+                            <MathLatex latex={axis.id === "axis:x=0" ? `${xName}=0` : `${yName}=0`} />
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {math.mode === "anchor" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Опорная точка</Label>
+                <Select
+                  value={math.anchorIndex === null || !math.graphId ? "" : `${math.graphId}:${math.anchorIndex}`}
+                  onValueChange={(value) => {
+                    const [graphId, index] = value.split(":");
+                    updatePointMath(point.id, { graphId, anchorIndex: Number(index) });
+                  }}
+                >
+                  <SelectTrigger className="h-8 bg-background text-xs">
+                    <SelectValue placeholder="выберите опорную точку" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {anchors.map((anchor) => (
+                      <SelectItem
+                        key={`${anchor.graphId}:${anchor.anchorIndex}`}
+                        value={`${anchor.graphId}:${anchor.anchorIndex}`}
+                      >
+                        {`Функция ${anchor.graphIndex}: (${anchor.displayX}; ${anchor.displayY})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-1.5">
               <ToggleChip checked={point.style.open} onChange={(v) => updatePointStyle(point.id, { open: v })}>
                 Выколотая
@@ -126,14 +276,14 @@ export function PointCard({ point }: { point: ScenePoint }) {
                 title="Перпендикуляр к горизонтальной оси"
                 onChange={(v) => updatePointStyle(point.id, { projectX: v })}
               >
-                ⊥ к {xName}
+                <span className="inline-flex items-center gap-1">⊥ на <MathLatex latex={`O${xName}`} /></span>
               </ToggleChip>
               <ToggleChip
                 checked={point.style.projectY}
                 title="Перпендикуляр к вертикальной оси"
                 onChange={(v) => updatePointStyle(point.id, { projectY: v })}
               >
-                ⊥ к {yName}
+                <span className="inline-flex items-center gap-1">⊥ на <MathLatex latex={`O${yName}`} /></span>
               </ToggleChip>
             </div>
             {(point.style.projectX || point.style.projectY) && (
@@ -141,12 +291,12 @@ export function PointCard({ point }: { point: ScenePoint }) {
                 <span className="text-xs text-muted-foreground">Подписать основание:</span>
                 {point.style.projectX && (
                   <ToggleChip checked={point.style.labelProjectionX} onChange={(v) => updatePointStyle(point.id, { labelProjectionX: v })}>
-                    на {xName}
+                    <span className="inline-flex items-center gap-1">на <MathLatex latex={`O${xName}`} /></span>
                   </ToggleChip>
                 )}
                 {point.style.projectY && (
                   <ToggleChip checked={point.style.labelProjectionY} onChange={(v) => updatePointStyle(point.id, { labelProjectionY: v })}>
-                    на {yName}
+                    <span className="inline-flex items-center gap-1">на <MathLatex latex={`O${yName}`} /></span>
                   </ToggleChip>
                 )}
               </div>
