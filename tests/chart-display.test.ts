@@ -21,7 +21,7 @@ describe("линейная диаграмма с повторяющимся вр
     try {
       rendered.setOption(option);
       const svg = rendered.renderToSVGString();
-      const repeatedLabels = [...svg.matchAll(/<text\b[^>]*\bx="([^"]+)"[^>]*>6 утра<\/text>/g)];
+      const repeatedLabels = [...svg.matchAll(/<text\b[^>]*\btransform="translate\(([^ ]+) [^)]+\)"[^>]*>6 утра<\/text>/g)];
       expect(repeatedLabels).toHaveLength(2);
       expect(repeatedLabels[0]?.[1]).not.toBe(repeatedLabels[1]?.[1]);
     } finally {
