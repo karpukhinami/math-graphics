@@ -19,3 +19,5 @@
 - Workspace inline-image editing uses presentation-only Markdown ranges in `workspace/text-segments.ts` and a selection handle mapping local offsets to the full source. Why: images appear in place without changing stored plot tokens or generation input.
 
 - Read subdirectory `AGENTS.md` before edits (plotting/ai, plotting/chart, workspace have their own).
+- AI flows run analysis and drawing behind one «Нарисовать» action; analysis text is shown only when drawing is impossible, progress steps go to the preview area (or the button where there is none). Why: users see one step, not intermediate reasoning.
+- Root error boundary and `vite:preloadError` reload once on stale chunk errors after a redeploy. Why: open tabs otherwise break with «Failed to fetch dynamically imported module».

@@ -17,9 +17,41 @@ function NotFoundComponent() {
   );
 }
 
+/** После обновления сайта у открытой вкладки устаревают ссылки на части приложения. */
+const STALE_CHUNK_RE = /dynamically imported module|Importing a module script failed|error loading dynamically imported module|Failed to fetch dynamically/i;
+const RELOAD_KEY = "stale-chunk-reload-at";
+
+/** Одна тихая перезагрузка (не чаще раза в 30 с), чтобы подтянуть свежую версию. */
+function reloadForStaleChunk(): boolean {
+  if (typeof window === "undefined") return false;
+  const last = Number(sessionStorage.getItem(RELOAD_KEY) || 0);
+  if (Date.now() - last < 30_000) return false;
+  sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
+  window.location.reload();
+  return true;
+}
+
 function ErrorComponent({ error, reset }: import("@tanstack/react-router").ErrorComponentProps) {
   const router = useRouter();
-  useEffect(() => { reportLovableError(error, { boundary: "tanstack_root_error_component" }); }, [error]);
+  const stale = error instanceof Error && STALE_CHUNK_RE.test(error.message);
+  useEffect(() => {
+    if (stale && reloadForStaleChunk()) return;
+    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+  }, [error, stale]);
+  if (stale) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="max-w-md text-center">
+          <h1 className="text-xl font-semibold">Вышла новая версия</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Обновите страницу, чтобы продолжить.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+          >Обновить</button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
@@ -64,6 +96,13 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useEffect(() => {
+    const onPreloadError = (event: Event) => {
+      if (reloadForStaleChunk()) event.preventDefault();
+    };
+    window.addEventListener("vite:preloadError", onPreloadError);
+    return () => window.removeEventListener("vite:preloadError", onPreloadError);
+  }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <div className="flex h-full flex-col overflow-hidden">

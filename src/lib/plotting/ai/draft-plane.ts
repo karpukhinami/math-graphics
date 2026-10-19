@@ -363,6 +363,13 @@ export function expandPlaneDraft(raw: unknown, options: DraftOptions = {}): Draf
     });
   });
 
+  function axisTarget(value: unknown): string | null {
+    const key = typeof value === "string" ? value.trim().toLowerCase().replace(/\s+/g, "") : "";
+    if (["ox", "x-axis", "xaxis", "axis:y=0", "y=0", "осьox", "осьx"].includes(key)) return "axis:y=0";
+    if (["oy", "y-axis", "yaxis", "axis:x=0", "x=0", "осьoy", "осьy"].includes(key)) return "axis:x=0";
+    return null;
+  }
+
   function findGraph(value: unknown, where: string): GraphRef | null {
     const key = refKey(value);
     // Ссылка — id из черновика ("g1") либо порядковый номер графика (1, 2, …).
@@ -445,14 +452,17 @@ export function expandPlaneDraft(raw: unknown, options: DraftOptions = {}): Draf
       math.graphId = graph?.id ?? null;
     } else if (type === "intersection") {
       const pair = Array.isArray(item.graphs) ? item.graphs : [item.graphA ?? item.graph, item.graphB];
-      const first = findGraph(pair[0], where);
-      const second = findGraph(pair[1], where);
-      if (first && second && first.id === second.id) {
-        errors.push(`${where}: для intersection нужны два разных графика`);
+      // Пересечение с осью: "Ox"/"Oy" → зарезервированные цели axis:y=0 / axis:x=0 (без новых графиков).
+      const axisA = axisTarget(pair[0]);
+      const axisB = axisTarget(pair[1]);
+      const first = axisA ? null : findGraph(pair[0], where);
+      const second = axisB ? null : findGraph(pair[1], where);
+      if ((axisA && axisB) || (first && second && first.id === second.id)) {
+        errors.push(`${where}: для intersection нужны два разных графика (или график и ось Ox/Oy)`);
       }
       math.mode = "intersection";
-      math.graphId = first?.id ?? null;
-      math.graphIdB = second?.id ?? null;
+      math.graphId = axisA ? (second?.id ?? null) : (first?.id ?? null);
+      math.graphIdB = axisA ?? axisB ?? second?.id ?? null;
       if (Array.isArray(item.labels)) {
         solutionLabels = item.labels.map((label) => text(label));
       }

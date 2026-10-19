@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Loader2, Sparkles, Pencil } from "lucide-react";
+import { ChevronDown, Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,6 @@ import { DEFAULT_REPRODUCE_MODEL, DEFAULT_TEXT_MODEL } from "@/lib/ai/models";
 import { hasSourceMaterials } from "@/lib/plotting/ai/source-files";
 import { analyzePlotMaterial, generatePlotScene } from "@/lib/plotting/ai/pipeline";
 import { isChartResult, type PlotAiScenario, type PlotAnalysisResult } from "@/lib/plotting/ai/types";
-import { renderStatDecoJson, validateStatDecoJson } from "@/lib/plotting/chart";
 import { usePlotStore } from "@/lib/plotting/store";
 import { usePlotSourceState } from "./PlotSourceInput";
 import { PlotManualPanel } from "../PlotManualPanel";
@@ -33,9 +32,11 @@ export interface PlotAiPanelProps {
   onAnalogText?: (text: string) => void;
   initialScenario?: PlotAiScenario;
   initialRefinements?: string;
+  /** Текущий шаг ИИ-построения (null — не идёт); показывается в поле чертежа. */
+  onProgressChange?: (step: string | null) => void;
 }
 
-export function PlotAiPanel({ initialText, initialScenario, initialRefinements, simplified = false, textLabel = "Текст задания", onTextChange, onBuiltChange, onAnalogText }: PlotAiPanelProps = {}) {
+export function PlotAiPanel({ initialText, initialScenario, initialRefinements, simplified = false, textLabel = "Текст задания", onTextChange, onBuiltChange, onAnalogText, onProgressChange }: PlotAiPanelProps = {}) {
   const importAiScene = usePlotStore((s) => s.importAiScene);
   const mounted = useRef(false);
   useEffect(() => {
@@ -72,7 +73,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
     hasSourceMaterials(manualText, source.state.uploadedSourceText, attachedImages) ||
     (scenario === "task" && userRefinements.trim().length > 0);
 
-  async function onAnalyze() {
+  async function onRun() {
     if (!hasSource) {
       toast.error("Добавьте исходный материал: текст, PDF или изображение");
       return;
@@ -85,6 +86,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
     setSourceOpen(true);
     const version = usePlotStore.getState().sessionVersion;
     try {
+      onProgressChange?.(scenario === "reproduce" ? "Разбираю изображение…" : "Разбираю задание…");
       const result = await analyzePlotMaterial({
         model,
         scenario,
@@ -94,54 +96,47 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
         userRefinements: scenario === "task" || scenario === "reproduce" ? userRefinements : undefined,
       });
       if (!isCurrentSession(version)) return;
-      setAnalysis(result);
-      if (!result.canDraw) {
-        toast.message("Построение недоступно", {
-          description: "Смотрите результат анализа ниже",
-        });
+      if (!result.canDraw || !result.sceneType) {
+        // Пользователю показываем только причину, без хода рассуждений.
+        setAnalysis(result);
+        toast.message("Построение недоступно");
+        return;
       }
-    } catch (e) {
-      if (!isCurrentSession(version)) return;
-      toast.error(e instanceof Error ? e.message : "Ошибка анализа");
-    } finally {
-      if (isCurrentSession(version)) setAnalyzing(false);
-    }
-  }
-
-  async function onDraw() {
-    if (!analysis?.canDraw || !analysis.sceneType) return;
-    setDrawing(true);
-    setSceneBuilt(false);
-    const version = usePlotStore.getState().sessionVersion;
-    try {
-      const result = await generatePlotScene({
+      setAnalyzing(false);
+      setDrawing(true);
+      onProgressChange?.(result.sceneType === "chart" ? "Строю диаграмму…" : "Рисую чертёж…");
+      const built = await generatePlotScene({
         model,
         scenario,
         manualText,
         uploadedSourceText: source.state.uploadedSourceText,
         attachedImages,
-        analysis,
+        analysis: result,
         userRefinements,
       });
       if (!isCurrentSession(version)) return;
-      if (isChartResult(result)) {
-        usePlotStore.getState().setCharts([result.chart]);
+      if (isChartResult(built)) {
+        usePlotStore.getState().setCharts([built.chart]);
       } else {
-        importAiScene(result.scene);
+        importAiScene(built.scene);
       }
       setSceneBuilt(true);
       setSourceOpen(false);
       setEditOpen(true);
-      if ("newTaskText" in result && result.newTaskText) {
-        setAnalogTaskText(result.newTaskText);
-        onAnalogText?.(result.newTaskText);
+      if ("newTaskText" in built && built.newTaskText) {
+        setAnalogTaskText(built.newTaskText);
+        onAnalogText?.(built.newTaskText);
       }
       toast.success("Чертёж построен");
     } catch (e) {
       if (!isCurrentSession(version)) return;
       toast.error(e instanceof Error ? e.message : "Не удалось построить чертёж");
     } finally {
-      if (isCurrentSession(version)) setDrawing(false);
+      if (isCurrentSession(version)) {
+        setAnalyzing(false);
+        setDrawing(false);
+        onProgressChange?.(null);
+      }
     }
   }
 
@@ -170,7 +165,7 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
         {sceneBuilt && (
           <CollapsibleTrigger asChild>
             <Button type="button" variant="outline" className="w-full justify-between">
-              Исходные данные и анализ
+              Исходные данные
               <ChevronDown className={cn("size-4", sourceOpen && "rotate-180")} />
             </Button>
           </CollapsibleTrigger>
@@ -200,72 +195,23 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
         type="button"
         className="w-full"
         disabled={!hasSource || analyzing || drawing}
-        onClick={() => void onAnalyze()}
+        onClick={() => void onRun()}
       >
-        {analyzing ? (
+        {analyzing || drawing ? (
           <Loader2 className="size-4 mr-2 animate-spin" />
         ) : (
-          <Sparkles className="size-4 mr-2" />
+          <Pencil className="size-4 mr-2" />
         )}
-        Проанализировать
+        {analyzing ? "Разбираю…" : drawing ? "Рисую…" : "Нарисовать"}
       </Button>
 
-      {analysis && (
+      {analysis && !analysis.canDraw && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Результат анализа</CardTitle>
+            <CardTitle className="text-base">Построение недоступно</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {analysis.sceneType === "chart" ? (
-              <ChartAnalysisView analysis={analysis} />
-            ) : analysis.drawPlan ? (
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground">Что будет построено</p>
-                  {/* Обычный текст, не Markdown: в записи math.js «*» и «^» иначе станут разметкой. */}
-                  <pre className="whitespace-pre-wrap font-sans text-sm">{analysis.drawPlan}</pre>
-                </div>
-                <Collapsible>
-                  <CollapsibleTrigger asChild>
-                    <Button type="button" variant="ghost" size="sm" className="px-0 text-xs">
-                      Ход рассуждений
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-2">
-                    <Markdown>{analysis.analysisText}</Markdown>
-                  </CollapsibleContent>
-                </Collapsible>
-              </div>
-            ) : (
-              <Markdown>{analysis.analysisText}</Markdown>
-            )}
-            {analysis.canDraw && analysis.sceneType && (
-              <p className="text-xs text-muted-foreground">
-                Тип сцены:{" "}
-                {analysis.sceneType === "plane"
-                  ? "координатная плоскость"
-                  : analysis.sceneType === "space"
-                    ? "пространство (многогранник)"
-                    : analysis.sceneType === "chart"
-                      ? "диаграмма"
-                      : "числовая прямая"}
-              </p>
-            )}
-            {analysis.canDraw && (
-              <Button
-                type="button"
-                className="w-full"
-                disabled={drawing}
-                onClick={() => void onDraw()}
-              >
-                {drawing ? (
-                  <Loader2 className="size-4 mr-2 animate-spin" />
-                ) : (
-                  <Pencil className="size-4 mr-2" />
-                )}
-                Нарисовать
-              </Button>
-            )}
+          <CardContent>
+            <Markdown>{analysis.analysisText}</Markdown>
           </CardContent>
         </Card>
       )}
@@ -298,30 +244,4 @@ export function PlotAiPanel({ initialText, initialScenario, initialRefinements, 
       )}
     </div>
   );
-}
-
-/** Результат анализа для диаграммы: тип + таблица данных из stageData.chart. */
-function ChartAnalysisView({ analysis }: { analysis: PlotAnalysisResult }) {
-  const raw = (analysis.stageData as Record<string, unknown>).chart;
-  if (!raw) return <Markdown>{analysis.analysisText}</Markdown>;
-  try {
-    const chart = validateStatDecoJson(raw);
-    return (
-      <div className="space-y-3">
-        <Markdown>{renderStatDecoJson(chart)}</Markdown>
-        <Collapsible>
-          <CollapsibleTrigger asChild>
-            <Button type="button" variant="ghost" size="sm" className="px-0 text-xs">
-              Ход рассуждений
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-2">
-            <Markdown>{analysis.analysisText}</Markdown>
-          </CollapsibleContent>
-        </Collapsible>
-      </div>
-    );
-  } catch {
-    return <Markdown>{analysis.analysisText}</Markdown>;
-  }
 }

@@ -202,12 +202,19 @@ export async function generateAnalogVariants(opts: {
     schemaHint: '{ variants: [ { reasoning, task: { type, text, answer, options: [{ text, correct, figure }] }, figures: [{ id, drawPlan }] } ] }',
     images: opts.image ? [opts.image] : undefined,
     parse: (v) => {
-      const list = Array.isArray((v as { variants?: unknown })?.variants) ? (v as { variants: unknown[] }).variants : [];
-      if (list.length !== count) throw new Error(`Нужно ровно ${count} вариантов задания, получено ${list.length}`);
-      return list.map((item, i) => {
-        try { return parseAnalogVariant(item, tpl); }
-        catch (e) { throw new Error(`Вариант ${i + 1}: ${e instanceof Error ? e.message : e}`); }
+      // Корень может прийти массивом; лишние варианты отбрасываем.
+      const raw = Array.isArray(v) ? v : (v as { variants?: unknown })?.variants;
+      const list = (Array.isArray(raw) ? raw : []).slice(0, count);
+      if (!list.length) throw new Error(`Нужно ровно ${count} вариантов задания, получено 0`);
+      const parsed: AnalogTaskAnalysis[] = [];
+      const errors: string[] = [];
+      list.forEach((item, i) => {
+        try { parsed.push(parseAnalogVariant(item, tpl)); }
+        catch (e) { errors.push(`Вариант ${i + 1}: ${e instanceof Error ? e.message : e}`); }
       });
+      // Хотя бы один корректный вариант — отдаём результат, а не ошибку целиком.
+      if (!parsed.length) throw new Error(errors.join("; "));
+      return parsed;
     },
   });
 }
@@ -248,8 +255,11 @@ export async function generateAnalogFigures(opts: { model: string; analysis: Ana
     }
     return { scenes, errors };
   };
-  let result = await attempt();
-  if (result.errors.length) result = await attempt(buildDrawRetrySuffix(result.errors));
-  if (result.errors.length) throw new Error(`Не удалось построить чертежи:\n${result.errors.join("\n")}`);
-  return result.scenes;
+  const first = await attempt();
+  if (!first.errors.length) return first.scenes;
+  // Повтор: удавшиеся с первого раза чертежи сохраняем, недостающие берём из второй попытки.
+  const second = await attempt(buildDrawRetrySuffix(first.errors)).catch(() => ({ scenes: {}, errors: first.errors }));
+  const scenes = { ...second.scenes, ...first.scenes };
+  if (!Object.keys(scenes).length) throw new Error(`Не удалось построить чертежи:\n${second.errors.join("\n")}`);
+  return scenes;
 }
