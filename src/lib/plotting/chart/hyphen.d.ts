@@ -1,3 +1,4 @@
 declare module "hyphen/ru" {
-  export function hyphenateSync(text: string, options?: { hyphenChar?: string }): string;
+  const russianHyphenation: { hyphenateSync(text: string, options?: { hyphenChar?: string }): string };
+  export default russianHyphenation;
 }

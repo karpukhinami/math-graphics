@@ -1,4 +1,4 @@
-import { hyphenateSync } from "hyphen/ru";
+import russianHyphenation from "hyphen/ru";
 
 /** Prefer spaces; only split a long word at Russian dictionary-pattern breaks. */
 export function wrapCategoryLabel(text: string, width: number, measure: (text: string) => number): string {
@@ -12,7 +12,7 @@ export function wrapCategoryLabel(text: string, width: number, measure: (text: s
     if (line) { lines.push(line); line = ""; }
     let rest = word;
     while (measure(rest) > width) {
-      const syllables = hyphenateSync(rest, { hyphenChar: "\u00ad" }).split("\u00ad");
+      const syllables = russianHyphenation.hyphenateSync(rest, { hyphenChar: "\u00ad" }).split("\u00ad");
       let prefix = "";
       let cut = "";
       for (let i = 0; i < syllables.length - 1; i++) {
