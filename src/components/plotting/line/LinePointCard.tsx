@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { ToggleChip } from "../ToggleChip";
 import {
   Select,
   SelectContent,
@@ -119,70 +119,44 @@ export function LinePointCard({ point }: { point: SceneLinePoint }) {
             </div>
           </div>
 
-          <CollapsibleContent className="pt-3 pl-6">
-            <div className="grid grid-cols-2 gap-3 divide-x divide-border">
-              <div className="space-y-2 pr-3">
-                <div className="flex items-center justify-between rounded-md border border-border px-2 py-1.5">
-                  <Label className="text-xs">Показывать подпись</Label>
-                  <Switch
-                    checked={point.style.showLabel}
-                    onCheckedChange={(checked) => updateLinePointStyle(point.id, { showLabel: checked })}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Сторона подписи</Label>
-                  <SideSelect
-                    value={point.style.labelSide}
-                    onChange={(v) => updateLinePointStyle(point.id, { labelSide: v })}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Цвет подписи</Label>
-                  <ColorSelect
-                    value={point.style.labelColor}
-                    onChange={(v) => updateLinePointStyle(point.id, { labelColor: v })}
-                  />
-                </div>
-                <div className="flex items-center justify-between rounded-md border border-border px-2 py-1.5">
-                  <Label className="text-xs">Выколотая</Label>
-                  <Switch
-                    checked={point.style.open}
-                    onCheckedChange={(checked) => updateLinePointStyle(point.id, { open: checked })}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2 pl-3">
-                <div className="flex items-center justify-between rounded-md border border-border px-2 py-1.5">
-                  <Label className="text-xs">Показывать координату</Label>
-                  <Switch
-                    checked={point.style.showCoords}
-                    onCheckedChange={(checked) => updateLinePointStyle(point.id, { showCoords: checked })}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Сторона координаты</Label>
-                  <SideSelect
-                    value={point.style.coordSide}
-                    onChange={(v) => updateLinePointStyle(point.id, { coordSide: v })}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Цвет координаты</Label>
-                  <ColorSelect
-                    value={point.style.coordColor}
-                    onChange={(v) => updateLinePointStyle(point.id, { coordColor: v })}
-                  />
-                </div>
-                <div className="flex items-center justify-between rounded-md border border-border px-2 py-1.5">
-                  <Label className="text-xs">Провести перпендикуляр</Label>
-                  <Switch
-                    checked={point.style.perpendicular}
-                    onCheckedChange={(checked) => updateLinePointStyle(point.id, { perpendicular: checked })}
-                  />
-                </div>
-              </div>
+          <CollapsibleContent className="space-y-2 pt-2 pl-6">
+            <div className="flex flex-wrap gap-1.5">
+              <ToggleChip checked={point.style.showLabel} onChange={(v) => updateLinePointStyle(point.id, { showLabel: v })}>
+                Подпись
+              </ToggleChip>
+              <ToggleChip checked={point.style.showCoords} onChange={(v) => updateLinePointStyle(point.id, { showCoords: v })}>
+                Координата
+              </ToggleChip>
+              <ToggleChip checked={point.style.open} onChange={(v) => updateLinePointStyle(point.id, { open: v })}>
+                Выколотая
+              </ToggleChip>
+              <ToggleChip checked={point.style.perpendicular} onChange={(v) => updateLinePointStyle(point.id, { perpendicular: v })}>
+                Перпендикуляр
+              </ToggleChip>
             </div>
+            {(point.style.showLabel || point.style.showCoords) && (
+              <div className="grid grid-cols-2 gap-2">
+                {point.style.showLabel && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Подпись: сторона и цвет</Label>
+                    <div className="grid grid-cols-2 gap-1">
+                      <SideSelect value={point.style.labelSide} onChange={(v) => updateLinePointStyle(point.id, { labelSide: v })} />
+                      <ColorSelect value={point.style.labelColor} onChange={(v) => updateLinePointStyle(point.id, { labelColor: v })} />
+                    </div>
+                  </div>
+                )}
+                {point.style.showCoords && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Координата: сторона и цвет</Label>
+                    <div className="grid grid-cols-2 gap-1">
+                      <SideSelect value={point.style.coordSide} onChange={(v) => updateLinePointStyle(point.id, { coordSide: v })} />
+                      <ColorSelect value={point.style.coordColor} onChange={(v) => updateLinePointStyle(point.id, { coordColor: v })} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {point.error && <p className="mt-2 text-xs text-destructive">{point.error}</p>}
           </CollapsibleContent>
         </Collapsible>
