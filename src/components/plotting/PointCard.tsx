@@ -6,6 +6,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ColorDot } from "./ColorDot";
+import { Switch } from "@/components/ui/switch";
 import { ToggleChip } from "./ToggleChip";
 import { ValueFormula } from "./MathLatex";
 import { usePlotStore } from "@/lib/plotting/store";

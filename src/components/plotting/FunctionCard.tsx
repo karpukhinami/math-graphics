@@ -65,6 +65,39 @@ export function FunctionCard({ graph }: { graph: SceneGraph }) {
     return { from: format(scene.xAxis.min), to: format(scene.xAxis.max) };
   }, [scene.xAxis.min, scene.xAxis.max, scene.xAxis.labelFormat]);
 
+  const [moreOpen, setMoreOpen] = useState(
+    () => !!(math.domainFrom.trim() || math.domainTo.trim() || (graph.style.labelMode && graph.style.labelMode !== "none")),
+  );
+
+  const labelBlock = (
+    <>
+      <div className="flex items-center justify-between gap-2">
+        <Label htmlFor={`graph-label-${graph.id}`} className="shrink-0 text-xs text-muted-foreground">Подпись графика</Label>
+        <Select
+          value={graph.style.labelMode === "equation" && math.kind !== "explicit" && math.kind !== "implicit" ? "none" : graph.style.labelMode ?? "none"}
+          onValueChange={(value) => updateGraphStyle(graph.id, { labelMode: value as GraphStyle["labelMode"] })}
+        >
+          <SelectTrigger id={`graph-label-${graph.id}`} aria-label="Подпись графика" className="h-8 min-w-0 flex-1 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Без подписи</SelectItem>
+            <SelectItem value="name" disabled={!graph.style.label.trim()}>По названию</SelectItem>
+            {(math.kind === "explicit" || math.kind === "implicit") && <SelectItem value="equation">Уравнением</SelectItem>}
+            <SelectItem value="custom">Своя подпись</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      {graph.style.labelMode === "custom" && (
+        <Textarea
+          aria-label="Своя подпись"
+          value={graph.style.customLabel ?? ""}
+          placeholder="Например: Скорость $v(t)$"
+          title="Текст и формулы LaTeX в $…$"
+          onChange={(event) => updateGraphStyle(graph.id, { customLabel: event.target.value })}
+          className="min-h-20"
+        />
+      )}
+    </>
+  );
 
   return (
     <Card className="border-border">
