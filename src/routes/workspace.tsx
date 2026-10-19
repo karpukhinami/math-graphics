@@ -24,6 +24,7 @@ import { buildAnalogBlock } from "@/lib/workspace/analog-block";
 import { exportTaskDocx } from "@/lib/workspace/docx-export";
 import { importDocx } from "@/lib/workspace/docx-import";
 import { plotInsertionImages, insertPlotImageTokens, type WorkspacePlotImage } from "@/lib/workspace/plot-insertion";
+import { OnboardingTour } from "@/components/OnboardingTour";
 
 export const Route = createFileRoute("/workspace")({
   head: () => ({
@@ -310,6 +311,10 @@ function WorkspacePage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-muted/30">
+      <OnboardingTour id="workspace" steps={[
+        { target: "blocks", title: "Соберите задание", text: "Добавляйте текст и вопросы. «Аналог по скриншоту» и «Задание по запросу» создадут задание с чертежом сами." },
+        { target: "download", title: "Готово — скачайте", text: "Задание сохраняется в Word. Чертёж можно вставить в любой блок кнопкой с картинкой." },
+      ]} />
       <header className="flex items-center justify-between gap-3 border-b border-border bg-background px-4 py-3">
         <Button asChild variant="outline" size="sm" className="shrink-0">
           <Link to="/">
