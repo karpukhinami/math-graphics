@@ -6,7 +6,7 @@
  * touching the prompt, the ContentSummary shape or the validator.
  */
 import type { EChartsOption } from "echarts";
-import type { DesignProfile, StatDecoJson } from "./types";
+import type { StatDecoJson } from "./types";
 import { darken, lighten, resolveColors, statDecoTheme, waterfallColors } from "./colors";
 import {
   formatNum,
@@ -49,14 +49,11 @@ export interface StatDecoOptionResult {
   error?: string;
 }
 
-export function buildStatDecoOption(
-  json: StatDecoJson,
-  profile: DesignProfile | null | undefined,
-): StatDecoOptionResult {
-  const theme = statDecoTheme(profile);
+export function buildStatDecoOption(json: StatDecoJson): StatDecoOptionResult {
+  const theme = statDecoTheme();
   const r = json.rendering;
   const showValues = r.showValues !== false;
-  const fontFamily = '"SB Serif Text", ui-serif, Georgia, serif';
+  const fontFamily = '"SB Sans Text", ui-sans-serif, system-ui, sans-serif';
 
   const base: EChartsOption = {
     backgroundColor: theme.background,

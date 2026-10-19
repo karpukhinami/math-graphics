@@ -176,10 +176,6 @@ export function validateStatDecoJson(raw: unknown): StatDecoJson {
   const reason = str(statusRaw.reason) ?? "";
   const declaredOk = typeof statusRaw.canRender === "undefined" ? true : bool(statusRaw.canRender, true);
 
-  const planRaw = (o.illustrationPlan && typeof o.illustrationPlan === "object"
-    ? o.illustrationPlan
-    : {}) as Record<string, unknown>;
-  const instrRaw = Array.isArray(planRaw.elementInstructions) ? planRaw.elementInstructions : [];
 
   const hasData = columns.length > 0 && columns.some((c) => c.length > 1);
   if (declaredOk && !hasData) {
@@ -199,16 +195,6 @@ export function validateStatDecoJson(raw: unknown): StatDecoJson {
     data: { columns },
     mapping: normalizeMapping(o.mapping),
     rendering: normalizeRendering(o.rendering),
-    illustrationPlan: {
-      visualIntent: str(planRaw.visualIntent) ?? "",
-      overallTreatment: str(planRaw.overallTreatment) ?? "",
-      elementInstructions: instrRaw
-        .map((it) => {
-          const e = (it && typeof it === "object" ? it : {}) as Record<string, unknown>;
-          return { target: str(e.target) ?? "", instruction: str(e.instruction) ?? "" };
-        })
-        .filter((e) => e.target || e.instruction),
-    },
     warnings,
   };
 }
