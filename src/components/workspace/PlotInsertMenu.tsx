@@ -18,11 +18,13 @@ export function PlotInsertMenu({
   onPlot,
   size = "sm",
   context = "text",
+  tourId,
 }: {
   onFile: (dataUrl: string) => void;
   onPlot: (action: PlotInsertAction) => void;
   size?: "sm" | "icon";
   context?: "text" | "task";
+  tourId?: string;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
@@ -45,7 +47,7 @@ export function PlotInsertMenu({
       />
       <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
         <DropdownMenuTrigger asChild>
-          <Button type="button" variant="ghost" size={size === "icon" ? "icon" : "sm"} title="Вставить изображение"
+          <Button data-tour={tourId} type="button" variant="ghost" size={size === "icon" ? "icon" : "sm"} title="Вставить изображение"
             onPointerDown={(event) => {
               if (event.button !== 0 || event.ctrlKey) return;
               // Open without moving focus away from the selected source text.

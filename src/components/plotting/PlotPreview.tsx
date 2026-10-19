@@ -17,6 +17,7 @@ import { PlotBeautifyDialog } from "@/components/plotting/PlotBeautifyDialog";
 import { ChartPreview } from "@/components/plotting/ChartPreview";
 import { chartForRender, renderChartsPng } from "@/lib/plotting/chart";
 import { toast } from "sonner";
+import { OnboardingTour } from "@/components/OnboardingTour";
 
 export interface PlotPreviewResultProps {
   onBeautifiedImageChange?: (src: string | null) => void;
@@ -106,10 +107,15 @@ export function PlotPreview({
   }
 
   return (
-    <Card>
+    <Card data-tour="result">
+      {(svg || chart?.length) ? <OnboardingTour id="plot-result" steps={[
+        { target: "result", title: "Чертёж готов", text: "Если что-то не так — поправьте числа и подписи в полях слева, чертёж обновится сразу." },
+        { target: "beautify", title: "«Сделать красиво»", text: "ИИ перерисует чертёж в мягком мультяшном стиле — для открыток и презентаций." },
+        ...(simplified ? [] : [{ target: "downloads", title: "Скачайте", text: "SVG — для печати и вёрстки, PNG — обычная картинка, JSON — чтобы потом открыть и доработать." }]),
+      ]} /> : null}
       <CardContent className="space-y-3 p-3">
         {!simplified && (
-          <div className="flex flex-wrap gap-2">
+          <div data-tour="downloads" className="flex flex-wrap gap-2">
             {!chart && (
               <Button type="button" size="sm" variant="outline" disabled={!svg} onClick={() => svg && downloadSvg(svg)}>
                 <Download className="size-4" />
@@ -206,6 +212,7 @@ export function PlotPreview({
           type="button"
           size="sm"
           variant="secondary"
+          data-tour="beautify"
           className="w-full"
           disabled={(!svg && !chart?.length) || beautifying}
           onClick={() => setBeautifyOpen(true)}
