@@ -50,7 +50,7 @@ export function volumePieSeries(categories: string[], values: number[], colors: 
   const renderItem: CustomSeriesRenderItem = (_params, api) => {
     const cx = api.getWidth() / 2;
     const cy = api.getHeight() * 0.53;
-    const rx = Math.min(api.getWidth() * 0.4, api.getHeight() * outer * 0.62);
+    const rx = Math.min(api.getWidth() * (showValues ? 0.29 : 0.4), api.getHeight() * outer * 0.62);
     const ry = rx * 0.52;
     const depth = Math.min(30, rx * 0.18);
     const point = (a: number, radius = 1, down = 0): Point => [cx + Math.cos(a) * rx * radius, cy + Math.sin(a) * ry * radius + down];
