@@ -135,6 +135,12 @@ export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number
           <Label className="text-xs">Подписывать значения</Label>
           <Switch checked={r.showValues ?? false} onCheckedChange={(showValues) => render({ showValues })} />
         </div>
+        {GRID_TYPES.includes(type) && (
+          <div className="flex items-center justify-between rounded-md border border-border px-2 py-1.5">
+            <Label className="text-xs">Ось и сетка</Label>
+            <Switch checked={r.showGrid ?? false} onCheckedChange={(showGrid) => render({ showGrid })} />
+          </div>
+        )}
 
         <div className="overflow-x-auto rounded-md border border-border">
           <table className="w-full border-collapse text-sm">
@@ -190,6 +196,15 @@ export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number
           <Button type="button" size="sm" variant="outline" onClick={() => setColumns(addSeries(columns))}>
             <Plus className="size-4" />
             Ряд данных
+          </Button>
+          <TableSizePopover
+            rows={rows}
+            cols={columns.length}
+            onApply={(nextRows, nextCols) => setColumns(resizeTable(columns, nextRows, nextCols))}
+          />
+          <Button type="button" size="sm" variant="outline" onClick={() => setColumns(clearCells(columns))}>
+            <Eraser className="size-4" />
+            Очистить
           </Button>
         </div>
       </CardContent>
