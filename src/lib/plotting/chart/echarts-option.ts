@@ -41,13 +41,10 @@ function axisMaxWithHeadroom(values: number[], headroom: keyof typeof HEADROOM =
   return Math.ceil((max / (1 - fraction)) * 100) / 100;
 }
 
-/** «Красивый» максимум оси: 1 / 2 / 2.5 / 5 / 10 × 10^n, не меньше max. */
+/** Максимум оси сетки: на 5% больше максимального значения, округлённый до целого. */
 function niceMax(max: number | undefined): number | undefined {
   if (max == null || !Number.isFinite(max) || max <= 0) return max;
-  const pow = Math.pow(10, Math.floor(Math.log10(max)));
-  const n = max / pow;
-  const nice = n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10;
-  return nice * pow;
+  return Math.max(1, Math.round(max * 1.05));
 }
 
 type SeriesList = NonNullable<EChartsOption["series"]>;
