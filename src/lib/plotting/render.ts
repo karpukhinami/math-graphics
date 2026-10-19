@@ -402,8 +402,12 @@ function xMarkPosition(g: PlotGeometry, a: PlotAppearance, value: number, text: 
 
 function yMarkPosition(g: PlotGeometry, a: PlotAppearance, value: number) {
   let y = g.sy(value) + a.labelFontSize * 0.35;
-  if (g.yMax <= 0) y = Math.max(y, g.xAxisY + a.tickSize + a.labelFontSize + 3);
-  return { x: g.yAxisX - a.tickSize - 7, y, anchor: "end" as const };
+  if (g.yMax <= 0 && g.sy(value) - g.xAxisY < a.labelFontSize * 0.7 + a.tickSize) {
+    y = g.xAxisY - a.tickSize - 8;
+  }
+  return g.xMax <= 0
+    ? { x: g.yAxisX + a.tickSize + 7, y, anchor: "start" as const }
+    : { x: g.yAxisX - a.tickSize - 7, y, anchor: "end" as const };
 }
 
 function xMarkLabelRect(g: PlotGeometry, scene: PlotScene, a: PlotAppearance, value: number): Rect {
@@ -801,7 +805,7 @@ export function renderPlotSvg(
     const text = displayNumber(value, scene.yAxis.labelFormat);
     const pos = yMarkPosition(geometry, a, value);
     if (yLabelSet.has(value)) labels.push(
-      `<text x="${round(pos.x)}" y="${round(pos.y)}" text-anchor="end" font-style="normal" ${labelStyle}>${escapeText(
+      `<text x="${round(pos.x)}" y="${round(pos.y)}" text-anchor="${pos.anchor}" font-style="normal" ${labelStyle}>${escapeText(
         text,
       )}</text>`,
     );
