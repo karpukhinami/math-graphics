@@ -2,7 +2,7 @@
  * Полный конструктор чертежей (ручной + ИИ-режим + превью).
  * Используется и на главной странице, и в редакторе заданий — доработки построений общие.
  */
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlotPreview, type PlotPreviewResultProps } from "@/components/plotting/PlotPreview";
 import { PlotManualPanel } from "@/components/plotting/PlotManualPanel";
@@ -29,15 +29,6 @@ export function PlotWorkbench({
   const resetScene = usePlotStore((state) => state.resetScene);
   const commitInputs = usePlotStore((state) => state.commitInputs);
   const sessionVersion = usePlotStore((state) => state.sessionVersion);
-
-  useEffect(() => {
-    const version = usePlotStore.getState().sessionVersion;
-    return () => {
-      const state = usePlotStore.getState();
-      // A replacement dialog may already have started and loaded its own scene.
-      if (state.sessionVersion === version) state.resetScene();
-    };
-  }, []);
 
   const [aiSessionKey, setAiSessionKey] = useState(0);
   const [aiResultReady, setAiResultReady] = useState(false);
