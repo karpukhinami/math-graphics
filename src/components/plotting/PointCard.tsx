@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ColorDot } from "./ColorDot";
+import { ToggleChip } from "./ToggleChip";
 import { ValueFormula } from "./MathLatex";
 import { usePlotStore } from "@/lib/plotting/store";
 import { isSingleValued } from "@/lib/plotting/scene";
@@ -112,63 +113,45 @@ export function PointCard({ point }: { point: ScenePoint }) {
             </div>
           )}
 
-          <CollapsibleContent className="space-y-3 pt-3">
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex items-center justify-between rounded-md border border-border px-2 py-1.5">
-                <Label className="text-xs">Выколотая</Label>
-                <Switch
-                  checked={point.style.open}
-                  onCheckedChange={(checked) => updatePointStyle(point.id, { open: checked })}
-                />
-              </div>
-              <div className="flex items-center justify-between rounded-md border border-border px-2 py-1.5">
-                <Label className="text-xs">Показать координаты</Label>
-                <Switch
-                  checked={point.style.showCoords}
-                  onCheckedChange={(checked) => updatePointStyle(point.id, { showCoords: checked })}
-                />
-              </div>
+          <CollapsibleContent className="space-y-2 pt-2 pl-6">
+            <div className="flex flex-wrap gap-1.5">
+              <ToggleChip checked={point.style.open} onChange={(v) => updatePointStyle(point.id, { open: v })}>
+                Выколотая
+              </ToggleChip>
+              <ToggleChip checked={point.style.showCoords} onChange={(v) => updatePointStyle(point.id, { showCoords: v })}>
+                Координаты
+              </ToggleChip>
+              <ToggleChip
+                checked={point.style.projectX}
+                title="Перпендикуляр к горизонтальной оси"
+                onChange={(v) => updatePointStyle(point.id, { projectX: v })}
+              >
+                ⊥ к {xName}
+              </ToggleChip>
+              <ToggleChip
+                checked={point.style.projectY}
+                title="Перпендикуляр к вертикальной оси"
+                onChange={(v) => updatePointStyle(point.id, { projectY: v })}
+              >
+                ⊥ к {yName}
+              </ToggleChip>
             </div>
+            {(point.style.projectX || point.style.projectY) && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">Подписать основание:</span>
+                {point.style.projectX && (
+                  <ToggleChip checked={point.style.labelProjectionX} onChange={(v) => updatePointStyle(point.id, { labelProjectionX: v })}>
+                    на {xName}
+                  </ToggleChip>
+                )}
+                {point.style.projectY && (
+                  <ToggleChip checked={point.style.labelProjectionY} onChange={(v) => updatePointStyle(point.id, { labelProjectionY: v })}>
+                    на {yName}
+                  </ToggleChip>
+                )}
+              </div>
+            )}
 
-            <div className="space-y-2 rounded-md border border-border p-2">
-              <Label className="text-xs text-muted-foreground">Проекции на оси</Label>
-              <div className="flex items-center justify-between">
-                <Label className="text-xs">Перпендикуляр к горизонтальной оси</Label>
-                <Switch
-                  checked={point.style.projectX}
-                  onCheckedChange={(checked) => updatePointStyle(point.id, { projectX: checked })}
-                />
-              </div>
-              {point.style.projectX && (
-                <div className="flex items-center justify-between pl-3">
-                  <Label className="text-xs text-muted-foreground">подписать основание</Label>
-                  <Switch
-                    checked={point.style.labelProjectionX}
-                    onCheckedChange={(checked) =>
-                      updatePointStyle(point.id, { labelProjectionX: checked })
-                    }
-                  />
-                </div>
-              )}
-              <div className="flex items-center justify-between">
-                <Label className="text-xs">Перпендикуляр к вертикальной оси</Label>
-                <Switch
-                  checked={point.style.projectY}
-                  onCheckedChange={(checked) => updatePointStyle(point.id, { projectY: checked })}
-                />
-              </div>
-              {point.style.projectY && (
-                <div className="flex items-center justify-between pl-3">
-                  <Label className="text-xs text-muted-foreground">подписать основание</Label>
-                  <Switch
-                    checked={point.style.labelProjectionY}
-                    onCheckedChange={(checked) =>
-                      updatePointStyle(point.id, { labelProjectionY: checked })
-                    }
-                  />
-                </div>
-              )}
-            </div>
 
             {point.built && point.built.length > 1 && (
               <div className="space-y-1.5 rounded-md border border-border p-2">
