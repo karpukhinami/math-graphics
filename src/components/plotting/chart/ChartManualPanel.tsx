@@ -143,6 +143,12 @@ export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number
             <Switch checked={r.showGrid ?? false} onCheckedChange={(showGrid) => render({ showGrid })} />
           </div>
         )}
+        {VOLUME_TYPES.includes(type) && (
+          <div className="flex items-center justify-between rounded-md border border-border px-2 py-1.5">
+            <Label className="text-xs">Объёмное</Label>
+            <Switch checked={r.volume ?? false} onCheckedChange={(volume) => render({ volume })} />
+          </div>
+        )}
 
         <div className="overflow-x-auto rounded-md border border-border">
           <table className="w-full border-collapse text-sm">
