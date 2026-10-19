@@ -3,7 +3,7 @@
  * Модель возвращает только colorMode («same» | «similar» | «different»),
  * конкретные hex выводятся здесь.
  */
-import { PLOT_PALETTE } from "../shared";
+import { PLOT_PALETTE, PLOT_PALETTE_GROUPS } from "../shared";
 import type { StatDecoColorMode } from "./types";
 import { hexToRgb, hslToRgb, rgbToHex, rgbToHsl } from "./palette-math";
 
@@ -34,21 +34,24 @@ export function statDecoTheme(): StatDecoTheme {
   return THEME;
 }
 
-/** Расширенный набор цветов на выбор пользователя (без произвольного ввода). */
+/** Цвета на выбор пользователя: основная палитра чертежей и фирменные дополнительные цвета, без посторонних. */
 export const CHART_COLOR_CHOICES: string[] = [
-  ...PLOT_PALETTE,
-  "#E15759",
-  "#F28E2B",
-  "#59A14F",
-  "#76B7B2",
-  "#EDC948",
-  "#B07AA1",
-  "#FF9DA7",
-  "#9C755F",
-  "#4E79A7",
-  "#A0CBE8",
-  "#86BCB6",
+  ...new Set([...PLOT_PALETTE, ...PLOT_PALETTE_GROUPS.flatMap((group) => group.colors)]),
 ];
+
+/** Фирменные оттенки базового цвета (его группа палитры), начиная с самого базового; null, если цвет вне групп. */
+export function paletteShades(base: string): string[] | null {
+  const group = PLOT_PALETTE_GROUPS.find((g) => g.colors.includes(base));
+  if (!group) return null;
+  const start = group.colors.indexOf(base);
+  return [...group.colors.slice(start), ...group.colors.slice(0, start)];
+}
+
+/** «Оттенки одного цвета» предлагаем, только если у базового цвета не меньше 3 фирменных оттенков. */
+export function similarAvailable(base: string): boolean {
+  const shades = paletteShades(base);
+  return shades === null || shades.length >= 3;
+}
 
 function shiftHsl(hex: string, dH: number, dS: number, dL: number): string {
   const { r, g, b } = hexToRgb(hex);
@@ -106,8 +109,12 @@ export function resolveColors(
   const effective: StatDecoColorMode = mode ?? (n > 1 ? "different" : "same");
   let base: string[];
   if (effective === "same") base = Array.from({ length: n }, () => custom?.[0] ?? theme.primary);
-  else if (effective === "similar") base = shades(custom?.[0] ?? theme.primary, n);
-  else base = distinctColors(theme, n);
+  else {
+    const baseColor = custom?.[0] ?? theme.primary;
+    const fixed = paletteShades(baseColor);
+    // Оттенков меньше, чем столбцов, — повторяем все по кругу; вне групп палитры — оттенки по светлоте.
+    base = fixed ? Array.from({ length: n }, (_, i) => fixed[i % fixed.length]) : shades(baseColor, n);
+  }
   // Ручные цвета (режим «different») перекрывают палитру по позициям.
   if (effective === "different" && custom) {
     return base.map((color, i) => custom[i] ?? color);
