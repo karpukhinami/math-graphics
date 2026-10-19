@@ -37,6 +37,10 @@ export interface PlotGenerateChartResult {
   chart: import("@/lib/plotting/chart").StatDecoJson;
 }
 
+export function isChartResult(r: unknown): r is PlotGenerateChartResult {
+  return !!r && typeof r === "object" && "chart" in r;
+}
+
 export interface PlotGenerateAnalogResult {
   newTaskText: string;
   scene: unknown;

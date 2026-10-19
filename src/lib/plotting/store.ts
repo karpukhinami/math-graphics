@@ -206,6 +206,9 @@ interface PlotStore {
   commitInputs: () => void;
   importScene: (raw: unknown) => void;
   importAiScene: (raw: unknown) => void;
+  /** Построенная ИИ диаграмма (режим chart); живёт вне PlotScene. */
+  chart: import("@/lib/plotting/chart").StatDecoJson | null;
+  setChart: (chart: import("@/lib/plotting/chart").StatDecoJson | null) => void;
   resetScene: () => void;
   setSpaceShapeKind: (kind: SpaceShapeKind) => void;
   setSpaceBaseInput: (input: string) => void;
