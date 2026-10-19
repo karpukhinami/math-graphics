@@ -13,6 +13,8 @@ import { sceneToSvg, usePlotSvg } from "@/lib/plotting/use-plot-svg";
 import { generatePlotBeautifiedImage } from "@/lib/plotting/beautify";
 import { downloadImageSrc, downloadPng, downloadSceneJson, downloadSvg, readSceneJson } from "@/lib/plotting/export";
 import { PlotBeautifyDialog } from "@/components/plotting/PlotBeautifyDialog";
+import { ChartPreview } from "@/components/plotting/ChartPreview";
+import { renderStatDecoChartPng } from "@/lib/plotting/chart";
 import { toast } from "sonner";
 
 export interface PlotPreviewResultProps {
@@ -46,6 +48,7 @@ export function PlotPreview({
   const [beautifiedResult, setBeautifiedResult] = useState<{ src: string; svg: string } | null>(null);
 
   const svg = usePlotSvg();
+  const chart = usePlotStore((state) => state.chart);
   // Temporary point drafts are not changes to the inserted construction.
   const committedSvg = useMemo(() => sceneToSvg(scene), [scene]);
   const svgRef = useRef(committedSvg);
@@ -59,6 +62,17 @@ export function PlotPreview({
   useEffect(() => {
     onBeautifyingChange?.(beautifying);
   }, [beautifying, onBeautifyingChange]);
+
+  /** PNG: для диаграммы — офф-скрин рендер ECharts, иначе обычный SVG→PNG. */
+  async function downloadChartOrPlot() {
+    if (chart) {
+      const png = await renderStatDecoChartPng(chart);
+      if (png) downloadImageSrc(png);
+      else toast.error("Не удалось подготовить PNG диаграммы");
+      return;
+    }
+    if (svg) downloadPng(svg);
+  }
 
   async function onBeautifyDraw(wishes: string) {
     const container = previewRef.current;
@@ -92,40 +106,46 @@ export function PlotPreview({
       <CardContent className="space-y-3 p-3">
         {!simplified && (
           <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" variant="outline" disabled={!svg} onClick={() => svg && downloadSvg(svg)}>
-              <Download className="size-4" />
-              SVG
-            </Button>
+            {!chart && (
+              <Button type="button" size="sm" variant="outline" disabled={!svg} onClick={() => svg && downloadSvg(svg)}>
+                <Download className="size-4" />
+                SVG
+              </Button>
+            )}
             {beautifiedImage ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button type="button" size="sm" variant="outline" disabled={!svg}>
+                  <Button type="button" size="sm" variant="outline" disabled={!svg && !chart}>
                     <Download className="size-4" />
                     PNG
                     <ChevronDown className="size-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => svg && downloadPng(svg)}>Скачать чертёж</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => void downloadChartOrPlot()}>Скачать чертёж</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => downloadImageSrc(beautifiedImage)}>
                     Скачать картинку
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button type="button" size="sm" variant="outline" disabled={!svg} onClick={() => svg && downloadPng(svg)}>
+              <Button type="button" size="sm" variant="outline" disabled={!svg && !chart} onClick={() => void downloadChartOrPlot()}>
                 <Download className="size-4" />
                 PNG
               </Button>
             )}
-            <Button type="button" size="sm" variant="outline" onClick={() => downloadSceneJson(scene)}>
-              <FileJson className="size-4" />
-              Сохранить JSON
-            </Button>
-            <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-              <Upload className="size-4" />
-              Загрузить JSON
-            </Button>
+            {!chart && (
+              <>
+                <Button type="button" size="sm" variant="outline" onClick={() => downloadSceneJson(scene)}>
+                  <FileJson className="size-4" />
+                  Сохранить JSON
+                </Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+                  <Upload className="size-4" />
+                  Загрузить JSON
+                </Button>
+              </>
+            )}
             <Button
               type="button"
               size="sm"
@@ -157,7 +177,9 @@ export function PlotPreview({
         )}
 
         <div ref={previewRef} className="overflow-auto rounded-md border border-border bg-background p-2">
-          {svg ? (
+          {chart ? (
+            <ChartPreview chart={chart} />
+          ) : svg ? (
             <div className="[&>svg]:h-auto [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
           ) : (
             <p className="p-8 text-center text-sm text-muted-foreground">
@@ -175,7 +197,7 @@ export function PlotPreview({
           size="sm"
           variant="secondary"
           className="w-full"
-          disabled={!svg || beautifying}
+          disabled={(!svg && !chart) || beautifying}
           onClick={() => setBeautifyOpen(true)}
         >
           <Sparkles className="size-4" />

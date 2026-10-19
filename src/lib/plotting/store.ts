@@ -206,6 +206,9 @@ interface PlotStore {
   commitInputs: () => void;
   importScene: (raw: unknown) => void;
   importAiScene: (raw: unknown) => void;
+  /** Построенная ИИ диаграмма (режим chart); живёт вне PlotScene. */
+  chart: import("@/lib/plotting/chart").StatDecoJson | null;
+  setChart: (chart: import("@/lib/plotting/chart").StatDecoJson | null) => void;
   resetScene: () => void;
   setSpaceShapeKind: (kind: SpaceShapeKind) => void;
   setSpaceBaseInput: (input: string) => void;
@@ -377,6 +380,7 @@ function freshSession(spaceTab: PlotSpaceTab, sessionVersion: number): Partial<P
     spacePointDraft: null, spacePointDraftError: null,
     spaceLineDraft: null, spaceLineDraftError: null,
     spacePlaneDraft: null, spacePlaneDraftError: null,
+    chart: null,
   };
 }
 
@@ -399,6 +403,8 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
   spacePlaneDraft: null,
   spacePlaneDraftError: null,
   activeAxisRow: 0,
+  chart: null,
+  setChart: (chart) => set({ chart }),
 
   startPointDraft: () => set({ pointDraft: { ...EMPTY_POINT_MATH }, pointDraftError: null }),
 
@@ -1017,6 +1023,7 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
   },
 
   importAiScene: (raw) => {
+    set({ chart: null });
     commitImportedScene(set, mergeAiScene(raw));
   },
 

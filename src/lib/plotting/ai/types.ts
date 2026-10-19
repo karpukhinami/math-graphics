@@ -8,7 +8,7 @@ export function isPlanScenario(s: PlotAiScenario): s is "draw" | "task" {
   return s === "draw" || s === "task";
 }
 
-export type PlotSceneType = "plane" | "line" | "space";
+export type PlotSceneType = "plane" | "line" | "space" | "chart";
 
 export interface PlotAnalysisResult {
   canDraw: boolean;
@@ -30,6 +30,15 @@ export interface PlotAnalysisResult {
 
 export interface PlotGenerateSceneResult {
   scene: unknown;
+}
+
+/** Результат «Нарисовать» для диаграммы: второй этап без LLM, данные уже в анализе. */
+export interface PlotGenerateChartResult {
+  chart: import("@/lib/plotting/chart").StatDecoJson;
+}
+
+export function isChartResult(r: unknown): r is PlotGenerateChartResult {
+  return !!r && typeof r === "object" && "chart" in r;
 }
 
 export interface PlotGenerateAnalogResult {

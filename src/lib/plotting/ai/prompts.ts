@@ -29,6 +29,7 @@ import analogTaskAnalyze from "@/lib/plotting/ai/templates/analog-task-analyze.t
 import analogTaskVariants from "@/lib/plotting/ai/templates/analog-task-variants.txt?raw";
 import requestTaskAnalyze from "@/lib/plotting/ai/templates/request-task-analyze.txt?raw";
 import analogTaskGenerate from "@/lib/plotting/ai/templates/analog-task-generate.txt?raw";
+import chartRules from "@/lib/plotting/ai/templates/chart-rules.txt?raw";
 import type { PlotAiScenario, PlotAnalysisResult, PlotSceneType } from "./types";
 
 const schemaLine = schemaLineRaw
@@ -84,7 +85,7 @@ export function buildAnalyzePrompt(opts: {
     const source = sourceText.trim() || "(текста задания нет)";
     return withAnalysisRules(withTechBlocks(taskAnalyze)
       .replaceAll("{{SOURCE_TEXT}}", () => source)
-      .replaceAll("{{USER_REFINEMENTS}}", () => refinements) + "\n\n" + lineFractionRules);
+      .replaceAll("{{USER_REFINEMENTS}}", () => refinements) + "\n\n" + lineFractionRules + "\n\n" + chartRules);
   }
   let template: string;
   switch (scenario) {
@@ -101,7 +102,9 @@ export function buildAnalyzePrompt(opts: {
       template = analyzeAnalog;
       break;
   }
-  return withAnalysisRules(injectShared(template, sourceText));
+  const prompt = withAnalysisRules(injectShared(template, sourceText));
+  // Режим диаграмм доступен только в сценарии «Нарисовать по заданию».
+  return scenario === "draw" ? prompt + "\n\n" + chartRules : prompt;
 }
 
 export function buildGeneratePrompt(opts: {
@@ -185,7 +188,7 @@ ${validationErrors.map((e) => `- ${e}`).join("\n")}
 
 export function analysisSchemaHint(scenario: PlotAiScenario = "draw"): string {
   if (scenario === "draw" || scenario === "task") {
-    return `JSON с полями: reasoning (string — подробный анализ по единой структуре), canDraw (boolean), sceneType ("plane"|"line"|"space" если canDraw), drawPlan (string — самодостаточный перечень построений по той же структуре, если canDraw), stageData (object, заполняется только для "space").`;
+    return `JSON с полями: reasoning (string — подробный анализ по единой структуре), canDraw (boolean), sceneType ("plane"|"line"|"space"|"chart" если canDraw), drawPlan (string — самодостаточный перечень построений по той же структуре, если canDraw и sceneType не "chart"), stageData (object; для "chart" — поле chart с таблицей данных и типом диаграммы, для "space" — данные фигуры).`;
   }
   return `JSON с полями: canDraw (boolean), sceneType ("plane"|"line"|"space" если canDraw), analysisText (string), stageData (object).`;
 }
