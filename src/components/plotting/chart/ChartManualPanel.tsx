@@ -29,6 +29,8 @@ const CHART_TYPES = Object.keys(CHART_TYPE_LABELS) as StatDecoChartType[];
 const MULTI_SERIES: StatDecoChartType[] = ["bar", "line", "area", "radar"];
 /** Типы, где логична ось значений с сеткой. */
 const GRID_TYPES: StatDecoChartType[] = ["bar", "line", "area", "scatter", "histogram", "waterfall", "boxplot"];
+/** Типы, где поддержан объёмный вид. */
+const VOLUME_TYPES: StatDecoChartType[] = ["bar", "histogram", "waterfall"];
 
 export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number }) {
   const updateChart = usePlotStore((s) => s.updateChart);
@@ -139,6 +141,12 @@ export function ChartCard({ chart, index }: { chart: StatDecoJson; index: number
           <div className="flex items-center justify-between rounded-md border border-border px-2 py-1.5">
             <Label className="text-xs">Ось и сетка</Label>
             <Switch checked={r.showGrid ?? false} onCheckedChange={(showGrid) => render({ showGrid })} />
+          </div>
+        )}
+        {VOLUME_TYPES.includes(type) && (
+          <div className="flex items-center justify-between rounded-md border border-border px-2 py-1.5">
+            <Label className="text-xs">Объёмное</Label>
+            <Switch checked={r.volume ?? false} onCheckedChange={(volume) => render({ volume })} />
           </div>
         )}
 
