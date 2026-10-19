@@ -32,6 +32,7 @@ import analogTaskGenerate from "@/lib/plotting/ai/templates/analog-task-generate
 import techChartJson from "@/lib/plotting/ai/templates/tech-chart-json.txt?raw";
 import chartTaskRules from "@/lib/plotting/ai/templates/tech-task-chart-rules.txt?raw";
 import chartRulesRaw from "@/lib/plotting/ai/templates/chart-rules.txt?raw";
+import chartRulesImageRaw from "@/lib/plotting/ai/templates/chart-rules-image.txt?raw";
 import type { PlotAiScenario, PlotAnalysisResult, PlotSceneType } from "./types";
 
 const chartRules = chartRulesRaw.replaceAll("{{TECH_CHART_JSON}}", techChartJson);

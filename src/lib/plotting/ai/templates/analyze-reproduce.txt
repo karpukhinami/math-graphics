@@ -56,9 +56,12 @@
     "lineSets": [ { "input": string, "description": string } ],
     "planePoints": [ { "x": string, "y": string, "label": string } ],
     "axisHints": { "xMin": string, "xMax": string, "yMin": string, "yMax": string, "lineMin": string, "lineMax": string },
+    "chart": object | null,
     "visualNotes": string
   }
 }
+
+Поле chart заполняется только при sceneType = "chart" (объект по схеме выше); иначе — null.
 
 analysisText — подробный перечень будущих построений по единой структуре ниже; перечисли каждый видимый объект с точными параметрами и подписями, кратко указав источник восстановленных данных.
 
