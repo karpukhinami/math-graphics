@@ -113,7 +113,7 @@ export function AnalogTaskDialog({ open, onOpenChange, onCreate, mode = "screens
             </div>
             <Button className="flex-1" onClick={() => void onBuild()} disabled={isShot ? !images[0] : !wishes.trim()}>
               {busy ? <Loader2 className="size-4 animate-spin" /> : <Pencil className="size-4" />}
-              {busy && progress ? progress : "Нарисовать"}
+              {busy && progress ? progress : "Создать"}
             </Button>
           </div>
         </fieldset>

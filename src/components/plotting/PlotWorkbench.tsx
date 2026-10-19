@@ -3,7 +3,6 @@
  * Используется и на главной странице, и в редакторе заданий — доработки построений общие.
  */
 import { useState, type ReactNode } from "react";
-import { Loader2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlotPreview, type PlotPreviewResultProps } from "@/components/plotting/PlotPreview";
 import { PlotManualPanel } from "@/components/plotting/PlotManualPanel";
@@ -33,14 +32,12 @@ export function PlotWorkbench({
 
   const [aiSessionKey, setAiSessionKey] = useState(0);
   const [aiResultReady, setAiResultReady] = useState(false);
-  const [aiStep, setAiStep] = useState<string | null>(null);
 
   const isAi = inputMode === "ai";
 
   function handleReset() {
     resetScene();
     setAiResultReady(false);
-    setAiStep(null);
     if (isAi) setAiSessionKey((key) => key + 1);
   }
 
@@ -54,7 +51,6 @@ export function PlotWorkbench({
             onValueChange={(value) => {
               if (value === inputMode) return;
               setAiResultReady(false);
-              setAiStep(null);
               onBeautifiedImageChange?.(null);
               onBeautifyingChange?.(false);
               setInputMode(value as "manual" | "ai");
@@ -105,7 +101,6 @@ export function PlotWorkbench({
               key={aiSessionKey}
               {...aiInitial}
               simplified={simplified}
-              onProgressChange={setAiStep}
               onBuiltChange={(built) => {
                 setAiResultReady(built);
                 aiInitial?.onBuiltChange?.(built);
@@ -115,12 +110,7 @@ export function PlotWorkbench({
             <PlotManualPanel />
           )}
         </div>
-        {isAi && aiStep ? (
-          <div className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border text-muted-foreground" role="status">
-            <Loader2 className="size-10 animate-spin text-primary" />
-            <p className="text-base">{aiStep}</p>
-          </div>
-        ) : (!isAi || (simplified ? resultReady : aiResultReady)) && (
+        {(!isAi || (simplified ? resultReady : aiResultReady)) && (
           <div className="min-h-0 overflow-y-auto lg:pl-1">
             <PlotPreview
               key={sessionVersion}

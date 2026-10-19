@@ -1,5 +1,5 @@
 /** Модалка с общим конструктором чертежей; по «Вставить» отдаёт SVG и снимок сцены. */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,7 @@ export function PlotEditorDialog({
   const scene = usePlotStore((s) => s.scene);
   const charts = usePlotStore((s) => s.charts);
   const chart = charts.length ? charts : null;
+  const titleRef = useRef<HTMLHeadingElement>(null);
 
   async function insert() {
     if (beautifying) return;
@@ -77,8 +78,13 @@ export function PlotEditorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[92vh] max-w-[95vw] flex-col gap-3 lg:max-w-[66vw]">
-        <DialogTitle className="sr-only">Конструктор чертежа</DialogTitle>
+      <DialogContent className="flex h-[92vh] max-w-[95vw] flex-col gap-3 lg:max-w-[66vw]"
+        onOpenAutoFocus={(event) => {
+          // Focusing the first tab activates it and destroys the imported chart.
+          event.preventDefault();
+          titleRef.current?.focus();
+        }}>
+        <DialogTitle ref={titleRef} tabIndex={-1} className="sr-only">Конструктор чертежа</DialogTitle>
         <PlotWorkbench
           key={sessionKey}
           simplified
