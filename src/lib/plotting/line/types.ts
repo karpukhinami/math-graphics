@@ -161,4 +161,5 @@ export const LINE_APPEARANCE_OVERRIDES = {
   height: 144,
   frame: false,
   padding: 16,
+  pointRadius: 6,
 } as const;
