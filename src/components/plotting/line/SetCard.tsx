@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, Eye, EyeOff, Hammer, Trash2 } from "lucide-react";
+import { ChevronDown, Eye, EyeOff, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -179,7 +179,6 @@ export function SetCard({ set }: { set: SceneSet }) {
   const [open, setOpen] = useState(true);
   const updateSetMath = usePlotStore((s) => s.updateSetMath);
   const updateSetStyle = usePlotStore((s) => s.updateSetStyle);
-  const buildSet = usePlotStore((s) => s.buildSet);
   const removeSet = usePlotStore((s) => s.removeSet);
 
   const title = set.built?.displayText ?? `Множество ${set.index}`;
@@ -250,11 +249,6 @@ export function SetCard({ set }: { set: SceneSet }) {
             </div>
 
             {set.error && <p className="text-xs text-destructive">{set.error}</p>}
-
-            <Button type="button" size="sm" variant="outline" onClick={() => buildSet(set.id)}>
-              <Hammer className="size-4" />
-              {set.built ? "Перестроить" : "Построить"}
-            </Button>
           </CollapsibleContent>
         </Collapsible>
       </CardContent>

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { equationLatex, expressionLatex } from "@/lib/plotting/math-expr";
+import { MathLatex } from "./MathLatex";
 
 export function MathSyntaxHint() {
   return (
@@ -74,7 +75,7 @@ export function MathInput({
     <div className="space-y-1.5">
       {label && <Label className="text-xs text-muted-foreground">{label}</Label>}
       <div className="flex items-center gap-2">
-        {prefix && <span className="shrink-0 font-medium italic">{prefix}</span>}
+        {prefix && <MathLatex latex={prefix} className="shrink-0 font-medium" />}
         <Input
           value={value}
           onChange={(event) => onChange(event.target.value)}

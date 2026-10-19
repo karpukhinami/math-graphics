@@ -45,8 +45,10 @@ export type TickLabelFormat = "number" | "fraction" | "pi";
 export type MarkRule = "zeroOnly" | "zeroAndFirst" | "all" | "selected";
 
 export interface AxisSpec {
-  /** Математическое имя переменной оси. */
+  /** Математическое имя переменной оси (одна буква: "x", "t"). */
   name: string;
+  /** Словесная подпись оси на чертеже (например "время"); пусто — подписывается переменная. */
+  label?: string;
   /** Единица измерения (необязательно). */
   unit: string;
   min: string;

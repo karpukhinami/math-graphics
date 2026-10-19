@@ -321,7 +321,8 @@ export function markValues(axis: AxisSpec, min: number, max: number, labelStep: 
 }
 
 export function axisLabelText(axis: AxisSpec): string {
-  const name = axis.name.trim() || "x";
+  const caption = axis.label?.trim();
+  const name = caption || axis.name.trim() || "x";
   return axis.unit.trim() ? `${name}, ${axis.unit.trim()}` : name;
 }
 
@@ -398,7 +399,7 @@ export function labeledMarks(
 
 function pointCaptionText(point: RenderPoint): string {
   const parts: string[] = [];
-  if (point.label) parts.push(point.label);
+  if (point.label) parts.push(pointLabelPlain(point.label));
   if (point.coords) parts.push(point.coords);
   return parts.join(" ");
 }
@@ -650,13 +651,30 @@ function layoutPointLabels(
   );
 }
 
+/** Подпись точки с индексом: "A_1" → A с нижним индексом 1. */
+function pointLabelTspans(label: string): string {
+  const match = /^([A-Za-zА-Яа-я]+)_(\w+)$/.exec(label.trim());
+  if (!match) return `<tspan font-style="italic">${escapeText(label)}</tspan>`;
+  const [, base, sub] = match;
+  return (
+    `<tspan font-style="italic">${escapeText(base)}</tspan>` +
+    `<tspan font-style="italic" font-size="0.7em" dy="0.25em">${escapeText(sub)}</tspan>` +
+    `<tspan dy="-0.25em"></tspan>`
+  );
+}
+
+/** Текст подписи для измерения ширины (индекс считается как обычный символ). */
+export function pointLabelPlain(label: string): string {
+  return label.replace(/_(\w+)$/, "$1");
+}
+
 function renderPointCaption(
   point: RenderPoint,
   placed: PlacedLabel,
   a: PlotAppearance,
 ): string {
   const captionParts: string[] = [];
-  if (point.label) captionParts.push(`<tspan font-style="italic">${escapeText(point.label)}</tspan>`);
+  if (point.label) captionParts.push(pointLabelTspans(point.label));
   if (point.coords) captionParts.push(`<tspan font-style="normal">${escapeText(point.coords)}</tspan>`);
   const inner = captionParts.join(" ");
   const pos = `x="${round(placed.x)}" y="${round(placed.y)}" text-anchor="${placed.textAnchor}"`;
