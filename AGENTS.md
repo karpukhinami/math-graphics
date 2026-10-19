@@ -1,6 +1,6 @@
 # Project rules
 
-- Embedded plot SVGs pass through `plotting/standalone-svg.ts`, which includes KaTeX CSS and inline font assets. Why: SVG images cannot inherit page styles, and fractions must match the live construction.
+- Embedded plot SVGs pass through `plotting/standalone-svg.ts` with KaTeX CSS and inline fonts. Why: SVG images cannot inherit page styles.
 
 - Number-line labels use exact rational arithmetic in `line/numeric-labels.ts`, deriving tick labels from the original minimum and step; parsed interval endpoints retain source expressions through normalization and boundary edits. Why: coordinates remain exact and fraction/decimal presentation never relies on rounded geometry or saved label layout.
 
@@ -16,10 +16,9 @@
 - Document parsing (PDF/DOCX) for AI source material is done in `/api/extract-document`. Why: those parsers need the server runtime.
 - Scene JSON save/load lives in `src/lib/plotting/scene-json.ts` (`sceneToJson` / `sceneFromJson`, space part in `space/serialize.ts`): save only user/AI input, omit defaults and anything the builder recomputes; a missing field means "auto". Loading must keep accepting the old full format, covered by `tests/scene-json.test.ts`. Why: compact, AI-friendly files that always rebuild to the same picture.
 - Plane axis intersection targets use reserved `axis:x=0` / `axis:y=0` references resolved only for solving, never added to scene graphs; separate intersection cards persist an optional solution index. Why: axis points stay dependent and rebuild without duplicate solutions or extra rendered lines.
-- Axis intersections of analytic and smooth point-defined graphs solve the source equation with residual-checked sign roots and local minima in `axis-intersections.ts`; other pairs retain segment solving. Why: tangencies between sampled vertices must be found without mistaking nearby curves or asymptotes for intersections.
+- Axis intersections of analytic/smooth point-defined graphs solve the source equation with residual-checked sign roots and local minima in `axis-intersections.ts`; other pairs keep segment solving. Why: tangencies between vertices must not be missed or confused with nearby curves.
 
 - Subdirectories may have their own `AGENTS.md` (e.g. `src/lib/plotting/ai/`, `src/lib/workspace/`); read it before changing files there.
 - Workspace inline-image editing uses presentation-only Markdown ranges in `workspace/text-segments.ts` and a selection handle mapping local text offsets to the full source. Why: images appear in place without changing stored plot tokens, formulas or generation input.
 - Line batch building assigns completed sets after boundary synchronization updates the scene. Why: reassigning the scene inside a map must not discard built sets while preserving their boundary points.
 - Store input actions rebuild committed constructions and dependencies; spatial vertex text commits on blur, with drafts excluded. Why: every workbench updates geometry without a build-all button or premature draft insertion.
-- Chart mode ("stat-deco", sceneType "chart") lives in `src/lib/plotting/chart/`: model returns table + chartType in analysis `stageData.chart` (no second LLM stage); colors come only from PLOT_PALETTE via `chart/colors.ts`, ECharts option built in `chart/echarts-option.ts`, preview `ChartPreview.tsx`, PNG via `chart/chart-png.ts`; chart JSON is stored in plot store field `chart`, not in PlotScene. Why: diagrams are data-driven, not scene-driven, and must share the math palette.
