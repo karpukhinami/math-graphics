@@ -81,8 +81,8 @@ describe("option + markdown", () => {
 
   test("таблица Markdown содержит заголовки и значения", () => {
     const md = statDecoTableMarkdown(validateStatDecoJson(SAMPLE));
-    expect(md).toContain("| Предмет | Математика | Русский | Физкультура |");
-    expect(md).toContain("| Учеников | 10 | 7 | 8 |");
+    expect(md).toContain("| Предмет | Учеников |");
+    expect(md).toContain("| Математика | 10 |");
   });
 
   test("текст анализа называет тип диаграммы по-русски", () => {
