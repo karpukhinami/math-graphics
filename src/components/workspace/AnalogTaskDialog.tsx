@@ -51,12 +51,17 @@ export function AnalogTaskDialog({ open, onOpenChange, onCreate, mode = "screens
       setProgress("Придумываю варианты…");
       const variants = await generateAnalogVariants({ model: DEFAULT_REPRODUCE_MODEL, image: isShot ? images[0] : undefined, template: tpl, count, userRefinements: isShot ? wishes : "" });
       setProgress("Строю чертежи…");
-      const allScenes = await Promise.all(variants.map((v) => generateAnalogFigures({ model: DEFAULT_REPRODUCE_MODEL, analysis: v })));
+      // Сбой одного варианта не должен ронять остальные: оставляем удавшиеся.
+      const settled = await Promise.allSettled(variants.map((v) => generateAnalogFigures({ model: DEFAULT_REPRODUCE_MODEL, analysis: v })));
+      const okIdx = settled.map((r, i) => (r.status === "fulfilled" ? i : -1)).filter((i) => i >= 0);
+      if (!okIdx.length) throw (settled[0] as PromiseRejectedResult).reason;
+      const allScenes = okIdx.map((i) => (settled[i] as PromiseFulfilledResult<Awaited<ReturnType<typeof generateAnalogFigures>>>).value);
+      const okVariants = okIdx.map((i) => variants[i]);
       setProgress("Собираю задания…");
       // Рендер через общий стор — строго последовательно.
       const results: AnalogTaskResult[] = [];
-      for (let i = 0; i < variants.length; i++) {
-        const v = variants[i];
+      for (let i = 0; i < okVariants.length; i++) {
+        const v = okVariants[i];
         const rendered: AnalogTaskResult["images"] = {};
         for (const fig of v.figures) {
           if (!(fig.id in allScenes[i])) continue;
@@ -64,14 +69,14 @@ export function AnalogTaskDialog({ open, onOpenChange, onCreate, mode = "screens
           if (v.sceneType === "chart") {
             const charts = (built as { charts: StatDecoJson[] }).charts;
             const src = await renderChartsPng(charts);
-            if (!src) throw new Error(`Вариант ${i + 1}: диаграмма ${fig.id} не построена`);
+            if (!src) continue; // фигура без картинки — задание остаётся текстовым
             rendered[fig.id] = { src, charts: structuredClone(charts) };
             continue;
           }
           store.importAiScene(built);
           const scene = usePlotStore.getState().scene;
           const svg = sceneToSvg(scene);
-          if (!svg) throw new Error(`Вариант ${i + 1}: чертёж ${fig.id} не построен`);
+          if (!svg) continue;
           const standalone = await standalonePlotSvg(svg);
           rendered[fig.id] = { src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(standalone)}`, scene: structuredClone(scene) };
         }
@@ -80,6 +85,7 @@ export function AnalogTaskDialog({ open, onOpenChange, onCreate, mode = "screens
       store.resetScene();
       onCreate(results);
       toast.success(results.length > 1 ? `Создано заданий: ${results.length}` : "Задание создано");
+      if (okVariants.length < variants.length) toast.message(`Не удалось построить вариантов: ${variants.length - okVariants.length}`);
       onOpenChange(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Не удалось построить задание");
