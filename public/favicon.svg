@@ -1,18 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Чертежи">
   <title>Плотник — чертежи</title>
   <rect width="64" height="64" rx="14" fill="#5941DA"/>
-  <g transform="rotate(-45 32 32)">
-    <rect x="12" y="38" width="40" height="12" rx="3" fill="#FFFFFF"/>
-    <rect x="18" y="38" width="4" height="7" fill="#5941DA"/>
-    <rect x="27" y="38" width="4" height="7" fill="#5941DA"/>
-    <rect x="36" y="38" width="4" height="7" fill="#5941DA"/>
-    <rect x="45" y="38" width="4" height="7" fill="#5941DA"/>
-  </g>
-  <g transform="rotate(45 32 32)">
-    <rect x="11" y="26" width="32" height="12" rx="3" fill="#5941DA" stroke="#5941DA" stroke-width="7" stroke-linejoin="round"/>
-    <polygon points="43,26 43,38 56,32" fill="#5941DA" stroke="#5941DA" stroke-width="7" stroke-linejoin="round"/>
-    <rect x="11" y="26" width="32" height="12" rx="3" fill="#FFFFFF"/>
-    <polygon points="43,26 43,38 56,32" fill="#FFFFFF"/>
-    <polygon points="50,28.6 50,35.4 56,32" fill="#23233A"/>
-  </g>
+  <polygon points="10,56 56,56 10,10" fill="#FFFFFF"/>
+  <polygon points="24,44 42,44 24,26" fill="#5941DA"/>
 </svg>
